@@ -122,10 +122,6 @@ if [ "${INPUT_GIT_COMMITTER_NAME:="-"}" != "-" ] && [ "${INPUT_GIT_COMMITTER_EMA
 	export GIT_COMMIT_AUTHOR="$INPUT_GIT_COMMITTER_NAME <$INPUT_GIT_COMMITTER_EMAIL>"
 fi
 
-# See https://github.com/actions/runner-images/issues/6775#issuecomment-1409268124
-# and https://github.com/actions/runner-images/issues/6775#issuecomment-1410270956
-git config --system --add safe.directory "*"
-
 if [[ -n "$INPUT_SSH_PUBLIC_SIGNING_KEY" && -n "$INPUT_SSH_PRIVATE_SIGNING_KEY" ]]; then
 	echo "SSH Key pair found, configuring signing..."
 
