@@ -48,7 +48,13 @@ jobs:
           fetch-depth: 0
 
       - name: Check out the real branch (semantic-release can't match release groups on detached HEAD)
-        run: git checkout -B "${{ github.head_ref || github.ref_name }}"
+        env:
+          HEAD_REF: ${{ github.head_ref || github.ref_name }}
+        run: |
+          case "$HEAD_REF" in
+            *[!A-Za-z0-9._/-]*) echo "invalid ref: $HEAD_REF"; exit 1 ;;
+          esac
+          git checkout -B "$HEAD_REF"
 
       - name: Run better-semantic-release action against this repo (read-only, no side effects)
         id: bsr
@@ -64,8 +70,11 @@ jobs:
           build: "false"
 
       - name: Assert action produced outputs (proves composite output wiring + forked source ran)
+        env:
+          BSR_RELEASED: ${{ steps.bsr.outputs.released }}
+          BSR_VERSION: ${{ steps.bsr.outputs.version }}
         run: |
-          echo "released=${{ steps.bsr.outputs.released }}"
-          echo "version=${{ steps.bsr.outputs.version }}"
-          test -n "${{ steps.bsr.outputs.version }}"
-          test -n "${{ steps.bsr.outputs.released }}"
+          echo "released=$BSR_RELEASED"
+          echo "version=$BSR_VERSION"
+          test -n "$BSR_VERSION"
+          test -n "$BSR_RELEASED"
