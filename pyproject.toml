@@ -431,6 +431,7 @@ build_command = """
     python -m build .
 """
 major_on_zero = true
+allow_zero_version = false
 tag_format = "v{version}"
 version_toml = ["pyproject.toml:project.version"]
 
