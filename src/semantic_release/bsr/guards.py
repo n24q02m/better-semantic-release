@@ -6,8 +6,11 @@ from semantic_release.bsr.errors import BsrGuardError
 from semantic_release.bsr.registry import ProbeResult, probe_registry
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from semantic_release.bsr.config import BsrConfig
     from semantic_release.cli.config import RuntimeContext
+    from semantic_release.version.translator import VersionTranslator
     from semantic_release.version.version import Version
 
 _VALID_REGISTRIES = {"pypi", "npm", "none"}
@@ -24,6 +27,47 @@ def resolve_registry(bsr_config: BsrConfig, project_name: str) -> str:
         f"better-semantic-release guard: invalid [tool.semantic_release.bsr] registry "
         f"'{bsr_config.registry}'. Use one of: pypi, npm, none."
     )
+
+
+def is_orphaned_recompute(
+    repo_dir: Path, translator: VersionTranslator, new_version: Version
+) -> bool:
+    """
+    Detect a genuine orphan/rewritten-tag silent-freeze (vs. a benign no-op).
+
+    `new_version` is already known to be in `previously_released_versions` (an
+    already-released version) by the time this is called. That alone does not
+    mean anything is wrong: a benign no-op re-dispatch (no new releasable
+    commits) recomputes `new_version` == the highest version reachable from
+    HEAD, and PSR's silent skip there is correct.
+
+    The dangerous case is when a rebase/force-push dropped the `chore(release)`
+    commits, orphaning the highest tag: PSR then bumps up from whatever base
+    IS still reachable and lands on a version that already exists as an
+    unreachable tag. That is only possible when `new_version` is HIGHER than
+    everything reachable from HEAD (or nothing is reachable at all).
+
+    Returns True (orphaned -- fire the guard) when `new_version` is higher than
+    the highest version reachable from HEAD, or when no tag is reachable at
+    all. Returns False (benign no-op -- stay silent) when `new_version` equals
+    the reachable tip.
+    """
+    from git import Repo  # noqa: PLC0415
+
+    from semantic_release.version.algorithm import tags_and_versions  # noqa: PLC0415
+
+    with Repo(str(repo_dir)) as repo:
+        head = repo.head.commit
+        reachable = [
+            v
+            for tag, v in tags_and_versions(repo.tags, translator)
+            if repo.is_ancestor(tag.commit, head)
+        ]
+
+    if not reachable:
+        return True  # tags exist (already-released) but none reachable -> orphaned
+
+    return new_version > max(reachable)
 
 
 def run_guards(

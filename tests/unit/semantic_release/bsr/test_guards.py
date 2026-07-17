@@ -11,6 +11,7 @@ from semantic_release.bsr.config import BsrConfig
 from semantic_release.bsr.errors import BsrGuardError
 from semantic_release.bsr.registry import ProbeResult
 from semantic_release.version.translator import VersionTranslator
+from semantic_release.version.version import Version
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -94,3 +95,56 @@ def test_collision_guard_disabled(tmp_path, monkeypatch):
         new_version="1.2.3",
         bsr_config=BsrConfig(guard_registry_collision=False),
     )  # disabled -> no raise despite EXISTS
+
+
+# --- is_orphaned_recompute ---
+_TRANSLATOR = VersionTranslator(tag_format="v{version}")
+
+
+def _commit(repo: Repo, path: Path, name: str, message: str):
+    (path / name).write_text(name, encoding="utf-8")
+    repo.index.add([name])
+    return repo.index.commit(
+        message, author=Actor("t", "t@t"), committer=Actor("t", "t@t")
+    )
+
+
+def test_is_orphaned_recompute_false_for_benign_noop(tmp_path: Path) -> None:
+    """Tag == reachable tip (nothing new to release) -> not orphaned."""
+    repo = Repo.init(tmp_path)
+    _commit(repo, tmp_path, "f1.txt", "feat: a")
+    repo.create_tag("v1.0.0")
+
+    assert g.is_orphaned_recompute(tmp_path, _TRANSLATOR, Version.parse("1.0.0")) is False
+
+
+def test_is_orphaned_recompute_true_for_real_orphan(tmp_path: Path) -> None:
+    """
+    A rebase/force-push dropped the commit behind the highest tag: the tag
+    still exists but is unreachable from HEAD, and PSR's recomputed version
+    from the still-reachable base is HIGHER than that reachable base.
+    """
+    repo = Repo.init(tmp_path)
+    c1 = _commit(repo, tmp_path, "f1.txt", "feat: a")
+    repo.create_tag("v1.0.0")
+    _commit(repo, tmp_path, "f2.txt", "feat: b")
+    repo.create_tag("v1.1.0")
+
+    # Simulate the rebase/force-push: rewind to c1 and diverge.
+    repo.git.reset("--hard", c1.hexsha)
+    _commit(repo, tmp_path, "f3.txt", "feat: c")
+
+    assert g.is_orphaned_recompute(tmp_path, _TRANSLATOR, Version.parse("1.1.0")) is True
+
+
+def test_is_orphaned_recompute_true_when_no_reachable_tags(tmp_path: Path) -> None:
+    """No tag at all is reachable from HEAD -> orphaned (fail closed)."""
+    repo = Repo.init(tmp_path)
+    c1 = _commit(repo, tmp_path, "f1.txt", "feat: a")
+    _commit(repo, tmp_path, "f2.txt", "feat: b")
+    repo.create_tag("v1.0.0")  # tagged on the commit we're about to orphan
+
+    repo.git.reset("--hard", c1.hexsha)
+    _commit(repo, tmp_path, "f3.txt", "feat: c")
+
+    assert g.is_orphaned_recompute(tmp_path, _TRANSLATOR, Version.parse("1.0.0")) is True

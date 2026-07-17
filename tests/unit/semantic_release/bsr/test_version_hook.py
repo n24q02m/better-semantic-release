@@ -91,13 +91,63 @@ def _tag_already_computed_version(proj: Path) -> None:
     repo.create_tag(f"v{computed_version}")
 
 
-def test_silent_freeze_escalates_to_exit_1(minimal_project: Path) -> None:
+def _build_orphaned_tag_project(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, extra_pyproject: str = ""
+) -> Path:
     """
-    The real Case 1 silent-freeze: PSR recomputes an already-released version and,
-    in non-strict mode, would normally `return` silently (exit 0). With
-    `guard_orphan_tag` enabled (the default), this must instead fail loud.
+    Build a repo with a genuine orphan/rewritten-tag silent-freeze.
+
+    Sequence: c1 ("feat: initial") gets tagged with whatever PSR computes for
+    it (e.g. v1.0.0). c2, a second feat commit on top of c1, gets tagged with
+    PSR's next computed version (e.g. v1.1.0). Then, simulating a rebase /
+    force-push that dropped the `chore(release)` commit, the branch is reset
+    back to c1 and a diverging feat commit c3 is added on top -- orphaning the
+    v1.1.0 tag (it still exists, but is no longer reachable from HEAD). PSR
+    then recomputes, from the still-reachable v1.0.0 base plus the new feat
+    commit, the same version already consumed by the now-unreachable tag.
     """
-    _tag_already_computed_version(minimal_project)
+    proj = _build_minimal_project(tmp_path, monkeypatch, extra_pyproject=extra_pyproject)
+    repo = Repo(str(proj))
+
+    printed = CliRunner(mix_stderr=True).invoke(main, ["--noop", "version", "--print"])
+    assert printed.exit_code == 0
+    v1 = printed.output.strip().splitlines()[-1]
+    repo.create_tag(f"v{v1}")
+    c1 = repo.head.commit
+
+    (proj / "feature2.txt").write_text("feature 2\n", encoding="utf-8")
+    repo.index.add(["feature2.txt"])
+    repo.index.commit(
+        "feat: add thing 2", author=Actor("t", "t@t"), committer=Actor("t", "t@t")
+    )
+    printed = CliRunner(mix_stderr=True).invoke(main, ["--noop", "version", "--print"])
+    assert printed.exit_code == 0
+    v2 = printed.output.strip().splitlines()[-1]
+    assert v2 != v1
+    repo.create_tag(f"v{v2}")
+
+    # Simulate the rebase/force-push: rewind the branch to c1 and add a
+    # diverging feat commit, orphaning the v2 tag.
+    repo.git.reset("--hard", c1.hexsha)
+    (proj / "feature3.txt").write_text("feature 3\n", encoding="utf-8")
+    repo.index.add(["feature3.txt"])
+    repo.index.commit(
+        "feat: add thing 3", author=Actor("t", "t@t"), committer=Actor("t", "t@t")
+    )
+    assert not repo.is_ancestor(repo.tags[f"v{v2}"].commit, repo.head.commit)
+    return proj
+
+
+def test_orphan_recompute_escalates_to_exit_1(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """
+    The real orphan/rewritten-tag silent-freeze: PSR recomputes a version that
+    already exists as an ORPHANED (unreachable-from-HEAD) tag because a
+    rebase/force-push dropped the commit that originally earned it. With
+    `guard_orphan_tag` enabled (the default), this must fail loud.
+    """
+    _build_orphaned_tag_project(tmp_path, monkeypatch)
     result = CliRunner(mix_stderr=True).invoke(
         main, ["--noop", "version", "--no-commit", "--no-tag", "--no-push"]
     )
@@ -106,19 +156,37 @@ def test_silent_freeze_escalates_to_exit_1(minimal_project: Path) -> None:
     assert "already been released" in result.output
 
 
+def test_benign_noop_stays_silent(minimal_project: Path) -> None:
+    """
+    A benign no-op re-dispatch: no new releasable commits, so PSR recomputes
+    `new_version` equal to the tag already on (and reachable from) HEAD --
+    nothing is orphaned or unreachable. Even with `guard_orphan_tag` enabled
+    (the default), this must stay silent like stock PSR, proving the guard
+    does not cry-wolf on a benign no-op.
+    """
+    _tag_already_computed_version(minimal_project)
+    result = CliRunner(mix_stderr=True).invoke(
+        main, ["--noop", "version", "--no-commit", "--no-tag", "--no-push"]
+    )
+    assert result.exit_code == 0
+    assert "SILENT RELEASE FREEZE PREVENTED" not in result.output
+    assert "already been released" in result.output
+
+
 def test_silent_freeze_opt_out_stays_silent(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """
-    With `guard_orphan_tag = false`, the already-released case keeps PSR's
-    original silent, exit-0 behavior (proving the opt-out).
+    With `guard_orphan_tag = false`, even a genuine orphan/rewritten-tag
+    silent-freeze -- which WOULD otherwise fire, see
+    `test_orphan_recompute_escalates_to_exit_1` -- keeps PSR's original
+    silent, exit-0 behavior, proving the opt-out.
     """
-    proj = _build_minimal_project(
+    _build_orphaned_tag_project(
         tmp_path,
         monkeypatch,
         extra_pyproject="\n[tool.semantic_release.bsr]\nguard_orphan_tag = false\n",
     )
-    _tag_already_computed_version(proj)
     result = CliRunner(mix_stderr=True).invoke(
         main, ["--noop", "version", "--no-commit", "--no-tag", "--no-push"]
     )
