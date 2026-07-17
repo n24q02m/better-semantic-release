@@ -4,6 +4,13 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.0.0-beta.1:
+
+v1.0.0-beta.1 (2026-07-17)
+==========================
+
+* Initial Release
+
 .. _changelog-v10.6.1:
 
 v10.6.1 (2026-07-06)
