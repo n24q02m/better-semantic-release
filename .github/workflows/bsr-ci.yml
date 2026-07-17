@@ -47,6 +47,9 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Check out the real branch (semantic-release can't match release groups on detached HEAD)
+        run: git checkout -B "${{ github.head_ref || github.ref_name }}"
+
       - name: Run better-semantic-release action against this repo (read-only, no side effects)
         id: bsr
         uses: ./
