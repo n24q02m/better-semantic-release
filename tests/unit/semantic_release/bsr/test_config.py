@@ -1,8 +1,11 @@
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from semantic_release.bsr.config import BsrConfig, load_bsr_config
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def _write(tmp_path: Path, body: str) -> Path:
@@ -14,7 +17,9 @@ def _write(tmp_path: Path, body: str) -> Path:
 def test_defaults_when_no_bsr_table(tmp_path: Path):
     cfg_file = _write(tmp_path, '[tool.semantic_release]\ntag_format = "v{version}"\n')
     cfg = load_bsr_config(cfg_file)
-    assert cfg == BsrConfig(guard_orphan_tag=True, guard_registry_collision=True, registry="")
+    assert cfg == BsrConfig(
+        guard_orphan_tag=True, guard_registry_collision=True, registry=""
+    )
 
 
 def test_reads_bsr_table(tmp_path: Path):
@@ -27,7 +32,9 @@ def test_reads_bsr_table(tmp_path: Path):
         'registry = "npm"\n',
     )
     cfg = load_bsr_config(cfg_file)
-    assert cfg == BsrConfig(guard_orphan_tag=False, guard_registry_collision=True, registry="npm")
+    assert cfg == BsrConfig(
+        guard_orphan_tag=False, guard_registry_collision=True, registry="npm"
+    )
 
 
 def test_missing_file_returns_defaults(tmp_path: Path):

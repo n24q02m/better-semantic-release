@@ -1,8 +1,13 @@
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+from semantic_release.cli.util import load_raw_config_file
+
+if TYPE_CHECKING:
+    import os
 
 
 @dataclass(frozen=True)
@@ -13,17 +18,16 @@ class BsrConfig:
 
 
 def load_bsr_config(config_file: str | os.PathLike[str]) -> BsrConfig:
-    """Read [tool.semantic_release.bsr] out of the config file.
+    """
+    Read [tool.semantic_release.bsr] out of the config file.
 
     PSR's RawConfig uses pydantic extra='ignore' and DROPS this table, so we
     re-parse independently. Any failure -> all-default BsrConfig (guards on).
     """
     try:
         # Reuse PSR's parser: returns the [tool.semantic_release] dict.
-        from semantic_release.cli.util import load_raw_config_file
-
         sr = load_raw_config_file(Path(config_file))
-    except Exception:
+    except Exception:  # noqa: BLE001
         return BsrConfig()
 
     bsr = sr.get("bsr", {}) if isinstance(sr, dict) else {}
