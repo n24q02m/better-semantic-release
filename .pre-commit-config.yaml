@@ -2,7 +2,7 @@
 default_language_version:
   python: python3
 
-exclude: "^CHANGELOG.md$"
+exclude: "^CHANGELOG.rst$"
 
 repos:
   # Meta hooks
@@ -53,6 +53,7 @@ repos:
     rev: "v1.16.1"
     hooks:
       - id: mypy
+        args: ["."]
         additional_dependencies:
           - "pydantic>=2,<3"
           - "types-requests"
@@ -80,7 +81,7 @@ repos:
           - --min-confidence
           - "100"
           - --sort-by-size
-          - "semantic_release"
+          - "src/semantic_release"
           - "tests"
 
   - repo: https://github.com/pycqa/bandit
