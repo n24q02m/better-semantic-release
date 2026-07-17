@@ -52,6 +52,7 @@ jobs:
         uses: ./
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          no_operation_mode: "true"
           commit: "false"
           tag: "false"
           push: "false"
