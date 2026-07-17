@@ -431,10 +431,7 @@ build_command = """
     python -m build .
 """
 major_on_zero = true
-version_variables = [
-  "docs/configuration/automatic-releases/github-actions.rst:python-semantic-release/python-semantic-release@COMMIT_HASH  #:tf",
-  "docs/configuration/automatic-releases/github-actions.rst:python-semantic-release/publish-action@COMMIT_HASH  #:tf",
-]
+tag_format = "v{version}"
 version_toml = ["pyproject.toml:project.version"]
 
 [tool.semantic_release.changelog]
@@ -476,3 +473,6 @@ token = { env = "GH_TOKEN" }
 
 [tool.semantic_release.publish]
 upload_to_vcs_release = true
+
+[tool.semantic_release.bsr]
+registry = "pypi"
