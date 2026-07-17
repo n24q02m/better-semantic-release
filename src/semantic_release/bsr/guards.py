@@ -2,10 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from git import Repo
-
 from semantic_release.bsr.errors import BsrGuardError
-from semantic_release.bsr.orphan_tag import check_orphan_tag
 from semantic_release.bsr.registry import ProbeResult, probe_registry
 
 if TYPE_CHECKING:
@@ -37,11 +34,13 @@ def run_guards(
 
     Called from the version command AFTER the next version is computed but
     BEFORE any file write / commit / tag / push.
-    """
-    if bsr_config.guard_orphan_tag:
-        with Repo(str(runtime.repo_dir)) as repo:
-            check_orphan_tag(repo, runtime.version_translator)
 
+    Note: the orphan/rewritten-history silent-freeze case is handled earlier, in
+    `cli.commands.version`, by escalating PSR's own "already released" skip to a
+    loud failure (gated on `bsr_config.guard_orphan_tag`) -- by the time this
+    function runs, PSR has already returned for that case, so no reachability
+    check belongs here.
+    """
     if bsr_config.guard_registry_collision:
         project_name = runtime.project_metadata.get("name", "") or ""
         registry = resolve_registry(bsr_config, project_name)

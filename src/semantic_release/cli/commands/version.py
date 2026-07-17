@@ -15,7 +15,7 @@ from requests import HTTPError
 
 # BSR-PATCH: built-in release-safety guards (better-semantic-release)
 from semantic_release.bsr.config import load_bsr_config
-from semantic_release.bsr.errors import BsrGuardError
+from semantic_release.bsr.errors import BsrGuardError, bsr_silent_freeze_message
 from semantic_release.bsr.guards import run_guards
 from semantic_release.changelog.release_history import ReleaseHistory
 from semantic_release.cli.changelog_writer import (
@@ -601,6 +601,12 @@ def version(  # noqa: C901
         if opts.strict:
             click.secho(err_msg, err=True, fg=orange1_code, bold=True)
             ctx.exit(2)
+
+        # BSR-PATCH: escalate the silent already-released skip to a loud failure
+        # (orphan-tag / rewritten-history silent-freeze guard).
+        if load_bsr_config(opts.config_file).guard_orphan_tag:
+            click.echo(bsr_silent_freeze_message(new_version), err=True)
+            ctx.exit(1)
 
         click.secho(err_msg, err=True, fg=orange1_code, bold=True)
         return
