@@ -13,6 +13,10 @@ from click_option_group import MutuallyExclusiveOptionGroup, optgroup
 from git import GitCommandError, Repo
 from requests import HTTPError
 
+# BSR-PATCH: built-in release-safety guards (better-semantic-release)
+from semantic_release.bsr.config import load_bsr_config
+from semantic_release.bsr.errors import BsrGuardError
+from semantic_release.bsr.guards import run_guards
 from semantic_release.changelog.release_history import ReleaseHistory
 from semantic_release.cli.changelog_writer import (
     generate_release_notes,
@@ -632,6 +636,17 @@ def version(  # noqa: C901
         )
     except ValueError as ve:
         click.echo(str(ve), err=True)
+        ctx.exit(1)
+
+    # BSR-PATCH: run safety guards after version is computed, before any persistence.
+    try:
+        run_guards(
+            runtime=runtime,
+            new_version=new_version,
+            bsr_config=load_bsr_config(opts.config_file),
+        )
+    except BsrGuardError as bsr_exc:
+        click.echo(bsr_exc.message, err=True)
         ctx.exit(1)
 
     all_paths_to_add: list[str] = []
