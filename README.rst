@@ -1,3 +1,47 @@
+better-semantic-release
+***********************
+
+*A drop-in fork of python-semantic-release with built-in release-safety guards.*
+
+----
+
+``better-semantic-release`` is a drop-in fork of `python-semantic-release`_ (MIT licensed).
+It keeps the same ``[tool.semantic_release]`` configuration schema, the same
+``semantic-release`` CLI, and the same GitHub Action interface -- switching over only
+requires pointing the ``uses:`` line at the fork:
+
+.. code-block:: yaml
+
+    uses: n24q02m/better-semantic-release@v<major>
+
+On top of that, the fork adds release-safety guards that run automatically before any
+commit, tag, or push is made. Guards can be opted out of per-repository under the
+``[tool.semantic_release.bsr]`` table in ``pyproject.toml``.
+
+How it differs from upstream
+=============================
+
+.. list-table::
+   :header-rows: 1
+   :widths: 40 25 35
+
+   * - Behavior
+     - Upstream (python-semantic-release)
+     - better-semantic-release
+   * - Orphaned release-tag detection (a rebase or force-push silently
+       freezes releases on a tag nobody notices)
+     - None
+     - Built-in, fails loud
+   * - Registry-collision detection (re-publishing a version that already
+       exists on the target registry)
+     - None
+     - Built-in, fails closed
+   * - Config / CLI / GitHub Action interface
+     - --
+     - Identical (drop-in)
+
+----
+
 Python Semantic Release
 ***********************
 

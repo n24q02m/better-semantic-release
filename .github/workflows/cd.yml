@@ -1,0 +1,55 @@
+# Beta-first release workflow for better-semantic-release itself.
+#
+# INERT until manually dispatched -- there is no `push` trigger, so nothing here ever
+# auto-releases. Requires two things to be configured before it can be dispatched for
+# real (tracked as the publish gate, see project task list):
+#   1. A repo secret `GH_PAT` (a token with contents:write, used to push the release
+#      commit/tag past branch protection).
+#   2. A PyPI Trusted Publisher configured for the `better-semantic-release` project,
+#      scoped to this repo + this workflow file (OIDC, no PyPI token needed).
+name: cd
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: Release type (beta-first -- pick stable only when ready to publish for real)
+        type: choice
+        required: true
+        default: beta
+        options:
+          - beta
+          - stable
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GH_PAT }}
+
+      - name: Run better-semantic-release (dogfooding our own action)
+        id: release
+        uses: ./
+        with:
+          github_token: ${{ secrets.GH_PAT }}
+          prerelease: ${{ inputs.release_type == 'beta' }}
+          prerelease_token: beta
+          build: "true"
+
+      - name: Publish to PyPI (trusted publishing, OIDC)
+        if: steps.release.outputs.released == 'true'
+        uses: pypa/gh-action-pypi-publish@release/v1

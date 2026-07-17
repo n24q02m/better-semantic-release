@@ -1,0 +1,80 @@
+name: bsr-ci
+
+on:
+  push:
+    branches: [main, "feat/**"]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bsr-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-type-test:
+    name: lint + type + test (linux)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: astral-sh/setup-uv@v5
+
+      - name: Create venv (Python 3.13)
+        run: uv venv --python 3.13
+
+      - name: Install project + test + mypy + dev (ruff) deps
+        run: uv pip install -e ".[test,mypy,dev]"
+
+      - name: Ruff (repo config, select=ALL) on bsr additions
+        run: uv run --no-sync ruff check --config pyproject.toml src/semantic_release/bsr src/semantic_release/cli/commands/version.py tests/unit/semantic_release/bsr
+
+      - name: Mypy on bsr additions + patched version command
+        run: uv run --no-sync mypy src/semantic_release/bsr src/semantic_release/cli/commands/version.py
+
+      - name: Pytest (full default suite on Linux)
+        run: uv run --no-sync pytest -q
+
+  action-smoke-test:
+    name: composite action installs + runs forked source (linux)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check out the real branch (semantic-release can't match release groups on detached HEAD)
+        env:
+          HEAD_REF: ${{ github.head_ref || github.ref_name }}
+        run: |
+          case "$HEAD_REF" in
+            *[!A-Za-z0-9._/-]*) echo "invalid ref: $HEAD_REF"; exit 1 ;;
+          esac
+          git checkout -B "$HEAD_REF"
+
+      - name: Run better-semantic-release action against this repo (read-only, no side effects)
+        id: bsr
+        uses: ./
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          no_operation_mode: "true"
+          commit: "false"
+          tag: "false"
+          push: "false"
+          changelog: "false"
+          vcs_release: "false"
+          build: "false"
+
+      - name: Assert action produced outputs (proves composite output wiring + forked source ran)
+        env:
+          BSR_RELEASED: ${{ steps.bsr.outputs.released }}
+          BSR_VERSION: ${{ steps.bsr.outputs.version }}
+        run: |
+          echo "released=$BSR_RELEASED"
+          echo "version=$BSR_VERSION"
+          test -n "$BSR_VERSION"
+          test -n "$BSR_RELEASED"

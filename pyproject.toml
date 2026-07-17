@@ -5,9 +5,9 @@ requires = ["setuptools >= 75.3.0, < 84.0.0", "wheel ~= 0.42"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "python-semantic-release"
+name = "better-semantic-release"
 version = "10.6.1"
-description = "Automatic Semantic Versioning for Python projects"
+description = "Drop-in python-semantic-release fork with built-in release-safety guards (orphan-tag + registry-collision)."
 requires-python = "~= 3.8"
 license = { text = "MIT" }
 classifiers = [
@@ -54,11 +54,11 @@ semantic-release = "semantic_release.__main__:main"
 psr = "semantic_release.__main__:main"
 
 [project.urls]
-changelog = "https://python-semantic-release.readthedocs.io/en/stable/misc/psr_changelog.html"
-documentation = "https://python-semantic-release.readthedocs.io"
-homepage = "https://python-semantic-release.readthedocs.io"
-issues = "https://github.com/python-semantic-release/python-semantic-release/issues"
-repository = "http://github.com/python-semantic-release/python-semantic-release.git"
+changelog = "https://github.com/n24q02m/better-semantic-release/blob/main/CHANGELOG.rst"
+documentation = "https://github.com/n24q02m/better-semantic-release#readme"
+homepage = "https://github.com/n24q02m/better-semantic-release"
+issues = "https://github.com/n24q02m/better-semantic-release/issues"
+repository = "https://github.com/n24q02m/better-semantic-release.git"
 
 [project.optional-dependencies]
 build = [
@@ -431,11 +431,7 @@ build_command = """
     python -m build .
 """
 major_on_zero = true
-version_variables = [
-  "src/gh_action/requirements.txt:python-semantic-release:nf",
-  "docs/configuration/automatic-releases/github-actions.rst:python-semantic-release/python-semantic-release@COMMIT_HASH  #:tf",
-  "docs/configuration/automatic-releases/github-actions.rst:python-semantic-release/publish-action@COMMIT_HASH  #:tf",
-]
+tag_format = "v{version}"
 version_toml = ["pyproject.toml:project.version"]
 
 [tool.semantic_release.changelog]
@@ -477,3 +473,6 @@ token = { env = "GH_TOKEN" }
 
 [tool.semantic_release.publish]
 upload_to_vcs_release = true
+
+[tool.semantic_release.bsr]
+registry = "pypi"

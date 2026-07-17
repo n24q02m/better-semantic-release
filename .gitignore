@@ -70,3 +70,6 @@ target/
 .mypy_cache
 .python-version
 *.swp
+
+# AI trace scratch (never committed)
+.superpowers/

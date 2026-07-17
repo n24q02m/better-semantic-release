@@ -2,8 +2,6 @@
 
 set -e
 
-WORKSPACE_DIR="$(pwd)"
-
 explicit_run_cmd() {
   local cmd=""
   cmd="$(printf '%s' "$*" | sed 's/^ *//g' | sed 's/ *$//g')"
@@ -50,20 +48,6 @@ eval_string_input() {
 
 	printf '%s' "${if_defined/\%s/$value}"
 }
-
-# Capture UID and GID of the external filesystem
-if [ ! -f "$WORKSPACE_DIR/.git/HEAD" ]; then
-	echo "::error:: .git/HEAD file not found. Ensure you are in a valid git repository."
-	exit 1
-fi
-
-EXT_HOST_UID="$(stat -c '%u' "$WORKSPACE_DIR/.git/HEAD")"
-EXT_HOST_GID="$(stat -c '%g' "$WORKSPACE_DIR/.git/HEAD")"
-
-if [ -z "$EXT_HOST_UID" ] || [ -z "$EXT_HOST_GID" ]; then
-	echo "Error: Unable to determine external filesystem UID/GID from .git/HEAD"
-	exit 1
-fi
 
 # Convert inputs to command line arguments
 ROOT_OPTIONS=()
@@ -138,10 +122,6 @@ if [ "${INPUT_GIT_COMMITTER_NAME:="-"}" != "-" ] && [ "${INPUT_GIT_COMMITTER_EMA
 	export GIT_COMMIT_AUTHOR="$INPUT_GIT_COMMITTER_NAME <$INPUT_GIT_COMMITTER_EMAIL>"
 fi
 
-# See https://github.com/actions/runner-images/issues/6775#issuecomment-1409268124
-# and https://github.com/actions/runner-images/issues/6775#issuecomment-1410270956
-git config --system --add safe.directory "*"
-
 if [[ -n "$INPUT_SSH_PUBLIC_SIGNING_KEY" && -n "$INPUT_SSH_PRIVATE_SIGNING_KEY" ]]; then
 	echo "SSH Key pair found, configuring signing..."
 
@@ -180,10 +160,6 @@ export GH_TOKEN="${INPUT_GITHUB_TOKEN}"
 
 # normalize extra spaces into single spaces as you combine the arguments
 CMD_ARGS="$(printf '%s' "${ROOT_OPTIONS[*]} version ${ARGS[*]}" | sed 's/  [ ]*/ /g' | sed 's/^ *//g')"
-
-# Make sure the workspace directory is owned by the external filesystem UID/GID no matter what
-# This is to ensure that after the action, and a commit was created, the files are owned by the external filesystem
-trap "chown -R $EXT_HOST_UID:$EXT_HOST_GID '$WORKSPACE_DIR'" EXIT
 
 # Run Semantic Release (explicitly use the GitHub action version)
 explicit_run_cmd "$PSR_VENV_BIN/semantic-release $CMD_ARGS"
