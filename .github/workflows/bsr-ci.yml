@@ -38,3 +38,30 @@ jobs:
 
       - name: Pytest (full default suite on Linux)
         run: uv run --no-sync pytest -q
+
+  action-smoke-test:
+    name: composite action installs + runs forked source (linux)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run better-semantic-release action against this repo (read-only, no side effects)
+        id: bsr
+        uses: ./
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          commit: "false"
+          tag: "false"
+          push: "false"
+          changelog: "false"
+          vcs_release: "false"
+          build: "false"
+
+      - name: Assert action produced outputs (proves composite output wiring + forked source ran)
+        run: |
+          echo "released=${{ steps.bsr.outputs.released }}"
+          echo "version=${{ steps.bsr.outputs.version }}"
+          test -n "${{ steps.bsr.outputs.version }}"
+          test -n "${{ steps.bsr.outputs.released }}"
