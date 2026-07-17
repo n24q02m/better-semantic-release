@@ -1,0 +1,40 @@
+name: bsr-ci
+
+on:
+  push:
+    branches: [main, "feat/**"]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bsr-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-type-test:
+    name: lint + type + test (linux)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: astral-sh/setup-uv@v5
+
+      - name: Create venv (Python 3.13)
+        run: uv venv --python 3.13
+
+      - name: Install project + test + mypy deps
+        run: uv pip install -e ".[test,mypy]"
+
+      - name: Ruff (repo config, select=ALL) on bsr additions
+        run: uv run --no-sync ruff check --config pyproject.toml src/semantic_release/bsr src/semantic_release/cli/commands/version.py tests/unit/semantic_release/bsr
+
+      - name: Mypy on bsr additions + patched version command
+        run: uv run --no-sync mypy src/semantic_release/bsr src/semantic_release/cli/commands/version.py
+
+      - name: Pytest (full default suite on Linux)
+        run: uv run --no-sync pytest -q
