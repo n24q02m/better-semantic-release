@@ -1,12 +1,11 @@
 # Beta-first release workflow for better-semantic-release itself.
 #
 # INERT until manually dispatched -- there is no `push` trigger, so nothing here ever
-# auto-releases. Requires two things to be configured before it can be dispatched for
-# real (tracked as the publish gate, see project task list):
-#   1. A repo secret `GH_PAT` (a token with contents:write, used to push the release
-#      commit/tag past branch protection).
-#   2. A PyPI Trusted Publisher configured for the `better-semantic-release` project,
-#      scoped to this repo + this workflow file (OIDC, no PyPI token needed).
+# auto-releases. Auth uses the shared CI GitHub App (same as the rest of the stack):
+#   - variable `CI_APP_ID` + secret `CI_APP_KEY` mint a short-lived token at runtime
+#     (no long-lived PAT). The App must be installed on this repository.
+#   - PyPI publishing uses a Trusted Publisher (OIDC) scoped to this repo + this
+#     workflow file -- no PyPI token needed.
 name: cd
 
 on:
@@ -35,17 +34,24 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Mint a token from the CI GitHub App
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
+        with:
+          app-id: ${{ vars.CI_APP_ID }}
+          private-key: ${{ secrets.CI_APP_KEY }}
+
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GH_PAT }}
+          token: ${{ steps.app-token.outputs.token }}
 
       - name: Run better-semantic-release (dogfooding our own action)
         id: release
         uses: ./
         with:
-          github_token: ${{ secrets.GH_PAT }}
+          github_token: ${{ steps.app-token.outputs.token }}
           prerelease: ${{ inputs.release_type == 'beta' }}
           prerelease_token: beta
           build: "true"
