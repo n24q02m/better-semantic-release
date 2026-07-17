@@ -1,6 +1,0 @@
-# Default, ignore everything
-*
-
-# Except
-!requirements.txt
-!action.sh
