@@ -26,7 +26,7 @@ from semantic_release.version import (
     tags_and_versions,
 )
 
-__version__ = importlib.metadata.version(f"python_{__package__}".replace("_", "-"))
+__version__ = importlib.metadata.version("better-semantic-release")
 
 __all__ = [
     "CommitParser",
