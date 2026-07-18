@@ -75,6 +75,30 @@ def test_guard_pass_proceeds(
     assert calls["n"] == 1  # hook was reached exactly once
 
 
+def test_guard_trip_writes_no_github_output(
+    minimal_project: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """
+    A `run_guards()` trip must write NOTHING to `$GITHUB_OUTPUT`, even though
+    the close-callback is registered long before the guard hook runs -- a
+    blocked release must not leak a misleading `released=false` plus
+    version/tag that a downstream workflow step could act on.
+    """
+
+    def _boom(**kwargs: object) -> None:
+        raise BsrGuardError("BSR-BOOM-orphan")
+
+    monkeypatch.setattr("semantic_release.cli.commands.version.run_guards", _boom)
+    output_file = tmp_path / "gha.out"
+    result = CliRunner(mix_stderr=True).invoke(
+        main,
+        ["--noop", "version", "--no-commit", "--no-tag", "--no-push"],
+        env={"GITHUB_OUTPUT": str(output_file)},
+    )
+    assert result.exit_code == 1
+    assert not output_file.exists()
+
+
 def _tag_already_computed_version(proj: Path) -> None:
     """
     Force PSR's `next_version` to collide with an existing tag (the orphan-tag /
@@ -171,6 +195,44 @@ def test_benign_noop_stays_silent(minimal_project: Path) -> None:
     assert result.exit_code == 0
     assert "SILENT RELEASE FREEZE PREVENTED" not in result.output
     assert "already been released" in result.output
+
+
+def test_orphan_guard_trip_writes_no_github_output(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """
+    The orphan/rewritten-tag silent-freeze guard trip must also write
+    NOTHING to `$GITHUB_OUTPUT` -- it is a release-safety guard exit just
+    like `run_guards()`, and the fix must cover both trip points.
+    """
+    proj = _build_orphaned_tag_project(tmp_path, monkeypatch)
+    output_file = proj.parent / "gha.out"
+    result = CliRunner(mix_stderr=True).invoke(
+        main,
+        ["--noop", "version", "--no-commit", "--no-tag", "--no-push"],
+        env={"GITHUB_OUTPUT": str(output_file)},
+    )
+    assert result.exit_code == 1
+    assert "SILENT RELEASE FREEZE PREVENTED" in result.output
+    assert not output_file.exists()
+
+
+def test_benign_noop_still_writes_github_output(minimal_project: Path) -> None:
+    """
+    A benign no-op (not a guard trip) must keep writing `$GITHUB_OUTPUT` as
+    before -- this is stock PSR behavior predating the BSR guards, and the
+    guard-trip output fix must not regress it.
+    """
+    _tag_already_computed_version(minimal_project)
+    output_file = minimal_project.parent / "gha.out"
+    result = CliRunner(mix_stderr=True).invoke(
+        main,
+        ["--noop", "version", "--no-commit", "--no-tag", "--no-push"],
+        env={"GITHUB_OUTPUT": str(output_file)},
+    )
+    assert result.exit_code == 0
+    assert output_file.exists()
+    assert "released=false" in output_file.read_text(encoding="utf-8")
 
 
 def test_silent_freeze_opt_out_stays_silent(

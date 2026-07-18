@@ -608,6 +608,9 @@ def version(  # noqa: C901
         if _bsr_cfg.guard_orphan_tag and is_orphaned_recompute(
             runtime.repo_dir, translator, new_version
         ):
+            # BSR-PATCH: a guard-blocked release must not leak a misleading
+            # released=false/version/tag to $GITHUB_OUTPUT.
+            gha_output.block_output()
             click.echo(bsr_silent_freeze_message(new_version), err=True)
             ctx.exit(1)
 
@@ -655,6 +658,9 @@ def version(  # noqa: C901
             bsr_config=load_bsr_config(opts.config_file),
         )
     except BsrGuardError as bsr_exc:
+        # BSR-PATCH: a guard-blocked release must not leak a misleading
+        # released=false/version/tag to $GITHUB_OUTPUT.
+        gha_output.block_output()
         click.echo(bsr_exc.message, err=True)
         ctx.exit(1)
 

@@ -159,3 +159,29 @@ def test_version_github_actions_output_no_error_if_not_in_gha(
 
     monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
     output.write_if_possible()
+
+
+def test_version_github_actions_output_blocked_writes_nothing(
+    tmp_path: Path,
+):
+    """
+    `block_output()` must make `write_if_possible()` a no-op, even for an
+    otherwise fully-populated (valid) output, so a guard-blocked release
+    writes nothing to `$GITHUB_OUTPUT`.
+    """
+    mock_output_file = tmp_path / "action.out"
+    output = VersionGitHubActionsOutput(
+        gh_client=Github(f"{BASE_VCS_URL}.git", hvcs_domain=EXAMPLE_HVCS_DOMAIN),
+        version=Version.parse("1.2.3"),
+        released=True,
+        commit_sha="0" * 40,  # 40 zeroes to simulate a SHA-1 hash
+        release_notes="notes",
+    )
+    output.block_output()
+
+    with mock.patch.dict(
+        os.environ, {"GITHUB_OUTPUT": str(mock_output_file.resolve())}, clear=True
+    ):
+        output.write_if_possible()
+
+    assert not mock_output_file.exists()

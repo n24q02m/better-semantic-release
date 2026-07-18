@@ -39,6 +39,21 @@ class VersionGitHubActionsOutput:
         self._commit_sha = commit_sha
         self._release_notes = release_notes
         self._prev_version = prev_version
+        # BSR-PATCH: once a release-safety guard trips, no output should be
+        # written even though a close-callback may already be registered.
+        self._blocked = False
+
+    def block_output(self) -> None:
+        """
+        Mark this output as blocked by a release-safety guard.
+
+        Once blocked, ``write_if_possible`` becomes a no-op even if a
+        ``ctx.call_on_close(write_if_possible)`` callback was already
+        registered before the guard tripped, so a blocked release writes
+        nothing to ``$GITHUB_OUTPUT`` instead of a misleading
+        ``released=false`` plus version/tag.
+        """
+        self._blocked = True
 
     @property
     def released(self) -> bool | None:
@@ -156,6 +171,14 @@ class VersionGitHubActionsOutput:
         return str.join("", output_lines)
 
     def write_if_possible(self, filename: str | None = None) -> None:
+        # BSR-PATCH: a guard-blocked release must write nothing, even though
+        # the close-callback was registered before the guard tripped.
+        if self._blocked:
+            logger.info(
+                "not writing GitHub Actions output, release was blocked by a guard"
+            )
+            return
+
         output_file = filename or os.getenv(self.OUTPUT_ENV_VAR)
         if not output_file:
             logger.info("not writing GitHub Actions output, as no file specified")
