@@ -9,6 +9,9 @@ from click.core import ParameterSource
 from git import InvalidGitRepositoryError
 from pydantic import ValidationError
 
+# BSR-PATCH: actionable error messages (better-semantic-release)
+from semantic_release.bsr.config import load_bsr_config
+from semantic_release.bsr.messages import format_actionable
 from semantic_release.cli.config import (
     RawConfig,
     RuntimeContext,
@@ -17,7 +20,9 @@ from semantic_release.cli.util import load_raw_config_file, rprint
 from semantic_release.errors import (
     DetachedHeadGitError,
     InvalidConfiguration,
+    MissingGitRemote,
     NotAReleaseBranch,
+    ParserLoadError,
 )
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -91,7 +96,10 @@ class CliContextObj:
             InvalidConfiguration,
             InvalidGitRepositoryError,
         ) as exc:
-            click.echo(str(exc), err=True)
+            # BSR-PATCH: actionable error messages (better-semantic-release)
+            bsr_cfg = load_bsr_config(self.global_opts.config_file)
+            msg = format_actionable(exc) if bsr_cfg.actionable_errors else None
+            click.echo(msg or str(exc), err=True)
             self.ctx.exit(1)
 
     def _init_runtime_ctx(self) -> RuntimeContext:
@@ -111,9 +119,23 @@ class CliContextObj:
             DetachedHeadGitError,
             InvalidConfiguration,
             InvalidGitRepositoryError,
+            # BSR-PATCH: actionable error messages (better-semantic-release).
+            # MissingGitRemote and ParserLoadError are newly caught here -- stock
+            # PSR (this except tuple, pre-BSR) leaves them UNCAUGHT (raw traceback).
+            # When the flag is off, re-raise them unchanged to preserve that
+            # byte-for-byte; the four pre-existing types keep their original
+            # click.echo(str(exc)) handling either way.
+            MissingGitRemote,
+            ParserLoadError,
             ValidationError,
         ) as exc:
-            click.echo(str(exc), err=True)
+            bsr_cfg = load_bsr_config(self.global_opts.config_file)
+            if not bsr_cfg.actionable_errors and isinstance(
+                exc, (MissingGitRemote, ParserLoadError)
+            ):
+                raise
+            msg = format_actionable(exc) if bsr_cfg.actionable_errors else None
+            click.echo(msg or str(exc), err=True)
             self.ctx.exit(1)
 
         # This allows us to mask secrets in the logging

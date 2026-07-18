@@ -16,7 +16,18 @@ from requests import HTTPError
 # BSR-PATCH: built-in release-safety guards (better-semantic-release)
 from semantic_release.bsr.config import load_bsr_config
 from semantic_release.bsr.errors import BsrGuardError, bsr_silent_freeze_message
+
+# BSR-PATCH: release-decision explainer (better-semantic-release)
+from semantic_release.bsr.explain import (
+    BumpStats,
+    classify_no_release,
+    format_no_release_reason,
+    format_why_this_bump,
+)
 from semantic_release.bsr.guards import is_orphaned_recompute, run_guards
+
+# BSR-PATCH: actionable error messages (better-semantic-release)
+from semantic_release.bsr.messages import format_actionable, tag_format_sanity_note
 
 # BSR-PATCH: optional monorepo commit path-filter (better-semantic-release)
 from semantic_release.bsr.path_filter import make_path_filter
@@ -546,18 +557,50 @@ def version(  # noqa: C901
         )
         make_vcs_release &= push_changes
 
+    # BSR-PATCH: release-decision explainer (better-semantic-release). Populated
+    # only on the non-forced path below (next_version()); stays empty for a
+    # forced level bump (--major/--minor/--patch/--prerelease), which has no
+    # commit-scan data to stash. `next_version()`'s `bump_stats_sink` is kept
+    # primitive-args-only (no bsr import in algorithm.py) -- this wraps it into
+    # a BumpStats on the bsr side.
+    _bump_stats_box: list[BumpStats] = []
+
+    def _stash_bump_stats(
+        level_bump: LevelBump,
+        commit_count: int,
+        latest_version: Version,
+        type_counts: Mapping[str, int],
+    ) -> None:
+        _bump_stats_box.append(
+            BumpStats(
+                level_bump=level_bump,
+                commit_count=commit_count,
+                latest_version=latest_version,
+                type_counts=type_counts,
+            )
+        )
+
     if not forced_level_bump:
         with Repo(str(runtime.repo_dir)) as git_repo:
-            new_version = next_version(
-                repo=git_repo,
-                translator=translator,
-                commit_parser=parser,
-                prerelease=prerelease,
-                major_on_zero=major_on_zero,
-                allow_zero_version=runtime.allow_zero_version,
-                # BSR-PATCH: optional monorepo commit path-filter (better-semantic-release)
-                commit_path_filter=_bsr_path_filter,
-            )
+            try:
+                new_version = next_version(
+                    repo=git_repo,
+                    translator=translator,
+                    commit_parser=parser,
+                    prerelease=prerelease,
+                    major_on_zero=major_on_zero,
+                    allow_zero_version=runtime.allow_zero_version,
+                    # BSR-PATCH: optional monorepo commit path-filter (better-semantic-release)
+                    commit_path_filter=_bsr_path_filter,
+                    # BSR-PATCH: release-decision explainer (better-semantic-release)
+                    bump_stats_sink=_stash_bump_stats if _bsr_cfg.explain else None,
+                )
+            except ValueError as ve:
+                # BSR-PATCH: actionable error messages (better-semantic-release)
+                if _bsr_cfg.actionable_errors and (msg := format_actionable(ve)):
+                    click.echo(msg, err=True)
+                    ctx.exit(1)
+                raise
     else:
         logger.warning(
             "Forcing a '%s' release due to '--%s' command-line flag",
@@ -600,9 +643,20 @@ def version(  # noqa: C901
 
     with Repo(str(runtime.repo_dir)) as git_repo:
         # TODO: performance improvement - cache the result of tags_and_versions (previously done in next_version())
+        all_tags = list(git_repo.tags)
         previously_released_versions = {
-            v for _, v in tags_and_versions(git_repo.tags, translator)
+            v for _, v in tags_and_versions(all_tags, translator)
         }
+
+    # BSR-PATCH: actionable error messages (better-semantic-release)
+    if _bsr_cfg.actionable_errors:
+        _tag_note = tag_format_sanity_note(
+            total_tags=len(all_tags),
+            matched_tags=len(previously_released_versions),
+            tag_format=config.tag_format,
+        )
+        if _tag_note:
+            click.echo(_tag_note, err=True)
 
     # If the new version has already been released, we fail and abort if strict;
     # otherwise we exit with 0.
@@ -610,22 +664,36 @@ def version(  # noqa: C901
         err_msg = f"No release will be made, {new_version!s} has already been released!"
         orange1_code = 214  # https://rich.readthedocs.io/en/stable/appendix/colors.html
 
+        # BSR-PATCH: release-decision explainer (better-semantic-release). Compute
+        # the orphan check once here -- both the guard below and the explainer
+        # need it -- only when actually needed (guard on, or explain on) to avoid
+        # the extra repo scan on the stock hot path.
+        _is_orphaned = bool(
+            (_bsr_cfg.guard_orphan_tag or _bsr_cfg.explain)
+            and is_orphaned_recompute(runtime.repo_dir, translator, new_version)
+        )
+        _display_msg = err_msg
+        if _bsr_cfg.explain:
+            _decision = classify_no_release(
+                is_orphaned=_is_orphaned,
+                bump_stats=_bump_stats_box[0] if _bump_stats_box else None,
+            )
+            _display_msg = format_no_release_reason(_decision, new_version)
+
         if opts.strict:
-            click.secho(err_msg, err=True, fg=orange1_code, bold=True)
+            click.secho(_display_msg, err=True, fg=orange1_code, bold=True)
             ctx.exit(2)
 
         # BSR-PATCH: escalate ONLY a genuine orphan/rewritten-tag silent-freeze to a
         # loud failure; a benign no-op (nothing new to release) stays silent like stock PSR.
-        if _bsr_cfg.guard_orphan_tag and is_orphaned_recompute(
-            runtime.repo_dir, translator, new_version
-        ):
+        if _bsr_cfg.guard_orphan_tag and _is_orphaned:
             # BSR-PATCH: a guard-blocked release must not leak a misleading
             # released=false/version/tag to $GITHUB_OUTPUT.
             gha_output.block_output()
             click.echo(bsr_silent_freeze_message(new_version), err=True)
             ctx.exit(1)
 
-        click.secho(err_msg, err=True, fg=orange1_code, bold=True)
+        click.secho(_display_msg, err=True, fg=orange1_code, bold=True)
         return
 
     if print_only or print_only_tag:
@@ -649,6 +717,10 @@ def version(  # noqa: C901
 
     rprint(f"[bold green]The next version is: [white]{new_version!s}[/white]! :rocket:")
 
+    # BSR-PATCH: release-decision explainer (better-semantic-release)
+    if _bsr_cfg.explain and _bump_stats_box:
+        click.echo(format_why_this_bump(_bump_stats_box[0]), err=True)
+
     commit_date = datetime.now(timezone.utc).astimezone()  # Locale-aware timestamp
     try:
         # Create release object for the new version
@@ -660,7 +732,9 @@ def version(  # noqa: C901
             tagged_date=commit_date,
         )
     except ValueError as ve:
-        click.echo(str(ve), err=True)
+        # BSR-PATCH: actionable error messages (better-semantic-release)
+        _msg = format_actionable(ve) if _bsr_cfg.actionable_errors else None
+        click.echo(_msg or str(ve), err=True)
         ctx.exit(1)
 
     # BSR-PATCH: run safety guards after version is computed, before any persistence.
