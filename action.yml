@@ -176,13 +176,27 @@ runs:
       run: |
         uv python install 3.13
         uv venv --python 3.13 --seed --clear "${{ runner.temp }}/bsr-venv"
-        uv pip install --python "${{ runner.temp }}/bsr-venv/bin/python" "${{ github.action_path }}"
+
+        # Portable venv layout: uv follows the platform's own convention for
+        # where it places the interpreter (POSIX runners: bin/, Windows
+        # runners: Scripts/) regardless of which shell (bash/Git Bash) is
+        # driving it, so detect rather than hard-code the POSIX layout.
+        VENV_DIR="${{ runner.temp }}/bsr-venv"
+        if [ -x "$VENV_DIR/bin/python" ]; then
+          VENV_BIN_DIR="$VENV_DIR/bin"
+          VENV_PYTHON="$VENV_DIR/bin/python"
+        else
+          VENV_BIN_DIR="$VENV_DIR/Scripts"
+          VENV_PYTHON="$VENV_DIR/Scripts/python.exe"
+        fi
+
+        uv pip install --python "$VENV_PYTHON" "${{ github.action_path }}"
+        printf '%s\n' "PSR_VENV_BIN=$VENV_BIN_DIR" >>"$GITHUB_ENV"
 
     - name: Run semantic-release (forked source, guards active)
       id: run
       shell: bash
       env:
-        PSR_VENV_BIN: ${{ runner.temp }}/bsr-venv/bin
         INPUT_CONFIG_FILE: ${{ inputs.config_file }}
         INPUT_DIRECTORY: ${{ inputs.directory }}
         INPUT_GITHUB_TOKEN: ${{ inputs.github_token }}
