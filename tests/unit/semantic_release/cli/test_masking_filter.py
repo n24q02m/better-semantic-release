@@ -231,3 +231,29 @@ def test_non_strings_are_returned(default_masking_filter, obj):
     )
 
     assert default_masking_filter.mask(rec.getMessage()) == str(obj)
+
+
+def test_masking_filter_masks_exception_traceback(default_masking_filter):
+    import io
+
+    stream = io.StringIO()
+    logger = logging.getLogger("test_exception_masking")
+    logger.setLevel(logging.INFO)
+
+    handler = logging.StreamHandler(stream)
+    handler.setFormatter(logging.Formatter("%(message)s"))
+    logger.addHandler(handler)
+    logger.addFilter(default_masking_filter)
+
+    secret = "SUPER_SECRET_TOKEN"
+    default_masking_filter.add_mask_for(secret, "token")
+
+    try:
+        raise ValueError(f"Failed to authenticate with https://{secret}@example.com")
+    except ValueError:
+        logger.exception("An error occurred")
+
+    output = stream.getvalue()
+
+    assert secret not in output
+    assert default_masking_filter.REPLACE_STR in output
