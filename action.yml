@@ -168,12 +168,15 @@ outputs:
 runs:
   using: composite
   steps:
-    - name: Install uv
+    - name: Install uv (and provision Python 3.13 deterministically)
       uses: astral-sh/setup-uv@v5
+      with:
+        python-version: "3.13"
 
     - name: Install better-semantic-release (forked source) into an isolated venv
       shell: bash
       run: |
+        uv python install 3.13
         uv venv --python 3.13 "${{ runner.temp }}/bsr-venv"
         uv pip install --python "${{ runner.temp }}/bsr-venv/bin/python" "${{ github.action_path }}"
 
