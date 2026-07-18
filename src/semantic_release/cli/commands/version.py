@@ -17,6 +17,9 @@ from requests import HTTPError
 from semantic_release.bsr.config import load_bsr_config
 from semantic_release.bsr.errors import BsrGuardError, bsr_silent_freeze_message
 from semantic_release.bsr.guards import is_orphaned_recompute, run_guards
+
+# BSR-PATCH: optional monorepo commit path-filter (better-semantic-release)
+from semantic_release.bsr.path_filter import make_path_filter
 from semantic_release.changelog.release_history import ReleaseHistory
 from semantic_release.cli.changelog_writer import (
     generate_release_notes,
@@ -486,6 +489,13 @@ def version(  # noqa: C901
     major_on_zero = runtime.major_on_zero
     no_verify = runtime.no_git_verify
     opts = runtime.global_cli_options
+    # BSR-PATCH: build the optional monorepo commit path-filter once, here, so it
+    # can be passed to both the next_version() and from_git_history() call sites
+    # below. `os.getcwd()` (not `runtime.repo_dir`, which is always normalized to
+    # the git repo root) is the run directory the empty-`paths` default resolves
+    # against -- it's what the GH Action's `directory:` input `cd`'d into.
+    _bsr_cfg = load_bsr_config(opts.config_file)
+    _bsr_path_filter = make_path_filter(_bsr_cfg, os.getcwd())
     add_partial_tags = config.add_partial_tags
     gha_output = VersionGitHubActionsOutput(
         gh_client=hvcs_client if isinstance(hvcs_client, Github) else None,
@@ -545,6 +555,8 @@ def version(  # noqa: C901
                 prerelease=prerelease,
                 major_on_zero=major_on_zero,
                 allow_zero_version=runtime.allow_zero_version,
+                # BSR-PATCH: optional monorepo commit path-filter (better-semantic-release)
+                commit_path_filter=_bsr_path_filter,
             )
     else:
         logger.warning(
@@ -604,7 +616,6 @@ def version(  # noqa: C901
 
         # BSR-PATCH: escalate ONLY a genuine orphan/rewritten-tag silent-freeze to a
         # loud failure; a benign no-op (nothing new to release) stays silent like stock PSR.
-        _bsr_cfg = load_bsr_config(opts.config_file)
         if _bsr_cfg.guard_orphan_tag and is_orphaned_recompute(
             runtime.repo_dir, translator, new_version
         ):
@@ -632,6 +643,8 @@ def version(  # noqa: C901
             translator=translator,
             commit_parser=parser,
             exclude_commit_patterns=runtime.changelog_excluded_commit_patterns,
+            # BSR-PATCH: optional monorepo commit path-filter (better-semantic-release)
+            commit_path_filter=_bsr_path_filter,
         )
 
     rprint(f"[bold green]The next version is: [white]{new_version!s}[/white]! :rocket:")
