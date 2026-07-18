@@ -4,6 +4,38 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.2.0:
+
+v1.2.0 (2026-07-18)
+===================
+
+✨ Features
+-----------
+
+* Add bsr actionable error messages and wire explain/actionable-errors into version command (C2)
+  (`9c4b9ce`_)
+
+* Add bsr monorepo release-plan summary (C3) (`0ccd5d1`_)
+
+* Add bsr release-decision explainer (C1) (`85b88ea`_)
+
+* Add bsr stable-notes aggregation core (C4) (`1eb939b`_)
+
+* Add drop-in parity tests for stable-notes aggregation (`3d980bb`_)
+
+* Add explain and actionable_errors flags to bsr config (`cb7dafd`_)
+
+* Add real-repo and CLI integration tests for stable-notes aggregation (`dff78e2`_)
+
+.. _0ccd5d1: https://github.com/n24q02m/better-semantic-release/commit/0ccd5d101fdddbac412f421afdb6644032629e2f
+.. _1eb939b: https://github.com/n24q02m/better-semantic-release/commit/1eb939b90c2bfb3092300fcc3eca49a46222be89
+.. _3d980bb: https://github.com/n24q02m/better-semantic-release/commit/3d980bb591cacdd8ba39705bcfb6503c6ea0e8b3
+.. _85b88ea: https://github.com/n24q02m/better-semantic-release/commit/85b88ea9fbade552feefe31f0dc34af79bf8420d
+.. _9c4b9ce: https://github.com/n24q02m/better-semantic-release/commit/9c4b9ce4341a6dbe1b20b9f49b625eb7dcbf56e2
+.. _cb7dafd: https://github.com/n24q02m/better-semantic-release/commit/cb7dafd59f009fcc215026e8fbc7497b69c4f2db
+.. _dff78e2: https://github.com/n24q02m/better-semantic-release/commit/dff78e27d962ae58d213f4d90a0f759086e5b102
+
+
 .. _changelog-v1.1.0:
 
 v1.1.0 (2026-07-18)
