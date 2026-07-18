@@ -36,6 +36,10 @@ How it differs from upstream
        exists on the target registry)
      - None
      - Built-in, fails closed
+   * - Monorepo commit path filtering (commits outside a component's
+       configured path(s) count toward its version bump / changelog)
+     - None
+     - Opt-in, off by default (drop-in)
    * - Config / CLI / GitHub Action interface
      - --
      - Identical (drop-in)
@@ -56,6 +60,37 @@ How it differs from upstream
    would hit. In dry-run, the registry-collision guard still performs a live, read-only
    HTTP GET against the target registry (PyPI/npm) to check whether the computed version
    already exists; no commit, tag, or push is made either way.
+
+Monorepo path filtering
+-----------------------
+
+Upstream's ``directory:`` input only selects *where* config (``pyproject.toml``,
+``tag_format``, ...) is read from -- it does not filter *which* commits are analyzed, so
+in a monorepo a commit touching an unrelated component still bumps this component's
+version and shows up in its changelog. This is opt-in and **off by default** (drop-in):
+enable it under ``[tool.semantic_release.bsr]``.
+
+.. code-block:: toml
+
+    [tool.semantic_release.bsr]
+    path_filter = true
+    paths = ["apps/api", "libs/shared"]
+
+- ``path_filter`` (default ``false``) -- master switch. When ``false`` the fork behaves
+  identically to upstream: every commit since the last release counts, regardless of
+  which paths it touched.
+- ``paths`` (default ``[]``, repository-root-relative) -- one or more path prefixes; a
+  commit only counts toward this component if it changed a file under one of them.
+  Multiple entries are OR'd together, which supports a component that also depends on
+  shared code (e.g. ``["apps/api", "libs/shared"]``).
+- When ``path_filter`` is ``true`` and ``paths`` is left empty, it defaults to the run
+  directory (the GitHub Action's ``directory:`` input) made relative to the repository
+  root.
+
+.. note::
+
+   Path filtering applies to **both** the version-bump computation and the generated
+   changelog -- a commit excluded from one is excluded from the other.
 
 ----
 
