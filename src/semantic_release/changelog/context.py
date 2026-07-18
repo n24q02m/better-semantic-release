@@ -123,25 +123,27 @@ def read_file(filepath: str) -> str:
         return ""
 
 
+_MD_TO_RST_REPLACEMENTS = (
+    # Replace markdown doubleunder bold with rst bold
+    (regexp(r"(?<=\s)__(.+?)__(?=\s|$)"), r"**\1**"),
+    # Replace markdown italics with rst italics
+    (regexp(r"(?<=\s)_([^_].+?[^_])_(?=\s|$)"), r"*\1*"),
+    # Replace markdown bullets with rst bullets
+    (regexp(r"^(\s*)-(\s)"), r"\1*\2"),
+    # Replace markdown inline raw content with rst inline raw content
+    (regexp(r"(?<=\s)(`[^`]+`)(?![`_])"), r"`\1`"),
+    # Replace markdown inline link with rst inline link
+    (
+        regexp(r"(?<=\s)\[([^\]]+)\]\(([^)]+)\)(?=\s|$)"),
+        r"`\1 <\2>`_",
+    ),
+)
+
+
 def convert_md_to_rst(md_content: str) -> str:
     rst_content = md_content
-    replacements = {
-        # Replace markdown doubleunder bold with rst bold
-        "bold-inline": (regexp(r"(?<=\s)__(.+?)__(?=\s|$)"), r"**\1**"),
-        # Replace markdown italics with rst italics
-        "italic-inline": (regexp(r"(?<=\s)_([^_].+?[^_])_(?=\s|$)"), r"*\1*"),
-        # Replace markdown bullets with rst bullets
-        "bullets": (regexp(r"^(\s*)-(\s)"), r"\1*\2"),
-        # Replace markdown inline raw content with rst inline raw content
-        "raw-inline": (regexp(r"(?<=\s)(`[^`]+`)(?![`_])"), r"`\1`"),
-        # Replace markdown inline link with rst inline link
-        "link-inline": (
-            regexp(r"(?<=\s)\[([^\]]+)\]\(([^)]+)\)(?=\s|$)"),
-            r"`\1 <\2>`_",
-        ),
-    }
 
-    for pattern, replacement in replacements.values():
+    for pattern, replacement in _MD_TO_RST_REPLACEMENTS:
         rst_content = pattern.sub(replacement, rst_content)
 
     return rst_content
