@@ -23,6 +23,8 @@ def test_defaults_when_no_bsr_table(tmp_path: Path):
         registry="",
         path_filter=False,
         paths=(),
+        explain=False,
+        actionable_errors=False,
     )
 
 
@@ -67,6 +69,31 @@ def test_path_filter_and_paths_default_when_absent(tmp_path: Path):
     cfg = load_bsr_config(cfg_file)
     assert cfg.path_filter is False
     assert cfg.paths == ()
+
+
+def test_reads_explain_and_actionable_errors(tmp_path: Path):
+    cfg_file = _write(
+        tmp_path,
+        '[tool.semantic_release]\ntag_format = "v{version}"\n'
+        "[tool.semantic_release.bsr]\n"
+        "explain = true\n"
+        "actionable_errors = true\n",
+    )
+    cfg = load_bsr_config(cfg_file)
+    assert cfg.explain is True
+    assert cfg.actionable_errors is True
+
+
+def test_explain_and_actionable_errors_default_when_absent(tmp_path: Path):
+    cfg_file = _write(
+        tmp_path,
+        '[tool.semantic_release]\ntag_format = "v{version}"\n'
+        "[tool.semantic_release.bsr]\n"
+        "guard_orphan_tag = false\n",
+    )
+    cfg = load_bsr_config(cfg_file)
+    assert cfg.explain is False
+    assert cfg.actionable_errors is False
 
 
 def test_missing_file_returns_defaults(tmp_path: Path):

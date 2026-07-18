@@ -17,6 +17,8 @@ class BsrConfig:
     registry: str = ""  # "", "pypi", "npm", or "none"
     path_filter: bool = False
     paths: tuple[str, ...] = ()
+    explain: bool = False
+    actionable_errors: bool = False
 
 
 def load_bsr_config(config_file: str | os.PathLike[str]) -> BsrConfig:
@@ -42,4 +44,6 @@ def load_bsr_config(config_file: str | os.PathLike[str]) -> BsrConfig:
         registry=str(bsr.get("registry", "")),
         path_filter=bool(bsr.get("path_filter", False)),
         paths=tuple(bsr.get("paths", [])),
+        explain=bool(bsr.get("explain", False)),
+        actionable_errors=bool(bsr.get("actionable_errors", False)),
     )
