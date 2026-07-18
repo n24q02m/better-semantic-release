@@ -4,6 +4,55 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.1.0:
+
+v1.1.0 (2026-07-18)
+===================
+
+✨ Features
+-----------
+
+* Add bsr path-filter (commit-touches-path logic + make_path_filter) (`220fe19`_)
+
+* Add build-path CI smoke and document registry-guard fail-closed tradeoff (`29b23d8`_)
+
+* Add path-filter parity/changelog tests and docs (`9afe26e`_)
+
+* Add path_filter + paths to bsr config (`0fc5d63`_)
+
+* Inject optional commit path-filter into changelog history (`7e30eb8`_)
+
+* Inject optional commit path-filter into next_version (`bdccd65`_)
+
+* Wire monorepo path-filter into the version command (`95c390c`_)
+
+🪲 Bug Fixes
+------------
+
+* Block GitHub Actions output when a release-safety guard trips (`a5f8252`_)
+
+* Consolidate workflows into a single ci.yml (only ci + cd per convention) (`51bf218`_)
+
+* Document that release guards evaluate under --noop/dry-run (`ad8c6bf`_)
+
+* Make composite action's venv python path portable (`4abed0e`_)
+
+* Test _http_status against a real local HTTP server (`9b2b6ed`_)
+
+.. _0fc5d63: https://github.com/n24q02m/better-semantic-release/commit/0fc5d63bcf9df1dff30d68a8042a90700e55f14f
+.. _220fe19: https://github.com/n24q02m/better-semantic-release/commit/220fe197ececb3b1a1b454feb831727d2f45816c
+.. _29b23d8: https://github.com/n24q02m/better-semantic-release/commit/29b23d8f08ecbbad8b4b5ce0cbd61e4d3bf7a15e
+.. _4abed0e: https://github.com/n24q02m/better-semantic-release/commit/4abed0ec0ffbf82f0c778d82f69a05234da0a837
+.. _51bf218: https://github.com/n24q02m/better-semantic-release/commit/51bf21876b375c9455f67892b86b7ffb29feaaab
+.. _7e30eb8: https://github.com/n24q02m/better-semantic-release/commit/7e30eb820fb8cae68a33be73cfb97000839b7873
+.. _95c390c: https://github.com/n24q02m/better-semantic-release/commit/95c390cfd5a7ba6d9013a67d9685c92dedf91eb7
+.. _9afe26e: https://github.com/n24q02m/better-semantic-release/commit/9afe26ecfadfd589772ba33eab419242a5e19e7a
+.. _9b2b6ed: https://github.com/n24q02m/better-semantic-release/commit/9b2b6ed6eaecd52d7c4817018606ce09761b9860
+.. _a5f8252: https://github.com/n24q02m/better-semantic-release/commit/a5f8252d52af980f1d808af2229f57c752427f39
+.. _ad8c6bf: https://github.com/n24q02m/better-semantic-release/commit/ad8c6bffc121a6af4b8e6146e1ed7350e8f8e77a
+.. _bdccd65: https://github.com/n24q02m/better-semantic-release/commit/bdccd65c59d22da724ec655dcd9e0f15b8ffcb79
+
+
 .. _changelog-v1.0.1:
 
 v1.0.1 (2026-07-18)
