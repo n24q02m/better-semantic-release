@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from collections import Counter
 from contextlib import suppress
 from functools import reduce
 from queue import LifoQueue
@@ -15,7 +16,7 @@ from semantic_release.globals import logger
 from semantic_release.helpers import validate_types_in_sequence
 
 if TYPE_CHECKING:  # pragma: no cover
-    from typing import Callable, Sequence
+    from typing import Callable, Mapping, Sequence
 
     from git.objects.commit import Commit
     from git.refs.tag import Tag
@@ -251,6 +252,13 @@ def next_version(
     *,
     # BSR-PATCH: optional monorepo commit path-filter (better-semantic-release)
     commit_path_filter: Callable[[Sequence[Commit]], Sequence[Commit]] | None = None,
+    # BSR-PATCH: release-decision explainer (better-semantic-release). Kept as
+    # primitive/structural args (no bsr.explain.BumpStats import here) so this
+    # core module stays decoupled from bsr/ -- the caller (version.py) wraps
+    # this into its own BumpStats.
+    bump_stats_sink: (
+        Callable[[LevelBump, int, Version, Mapping[str, int]], None] | None
+    ) = None,
 ) -> Version:
     """
     Evaluate the history within `repo`, and based on the tags and commits in the repo
@@ -389,6 +397,20 @@ def next_version(
 
     level_bump = max(parsed_levels, default=LevelBump.NO_RELEASE)
     logger.info("The type of the next release release is: %s", level_bump)
+
+    # BSR-PATCH: release-decision explainer (better-semantic-release). Stash cheap
+    # stats here -- right after level_bump is known, before branching into the
+    # "no release" / "increment" paths below -- so one seam covers both outcomes.
+    if bump_stats_sink is not None:
+        type_counts: Counter[str] = Counter(
+            parsed_result.type  # type: ignore[union-attr] # too complex for type checkers
+            for parsed_result in consolidated_results
+            if isinstance(parsed_result, ParsedCommit)
+            and parsed_result.bump is not LevelBump.NO_RELEASE
+        )
+        bump_stats_sink(
+            level_bump, len(commits_since_last_release), latest_version, dict(type_counts)
+        )
 
     if all(
         [
