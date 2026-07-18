@@ -177,7 +177,7 @@ runs:
       shell: bash
       run: |
         uv python install 3.13
-        uv venv --python 3.13 "${{ runner.temp }}/bsr-venv"
+        uv venv --python 3.13 --seed "${{ runner.temp }}/bsr-venv"
         uv pip install --python "${{ runner.temp }}/bsr-venv/bin/python" "${{ github.action_path }}"
 
     - name: Run semantic-release (forked source, guards active)
