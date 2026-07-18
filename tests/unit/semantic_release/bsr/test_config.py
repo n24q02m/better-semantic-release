@@ -157,3 +157,28 @@ def test_components_default_empty_when_absent(tmp_path: Path):
     )
     cfg = load_bsr_config(cfg_file)
     assert cfg.components == ()
+
+
+def test_reads_stable_notes_flags(tmp_path: Path):
+    cfg_file = _write(
+        tmp_path,
+        '[tool.semantic_release]\ntag_format = "v{version}"\n'
+        "[tool.semantic_release.bsr]\n"
+        "stable_notes_aggregate = true\n"
+        'stable_notes_scope = "since_stable"\n',
+    )
+    cfg = load_bsr_config(cfg_file)
+    assert cfg.stable_notes_aggregate is True
+    assert cfg.stable_notes_scope == "since_stable"
+
+
+def test_stable_notes_defaults_when_absent(tmp_path: Path):
+    cfg_file = _write(
+        tmp_path,
+        '[tool.semantic_release]\ntag_format = "v{version}"\n'
+        "[tool.semantic_release.bsr]\n"
+        "guard_orphan_tag = false\n",
+    )
+    cfg = load_bsr_config(cfg_file)
+    assert cfg.stable_notes_aggregate is False
+    assert cfg.stable_notes_scope == "line"

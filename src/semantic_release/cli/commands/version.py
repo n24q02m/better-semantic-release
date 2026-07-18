@@ -32,6 +32,9 @@ from semantic_release.bsr.messages import format_actionable, tag_format_sanity_n
 # BSR-PATCH: optional monorepo commit path-filter (better-semantic-release)
 from semantic_release.bsr.path_filter import make_path_filter
 
+# BSR-PATCH: stable-notes aggregation (better-semantic-release)
+from semantic_release.bsr.stable_notes import aggregate_stable_release
+
 # BSR-PATCH: monorepo release-plan summary (better-semantic-release)
 from semantic_release.bsr.summary import (
     build_summary,
@@ -765,6 +768,22 @@ def version(  # noqa: C901
         _msg = format_actionable(ve) if _bsr_cfg.actionable_errors else None
         click.echo(_msg or str(ve), err=True)
         ctx.exit(1)
+
+    # BSR-PATCH: stable-notes aggregation (better-semantic-release). A stable
+    # finalize with intervening prerelease tags can see an EMPTY (or
+    # fragmented) release of its own -- prerelease tags "consume" commits
+    # (see bsr/stable_notes.py). Substituting the aggregated Release here,
+    # into the SAME `release_history` object BOTH `write_changelog_files`
+    # (below, ~this file:~830) and `generate_release_notes` (~this
+    # file:~885) read from, covers both consumers with one seam -- narrow
+    # and unconditional so it also applies when `--no-changelog` skips the
+    # former but `generate_release_notes` still runs for the VCS release.
+    if _bsr_cfg.stable_notes_aggregate and not new_version.is_prerelease:
+        release_history.released[new_version] = aggregate_stable_release(
+            release_history=release_history,
+            new_version=new_version,
+            scope=_bsr_cfg.stable_notes_scope,
+        )
 
     # BSR-PATCH: run safety guards after version is computed, before any persistence.
     try:

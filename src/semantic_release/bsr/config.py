@@ -29,6 +29,8 @@ class BsrConfig:
     actionable_errors: bool = False
     summary: bool = False
     components: tuple[BsrComponent, ...] = ()
+    stable_notes_aggregate: bool = False
+    stable_notes_scope: str = "line"  # "line" or "since_stable"
 
 
 def _parse_components(raw_components: object) -> tuple[BsrComponent, ...]:
@@ -68,4 +70,6 @@ def load_bsr_config(config_file: str | os.PathLike[str]) -> BsrConfig:
         actionable_errors=bool(bsr.get("actionable_errors", False)),
         summary=bool(bsr.get("summary", False)),
         components=_parse_components(bsr.get("components", [])),
+        stable_notes_aggregate=bool(bsr.get("stable_notes_aggregate", False)),
+        stable_notes_scope=str(bsr.get("stable_notes_scope", "line")),
     )
