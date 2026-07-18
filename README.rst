@@ -49,6 +49,14 @@ How it differs from upstream
    repository under ``[tool.semantic_release.bsr]`` (``guard_orphan_tag``,
    ``guard_registry_collision``, ``registry = "pypi" | "npm" | "none"``).
 
+.. note::
+
+   Guards evaluate even under ``--noop`` / dry-run -- this is deliberate, so a dry-run
+   surfaces would-be blocks instead of silently skipping the safety checks a real release
+   would hit. In dry-run, the registry-collision guard still performs a live, read-only
+   HTTP GET against the target registry (PyPI/npm) to check whether the computed version
+   already exists; no commit, tag, or push is made either way.
+
 ----
 
 Python Semantic Release
