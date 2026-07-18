@@ -15,6 +15,8 @@ class BsrConfig:
     guard_orphan_tag: bool = True
     guard_registry_collision: bool = True
     registry: str = ""  # "", "pypi", "npm", or "none"
+    path_filter: bool = False
+    paths: tuple[str, ...] = ()
 
 
 def load_bsr_config(config_file: str | os.PathLike[str]) -> BsrConfig:
@@ -38,4 +40,6 @@ def load_bsr_config(config_file: str | os.PathLike[str]) -> BsrConfig:
         guard_orphan_tag=bool(bsr.get("guard_orphan_tag", True)),
         guard_registry_collision=bool(bsr.get("guard_registry_collision", True)),
         registry=str(bsr.get("registry", "")),
+        path_filter=bool(bsr.get("path_filter", False)),
+        paths=tuple(bsr.get("paths", [])),
     )

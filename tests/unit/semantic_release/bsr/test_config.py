@@ -18,7 +18,11 @@ def test_defaults_when_no_bsr_table(tmp_path: Path):
     cfg_file = _write(tmp_path, '[tool.semantic_release]\ntag_format = "v{version}"\n')
     cfg = load_bsr_config(cfg_file)
     assert cfg == BsrConfig(
-        guard_orphan_tag=True, guard_registry_collision=True, registry=""
+        guard_orphan_tag=True,
+        guard_registry_collision=True,
+        registry="",
+        path_filter=False,
+        paths=(),
     )
 
 
@@ -33,8 +37,36 @@ def test_reads_bsr_table(tmp_path: Path):
     )
     cfg = load_bsr_config(cfg_file)
     assert cfg == BsrConfig(
-        guard_orphan_tag=False, guard_registry_collision=True, registry="npm"
+        guard_orphan_tag=False,
+        guard_registry_collision=True,
+        registry="npm",
+        path_filter=False,
+        paths=(),
     )
+
+
+def test_reads_path_filter_and_paths(tmp_path: Path):
+    cfg_file = _write(
+        tmp_path,
+        '[tool.semantic_release]\ntag_format = "v{version}"\n'
+        "[tool.semantic_release.bsr]\n"
+        "path_filter = true\n"
+        'paths = ["apps/api", "libs/x"]\n',
+    )
+    cfg = load_bsr_config(cfg_file)
+    assert cfg == BsrConfig(path_filter=True, paths=("apps/api", "libs/x"))
+
+
+def test_path_filter_and_paths_default_when_absent(tmp_path: Path):
+    cfg_file = _write(
+        tmp_path,
+        '[tool.semantic_release]\ntag_format = "v{version}"\n'
+        "[tool.semantic_release.bsr]\n"
+        "guard_orphan_tag = false\n",
+    )
+    cfg = load_bsr_config(cfg_file)
+    assert cfg.path_filter is False
+    assert cfg.paths == ()
 
 
 def test_missing_file_returns_defaults(tmp_path: Path):
