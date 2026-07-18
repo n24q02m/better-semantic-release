@@ -15,7 +15,7 @@ from semantic_release.globals import logger
 from semantic_release.helpers import validate_types_in_sequence
 
 if TYPE_CHECKING:  # pragma: no cover
-    from typing import Sequence
+    from typing import Callable, Sequence
 
     from git.objects.commit import Commit
     from git.refs.tag import Tag
@@ -248,6 +248,9 @@ def next_version(
     allow_zero_version: bool,
     major_on_zero: bool,
     prerelease: bool = False,
+    *,
+    # BSR-PATCH: optional monorepo commit path-filter (better-semantic-release)
+    commit_path_filter: Callable[[Sequence[Commit]], Sequence[Commit]] | None = None,
 ) -> Version:
     """
     Evaluate the history within `repo`, and based on the tags and commits in the repo
@@ -336,6 +339,10 @@ def next_version(
             latest_version.as_tag() if latest_version != default_initial_version else ""
         ),
     )
+
+    # BSR-PATCH: optional monorepo commit path-filter (better-semantic-release)
+    if commit_path_filter is not None:
+        commits_since_last_release = list(commit_path_filter(commits_since_last_release))
 
     logger.info(
         f"Found {len(commits_since_last_release)} commits since the last release!"
