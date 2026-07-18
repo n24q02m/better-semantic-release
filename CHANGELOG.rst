@@ -4,6 +4,19 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.2.1:
+
+v1.2.1 (2026-07-18)
+===================
+
+🪲 Bug Fixes
+------------
+
+* Scope PSR_VENV_BIN to the run step instead of $GITHUB_ENV (`c2e571a`_)
+
+.. _c2e571a: https://github.com/n24q02m/better-semantic-release/commit/c2e571a76d61f4302a5e5c7cb067dcbf17a69068
+
+
 .. _changelog-v1.2.0:
 
 v1.2.0 (2026-07-18)
