@@ -172,6 +172,7 @@ runs:
       uses: astral-sh/setup-uv@v5
 
     - name: Install better-semantic-release (forked source) into an isolated venv
+      id: install
       shell: bash
       run: |
         uv python install 3.13
@@ -191,12 +192,22 @@ runs:
         fi
 
         uv pip install --python "$VENV_PYTHON" "${{ github.action_path }}"
-        printf '%s\n' "PSR_VENV_BIN=$VENV_BIN_DIR" >>"$GITHUB_ENV"
+
+        # Hand the resolved bin dir to the run step below via a STEP OUTPUT,
+        # NOT $GITHUB_ENV. $GITHUB_ENV is job-scoped: writing PSR_VENV_BIN there
+        # leaks it into every later step of the job, including the downstream
+        # Docker publish-action. That action ships its own self-contained venv
+        # (ENV PSR_VENV_BIN=/opt/psr/.venv/bin); an inherited PSR_VENV_BIN
+        # overrides it and makes the container exec THIS host venv's binary,
+        # whose interpreter lives under ~/.local/share/uv and is not mounted
+        # inside the container -> "cannot execute: required file not found".
+        printf '%s\n' "venv_bin=$VENV_BIN_DIR" >>"$GITHUB_OUTPUT"
 
     - name: Run semantic-release (forked source, guards active)
       id: run
       shell: bash
       env:
+        PSR_VENV_BIN: ${{ steps.install.outputs.venv_bin }}
         INPUT_CONFIG_FILE: ${{ inputs.config_file }}
         INPUT_DIRECTORY: ${{ inputs.directory }}
         INPUT_GITHUB_TOKEN: ${{ inputs.github_token }}
