@@ -4,6 +4,30 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.0.1:
+
+v1.0.1 (2026-07-18)
+===================
+
+🪲 Bug Fixes
+------------
+
+* Drop setup-uv python-version (it created a pip-less .venv shadowing build_command python)
+  (`8aad8ba`_)
+
+* Provision python 3.13 deterministically in composite action (uv venv was flaky on runners without
+  3.13) (`d04318d`_)
+
+* Seed pip into the action venv so consumer build_commands work (`0a47c21`_)
+
+* Uv venv --clear to overwrite stale bsr-venv on persistent self-hosted runners (`4080ce4`_)
+
+.. _0a47c21: https://github.com/n24q02m/better-semantic-release/commit/0a47c2139651ae637be433802844288fa4b687aa
+.. _4080ce4: https://github.com/n24q02m/better-semantic-release/commit/4080ce4ee372dc6db41e8801242e1e8f0fc52691
+.. _8aad8ba: https://github.com/n24q02m/better-semantic-release/commit/8aad8baa6231e21ab086aeec0d42f17a6f3360e6
+.. _d04318d: https://github.com/n24q02m/better-semantic-release/commit/d04318dee22cb6d369400085ae31e1b307329611
+
+
 .. _changelog-v1.0.0-beta.1:
 
 v1.0.0-beta.1 (2026-07-17)
