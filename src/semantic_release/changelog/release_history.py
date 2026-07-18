@@ -16,8 +16,9 @@ from semantic_release.version.algorithm import tags_and_versions
 
 if TYPE_CHECKING:  # pragma: no cover
     from re import Pattern
-    from typing import Iterable, Iterator
+    from typing import Callable, Iterable, Iterator, Sequence
 
+    from git.objects.commit import Commit
     from git.repo.base import Repo
     from git.util import Actor
 
@@ -30,6 +31,16 @@ if TYPE_CHECKING:  # pragma: no cover
     from semantic_release.version.version import Version
 
 
+# BSR-PATCH: optional monorepo commit path-filter (better-semantic-release). Kept as
+# its own function (rather than an inline `if` in `from_git_history`) so the seam
+# stays a single call and doesn't push that method over the complexity limit.
+def _apply_commit_path_filter(
+    commits: Iterable[Commit],
+    commit_path_filter: Callable[[Sequence[Commit]], Sequence[Commit]] | None,
+) -> Iterable[Commit]:
+    return commits if commit_path_filter is None else commit_path_filter(list(commits))
+
+
 class ReleaseHistory:
     @classmethod
     def from_git_history(
@@ -38,6 +49,9 @@ class ReleaseHistory:
         translator: VersionTranslator,
         commit_parser: CommitParser[ParseResult, ParserOptions],
         exclude_commit_patterns: Iterable[Pattern[str]] = (),
+        *,
+        # BSR-PATCH: optional monorepo commit path-filter (better-semantic-release)
+        commit_path_filter: Callable[[Sequence[Commit]], Sequence[Commit]] | None = None,
     ) -> ReleaseHistory:
         all_git_tags_and_versions = tags_and_versions(repo.tags, translator)
         unreleased: dict[str, list[ParseResult]] = defaultdict(list)
@@ -68,7 +82,12 @@ class ReleaseHistory:
 
         the_version: Version | None = None
 
-        for commit in repo.iter_commits("HEAD", topo_order=True):
+        # BSR-PATCH: optional monorepo commit path-filter (better-semantic-release)
+        commits = _apply_commit_path_filter(
+            repo.iter_commits("HEAD", topo_order=True), commit_path_filter
+        )
+
+        for commit in commits:
             # Determine if we have found another release
             logger.debug("checking if commit %s matches any tags", commit.hexsha[:7])
             t_v = tag_sha_2_version_lookup.get(commit.hexsha, None)
