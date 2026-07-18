@@ -31,6 +31,13 @@ from semantic_release.bsr.messages import format_actionable, tag_format_sanity_n
 
 # BSR-PATCH: optional monorepo commit path-filter (better-semantic-release)
 from semantic_release.bsr.path_filter import make_path_filter
+
+# BSR-PATCH: monorepo release-plan summary (better-semantic-release)
+from semantic_release.bsr.summary import (
+    build_summary,
+    render_summary_table,
+    resolve_components,
+)
 from semantic_release.changelog.release_history import ReleaseHistory
 from semantic_release.cli.changelog_writer import (
     generate_release_notes,
@@ -626,6 +633,28 @@ def version(  # noqa: C901
             if prerelease
             else new_version.finalize_version()
         )
+
+    # BSR-PATCH: monorepo release-plan summary (better-semantic-release).
+    # Independent per-component report computed via the SAME next_version()
+    # algorithm, scoped by the M2 path-filter closure -- report-only, before
+    # ANY persistence below, so it renders regardless of whether the
+    # (whole-repo) new_version above ends up releasing.
+    if _bsr_cfg.summary:
+        _components = resolve_components(
+            _bsr_cfg,
+            default_name=runtime.project_metadata.get("name", "") or "(repo)",
+        )
+        with Repo(str(runtime.repo_dir)) as _summary_repo:
+            _plans = build_summary(
+                _components,
+                repo=_summary_repo,
+                translator=translator,
+                commit_parser=parser,
+                prerelease=prerelease,
+                major_on_zero=major_on_zero,
+                allow_zero_version=runtime.allow_zero_version,
+            )
+        click.echo(render_summary_table(_plans), err=True)
 
     if build_metadata:
         new_version.build_metadata = build_metadata

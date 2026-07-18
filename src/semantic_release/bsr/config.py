@@ -11,6 +11,14 @@ if TYPE_CHECKING:
 
 
 @dataclass(frozen=True)
+class BsrComponent:
+    """One monorepo component for the `bsr.summary` release-plan report (C3)."""
+
+    name: str
+    paths: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
 class BsrConfig:
     guard_orphan_tag: bool = True
     guard_registry_collision: bool = True
@@ -19,6 +27,18 @@ class BsrConfig:
     paths: tuple[str, ...] = ()
     explain: bool = False
     actionable_errors: bool = False
+    summary: bool = False
+    components: tuple[BsrComponent, ...] = ()
+
+
+def _parse_components(raw_components: object) -> tuple[BsrComponent, ...]:
+    if not isinstance(raw_components, list):
+        return ()
+    return tuple(
+        BsrComponent(name=str(c.get("name", "")), paths=tuple(c.get("paths", [])))
+        for c in raw_components
+        if isinstance(c, dict)
+    )
 
 
 def load_bsr_config(config_file: str | os.PathLike[str]) -> BsrConfig:
@@ -46,4 +66,6 @@ def load_bsr_config(config_file: str | os.PathLike[str]) -> BsrConfig:
         paths=tuple(bsr.get("paths", [])),
         explain=bool(bsr.get("explain", False)),
         actionable_errors=bool(bsr.get("actionable_errors", False)),
+        summary=bool(bsr.get("summary", False)),
+        components=_parse_components(bsr.get("components", [])),
     )

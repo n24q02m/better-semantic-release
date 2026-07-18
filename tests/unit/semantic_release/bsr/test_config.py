@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from semantic_release.bsr.config import BsrConfig, load_bsr_config
+from semantic_release.bsr.config import BsrComponent, BsrConfig, load_bsr_config
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -103,3 +103,57 @@ def test_missing_file_returns_defaults(tmp_path: Path):
 def test_malformed_config_returns_defaults(tmp_path: Path):
     cfg_file = _write(tmp_path, "this is not valid toml :::\n")
     assert load_bsr_config(cfg_file) == BsrConfig()
+
+
+def test_reads_summary_flag(tmp_path: Path):
+    cfg_file = _write(
+        tmp_path,
+        '[tool.semantic_release]\ntag_format = "v{version}"\n'
+        "[tool.semantic_release.bsr]\n"
+        "summary = true\n",
+    )
+    cfg = load_bsr_config(cfg_file)
+    assert cfg.summary is True
+
+
+def test_summary_defaults_false_when_absent(tmp_path: Path):
+    cfg_file = _write(
+        tmp_path,
+        '[tool.semantic_release]\ntag_format = "v{version}"\n'
+        "[tool.semantic_release.bsr]\n"
+        "guard_orphan_tag = false\n",
+    )
+    cfg = load_bsr_config(cfg_file)
+    assert cfg.summary is False
+    assert cfg.components == ()
+
+
+def test_reads_components_table(tmp_path: Path):
+    cfg_file = _write(
+        tmp_path,
+        '[tool.semantic_release]\ntag_format = "v{version}"\n'
+        "[tool.semantic_release.bsr]\n"
+        "summary = true\n"
+        "[[tool.semantic_release.bsr.components]]\n"
+        'name = "api"\n'
+        'paths = ["apps/api"]\n'
+        "[[tool.semantic_release.bsr.components]]\n"
+        'name = "web"\n'
+        'paths = ["apps/web", "libs/shared"]\n',
+    )
+    cfg = load_bsr_config(cfg_file)
+    assert cfg.components == (
+        BsrComponent(name="api", paths=("apps/api",)),
+        BsrComponent(name="web", paths=("apps/web", "libs/shared")),
+    )
+
+
+def test_components_default_empty_when_absent(tmp_path: Path):
+    cfg_file = _write(
+        tmp_path,
+        '[tool.semantic_release]\ntag_format = "v{version}"\n'
+        "[tool.semantic_release.bsr]\n"
+        "summary = true\n",
+    )
+    cfg = load_bsr_config(cfg_file)
+    assert cfg.components == ()
