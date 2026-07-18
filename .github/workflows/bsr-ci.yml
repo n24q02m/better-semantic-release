@@ -78,3 +78,19 @@ jobs:
           echo "version=$BSR_VERSION"
           test -n "$BSR_VERSION"
           test -n "$BSR_RELEASED"
+
+      - name: Build-path smoke (force a version + run build_command; no git persistence)
+        # Exercises the action's venv + build_command (python -m pip / python -m build).
+        # `force: patch` makes a non-noop version so build actually runs; commit/tag/push
+        # are off so nothing is released. Catches the pip-missing/venv-shadow class of
+        # regression that a `build: false` smoke cannot.
+        uses: ./
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          force: "patch"
+          build: "true"
+          commit: "false"
+          tag: "false"
+          push: "false"
+          changelog: "false"
+          vcs_release: "false"

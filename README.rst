@@ -40,6 +40,15 @@ How it differs from upstream
      - --
      - Identical (drop-in)
 
+.. note::
+
+   The guards are **on by default**. The registry-collision guard auto-targets PyPI for a
+   project that declares ``[project].name`` and **fails closed** -- if the registry is
+   unreachable (network / rate-limit / 5xx) it aborts the release rather than risk a double
+   publish, which couples release availability to the registry's uptime. Tune or disable per
+   repository under ``[tool.semantic_release.bsr]`` (``guard_orphan_tag``,
+   ``guard_registry_collision``, ``registry = "pypi" | "npm" | "none"``).
+
 ----
 
 Python Semantic Release
