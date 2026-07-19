@@ -8,15 +8,18 @@ from traceback import format_exception
 
 from semantic_release import globals
 from semantic_release.cli.commands.main import main as cli_main
+from semantic_release.cli.util import rprint
 from semantic_release.enums import SemanticReleaseLogLevels
 
 
 def main() -> None:
     try:
         cli_main(args=sys.argv[1:])
-        print("semantic-release completed successfully.", file=sys.stderr)
+        rprint(
+            "[bold green]:sparkles: semantic-release completed successfully.[/bold green]"
+        )
     except KeyboardInterrupt:
-        print("\n-- User Abort! --", file=sys.stderr)
+        rprint("\n[bold red]:x: User Abort![/bold red]")
         sys.exit(127)
     except Exception as err:  # noqa: BLE001, graceful error handling across application
         if globals.log_level <= SemanticReleaseLogLevels.DEBUG:
