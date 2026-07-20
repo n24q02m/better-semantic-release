@@ -80,7 +80,9 @@ def _build_two_component_repo(tmp_path: Path) -> Repo:
     return repo
 
 
-def _build_summary(repo: Repo, components: tuple[BsrComponent, ...]) -> tuple[ComponentPlan, ...]:
+def _build_summary(
+    repo: Repo, components: tuple[BsrComponent, ...]
+) -> tuple[ComponentPlan, ...]:
     return build_summary(
         components,
         repo=repo,
@@ -187,7 +189,14 @@ def test_render_summary_table_contains_headers_and_rows() -> None:
         ),
     )
     table = render_summary_table(plans)
-    for header in ("component", "would-release", "level", "commits", "sample paths", "version"):
+    for header in (
+        "component",
+        "would-release",
+        "level",
+        "commits",
+        "sample paths",
+        "version",
+    ):
         assert header in table
     assert "api" in table
     assert "no" in table

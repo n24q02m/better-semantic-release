@@ -106,11 +106,15 @@ def test_summary_on_with_components_renders_per_component_rows(
     assert "api" in result.output
     assert "web" in result.output
     # api: no commit touched apps/api since v0.1.0 -> no release
-    api_line = next(line for line in result.output.splitlines() if line.strip().startswith("api"))
+    api_line = next(
+        line for line in result.output.splitlines() if line.strip().startswith("api")
+    )
     assert "no" in api_line
     assert "0" in api_line
     # web: one feat commit touched apps/web -> MINOR release to 0.2.0
-    web_line = next(line for line in result.output.splitlines() if line.strip().startswith("web"))
+    web_line = next(
+        line for line in result.output.splitlines() if line.strip().startswith("web")
+    )
     assert "yes" in web_line
     assert "MINOR" in web_line
     assert "1" in web_line
@@ -122,7 +126,9 @@ def test_summary_on_without_components_falls_back_to_single_repo_row(
 ) -> None:
     """No `bsr.components` configured -- falls back to one row for the whole repo."""
     _build_monorepo(
-        tmp_path, monkeypatch, extra_bsr="\n[tool.semantic_release.bsr]\nsummary = true\n"
+        tmp_path,
+        monkeypatch,
+        extra_bsr="\n[tool.semantic_release.bsr]\nsummary = true\n",
     )
     result = _invoke_noop()
     assert result.exit_code == 0
@@ -139,9 +145,7 @@ def test_summary_stdout_untouched_when_on(
         monkeypatch,
         extra_bsr="\n[tool.semantic_release.bsr]\nsummary = true\n" + _COMPONENTS_TOML,
     )
-    result = CliRunner(mix_stderr=False).invoke(
-        main, ["--noop", "version", "--print"]
-    )
+    result = CliRunner(mix_stderr=False).invoke(main, ["--noop", "version", "--print"])
     assert result.exit_code == 0
     assert re.fullmatch(r"\d+\.\d+\.\d+(?:[-+].*)?\n", result.stdout)
     assert "release plan" not in result.stdout

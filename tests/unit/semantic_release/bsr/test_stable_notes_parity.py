@@ -103,7 +103,9 @@ def _build_beta_then_stable_fixture(
 
 def _append_bsr_table(proj: Path, extra_bsr: str) -> None:
     pyproject = proj / "pyproject.toml"
-    pyproject.write_text(pyproject.read_text(encoding="utf-8") + extra_bsr, encoding="utf-8")
+    pyproject.write_text(
+        pyproject.read_text(encoding="utf-8") + extra_bsr, encoding="utf-8"
+    )
 
 
 def _section(rendered: str, version_tag: str) -> str:

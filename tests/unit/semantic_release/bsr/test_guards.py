@@ -56,7 +56,9 @@ def test_collision_raises(tmp_path, monkeypatch):
     _repo_with_head(tmp_path)
     monkeypatch.setattr(g, "probe_registry", lambda *_a, **_k: ProbeResult.EXISTS)
     with pytest.raises(BsrGuardError) as exc:
-        g.run_guards(runtime=_runtime(tmp_path), new_version="1.2.3", bsr_config=BsrConfig())
+        g.run_guards(
+            runtime=_runtime(tmp_path), new_version="1.2.3", bsr_config=BsrConfig()
+        )
     assert "1.2.3" in exc.value.message
 
 
@@ -64,13 +66,17 @@ def test_unknown_is_fail_closed(tmp_path, monkeypatch):
     _repo_with_head(tmp_path)
     monkeypatch.setattr(g, "probe_registry", lambda *_a, **_k: ProbeResult.UNKNOWN)
     with pytest.raises(BsrGuardError):
-        g.run_guards(runtime=_runtime(tmp_path), new_version="1.2.3", bsr_config=BsrConfig())
+        g.run_guards(
+            runtime=_runtime(tmp_path), new_version="1.2.3", bsr_config=BsrConfig()
+        )
 
 
 def test_free_passes(tmp_path, monkeypatch):
     _repo_with_head(tmp_path)
     monkeypatch.setattr(g, "probe_registry", lambda *_a, **_k: ProbeResult.FREE)
-    g.run_guards(runtime=_runtime(tmp_path), new_version="1.2.3", bsr_config=BsrConfig())  # no raise
+    g.run_guards(
+        runtime=_runtime(tmp_path), new_version="1.2.3", bsr_config=BsrConfig()
+    )  # no raise
 
 
 def test_registry_none_skips_probe(tmp_path, monkeypatch):
@@ -115,7 +121,9 @@ def test_is_orphaned_recompute_false_for_benign_noop(tmp_path: Path) -> None:
     _commit(repo, tmp_path, "f1.txt", "feat: a")
     repo.create_tag("v1.0.0")
 
-    assert g.is_orphaned_recompute(tmp_path, _TRANSLATOR, Version.parse("1.0.0")) is False
+    assert (
+        g.is_orphaned_recompute(tmp_path, _TRANSLATOR, Version.parse("1.0.0")) is False
+    )
 
 
 def test_is_orphaned_recompute_true_for_real_orphan(tmp_path: Path) -> None:
@@ -134,7 +142,9 @@ def test_is_orphaned_recompute_true_for_real_orphan(tmp_path: Path) -> None:
     repo.git.reset("--hard", c1.hexsha)
     _commit(repo, tmp_path, "f3.txt", "feat: c")
 
-    assert g.is_orphaned_recompute(tmp_path, _TRANSLATOR, Version.parse("1.1.0")) is True
+    assert (
+        g.is_orphaned_recompute(tmp_path, _TRANSLATOR, Version.parse("1.1.0")) is True
+    )
 
 
 def test_is_orphaned_recompute_true_when_no_reachable_tags(tmp_path: Path) -> None:
@@ -147,4 +157,6 @@ def test_is_orphaned_recompute_true_when_no_reachable_tags(tmp_path: Path) -> No
     repo.git.reset("--hard", c1.hexsha)
     _commit(repo, tmp_path, "f3.txt", "feat: c")
 
-    assert g.is_orphaned_recompute(tmp_path, _TRANSLATOR, Version.parse("1.0.0")) is True
+    assert (
+        g.is_orphaned_recompute(tmp_path, _TRANSLATOR, Version.parse("1.0.0")) is True
+    )

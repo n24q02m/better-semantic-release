@@ -350,7 +350,9 @@ def next_version(
 
     # BSR-PATCH: optional monorepo commit path-filter (better-semantic-release)
     if commit_path_filter is not None:
-        commits_since_last_release = list(commit_path_filter(commits_since_last_release))
+        commits_since_last_release = list(
+            commit_path_filter(commits_since_last_release)
+        )
 
     logger.info(
         f"Found {len(commits_since_last_release)} commits since the last release!"
@@ -409,7 +411,10 @@ def next_version(
             and parsed_result.bump is not LevelBump.NO_RELEASE
         )
         bump_stats_sink(
-            level_bump, len(commits_since_last_release), latest_version, dict(type_counts)
+            level_bump,
+            len(commits_since_last_release),
+            latest_version,
+            dict(type_counts),
         )
 
     if all(

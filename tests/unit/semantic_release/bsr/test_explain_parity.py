@@ -66,7 +66,9 @@ def test_explain_false_matches_no_bsr_table_on_real_release(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     _build_project(
-        tmp_path, monkeypatch, extra_pyproject="\n[tool.semantic_release.bsr]\nexplain = false\n"
+        tmp_path,
+        monkeypatch,
+        extra_pyproject="\n[tool.semantic_release.bsr]\nexplain = false\n",
     )
     explicit_false = _invoke()
 
@@ -85,7 +87,9 @@ def test_explain_false_matches_no_bsr_table_on_benign_noop(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     proj = _build_project(
-        tmp_path, monkeypatch, extra_pyproject="\n[tool.semantic_release.bsr]\nexplain = false\n"
+        tmp_path,
+        monkeypatch,
+        extra_pyproject="\n[tool.semantic_release.bsr]\nexplain = false\n",
     )
     printed = CliRunner(mix_stderr=True).invoke(main, ["--noop", "version", "--print"])
     assert printed.exit_code == 0
