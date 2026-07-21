@@ -5,7 +5,7 @@ import os
 import re
 import string
 import sys
-from functools import lru_cache, reduce, wraps
+from functools import lru_cache, wraps
 from pathlib import Path, PurePosixPath
 from re import IGNORECASE, compile as regexp
 from typing import TYPE_CHECKING, Any, Callable, NamedTuple, Sequence, TypeVar
@@ -64,10 +64,10 @@ def sort_numerically(
         prefixes[prefix].append(item)
 
     # Sort prefixes and items by number mixing in unmatched items as alphabetized with other prefixes
-    return reduce(
-        lambda acc, next_item: acc + next_item,
-        [
-            (
+    result: list[str] = []
+    for prefix in sorted([*prefixes.keys(), *unmatched_items]):
+        if prefix in prefixes:
+            result.extend(
                 sorted(
                     prefixes[prefix],
                     key=lambda x: get_number_from_str(
@@ -75,13 +75,10 @@ def sort_numerically(
                     ),
                     reverse=reverse,
                 )
-                if prefix in prefixes
-                else [prefix]
             )
-            for prefix in sorted([*prefixes.keys(), *unmatched_items])
-        ],
-        [],
-    )
+        else:
+            result.append(prefix)
+    return result
 
 
 def text_reducer(text: str, filter_pair: tuple[Pattern[str], str]) -> str:
