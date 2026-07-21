@@ -1,0 +1,3 @@
+## 2025-05-18 - Replacing Raw Prints with Semantic Terminal UX
+**Learning:** Terminal outputs using raw `print()` can be dry and fail to quickly communicate state (success vs. failure) to the user. Standard Python tools like `rich` provide semantic styling, but it's important to leverage existing utilities (e.g. `rprint` targeting stderr) to maintain standard I/O streams while improving UX.
+**Action:** When working with CLI tools, prioritize using existing `rich` integration functions (like `rprint`) to apply consistent styling (colors/emojis) for informational, success, and error messages to enhance micro-UX in the terminal.
