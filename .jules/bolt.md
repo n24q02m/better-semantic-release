@@ -1,0 +1,3 @@
+## 2024-05-24 - Avoid redundant object allocations inside hot functions
+**Learning:** Found situations where `re.compile()` was repeatedly evaluated and dictionaries/lists were allocated inside functions (`convert_md_to_rst` and `parse_git_url`). Even though `re.compile()` utilizes an internal cache, the overhead of looking it up and creating data structures continuously creates noticeable slowdowns.
+**Action:** Extract constant data structures and pre-compile regular expressions to the module scope whenever feasible, especially for helper functions that process markdown parsing strings or extract URL features.

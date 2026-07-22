@@ -225,6 +225,19 @@ def _hide_credentials_in_url(url: str) -> str:
     return urlunsplit(url_parts._replace(netloc=f"<credentials>@{host}"))
 
 
+URL_NORMALIZERS = (
+    # normalize implicit ssh urls to explicit ssh://
+    (re.compile(r"^([\w._-]+@)"), r"ssh://\1"),
+    # normalize git+ssh:// urls to ssh://
+    (re.compile(r"^git\+ssh://"), "ssh://"),
+    # normalize an scp like syntax to URL compatible syntax
+    # excluding port definitions (:#####) & including numeric usernames
+    (re.compile(r"(ssh://(?:[\w._-]+@)?[\w.-]+):(?!\d{1,5}/\w+/)(.*)$"), r"\1/\2"),
+    # normalize implicit file (windows || posix) urls to explicit file:// urls
+    (re.compile(r"^([C-Z]:/)|^/(\w)"), r"file:///\1\2"),
+)
+
+
 @lru_cache(maxsize=512)
 def parse_git_url(url: str) -> ParsedGitUrl:
     """
@@ -254,21 +267,8 @@ def parse_git_url(url: str) -> ParsedGitUrl:
     """
     logger.debug("Parsing git url %r", _hide_credentials_in_url(url))
 
-    # Normalizers are a list of tuples of (pattern, replacement)
-    normalizers = [
-        # normalize implicit ssh urls to explicit ssh://
-        (r"^([\w._-]+@)", r"ssh://\1"),
-        # normalize git+ssh:// urls to ssh://
-        (r"^git\+ssh://", "ssh://"),
-        # normalize an scp like syntax to URL compatible syntax
-        # excluding port definitions (:#####) & including numeric usernames
-        (r"(ssh://(?:[\w._-]+@)?[\w.-]+):(?!\d{1,5}/\w+/)(.*)$", r"\1/\2"),
-        # normalize implicit file (windows || posix) urls to explicit file:// urls
-        (r"^([C-Z]:/)|^/(\w)", r"file:///\1\2"),
-    ]
-
-    for pattern, replacement in normalizers:
-        url = re.compile(pattern).sub(replacement, url)
+    for pattern, replacement in URL_NORMALIZERS:
+        url = pattern.sub(replacement, url)
 
     # run the url through urlsplit to separate out the parts
     urllib_split = urlsplit(url)
