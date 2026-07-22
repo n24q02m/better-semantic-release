@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
 import click
+import rich.markup
 import shellingham  # type: ignore[import]
 from click_option_group import MutuallyExclusiveOptionGroup, optgroup
 from git import GitCommandError, Repo
@@ -296,7 +297,9 @@ def build_distributions(
         return
 
     logger.info("Running build command %s", build_command)
-    rprint(f"[bold green]:hammer_and_wrench: Running build command: {build_command}")
+    rprint(
+        f"[bold green]:hammer_and_wrench: Running build command: {rich.markup.escape(build_command)}"
+    )
 
     build_env_vars: dict[str, str] = dict(
         filter(
@@ -747,7 +750,9 @@ def version(  # noqa: C901
             commit_path_filter=_bsr_path_filter,
         )
 
-    rprint(f"[bold green]The next version is: [white]{new_version!s}[/white]! :rocket:")
+    rprint(
+        f"[bold green]The next version is: [white]{rich.markup.escape(str(new_version))}[/white]! :rocket:"
+    )
 
     # BSR-PATCH: release-decision explainer (better-semantic-release)
     if _bsr_cfg.explain and _bump_stats_box:
