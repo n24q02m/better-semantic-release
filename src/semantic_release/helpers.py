@@ -64,24 +64,22 @@ def sort_numerically(
         prefixes[prefix].append(item)
 
     # Sort prefixes and items by number mixing in unmatched items as alphabetized with other prefixes
-    return reduce(
-        lambda acc, next_item: acc + next_item,
-        [
-            (
-                sorted(
-                    prefixes[prefix],
-                    key=lambda x: get_number_from_str(
-                        x, default=-1, interpret_hex=allow_hex
-                    ),
-                    reverse=reverse,
-                )
-                if prefix in prefixes
-                else [prefix]
+    # Using list comprehension to flatten instead of reduce(lambda a, b: a + b, ...) for O(N) performance
+    return [
+        item
+        for prefix in sorted([*prefixes.keys(), *unmatched_items])
+        for item in (
+            sorted(
+                prefixes[prefix],
+                key=lambda x: get_number_from_str(
+                    x, default=-1, interpret_hex=allow_hex
+                ),
+                reverse=reverse,
             )
-            for prefix in sorted([*prefixes.keys(), *unmatched_items])
-        ],
-        [],
-    )
+            if prefix in prefixes
+            else [prefix]
+        )
+    ]
 
 
 def text_reducer(text: str, filter_pair: tuple[Pattern[str], str]) -> str:
