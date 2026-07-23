@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
 import click
+import rich.markup
 import shellingham  # type: ignore[import]
 from click_option_group import MutuallyExclusiveOptionGroup, optgroup
 from git import GitCommandError, Repo
@@ -288,7 +289,7 @@ def build_distributions(
     :raises: BuildDistributionsError: if the build command fails
     """
     if not build_command:
-        rprint("[green]No build command specified, skipping")
+        rprint("[green]:fast_forward: No build command specified, skipping")
         return
 
     if noop:
@@ -296,7 +297,9 @@ def build_distributions(
         return
 
     logger.info("Running build command %s", build_command)
-    rprint(f"[bold green]:hammer_and_wrench: Running build command: {build_command}")
+    rprint(
+        f"[bold green]:hammer_and_wrench: Running build command: {rich.markup.escape(build_command)}"
+    )
 
     build_env_vars: dict[str, str] = dict(
         filter(
@@ -327,7 +330,7 @@ def build_distributions(
 
     try:
         shell(build_command, env=build_env_vars, check=True)
-        rprint("[bold green]Build completed successfully!")
+        rprint("[bold green]:white_check_mark: Build completed successfully!")
     except subprocess.CalledProcessError as exc:
         logger.exception(exc)
         logger.error("Build command failed with exit code %s", exc.returncode)  # noqa: TRY400
@@ -825,7 +828,7 @@ def version(  # noqa: C901
     # Build distributions before committing any changes - this way if the
     # build fails, modifications to the source code won't be committed
     if skip_build:
-        rprint("[bold orange1]Skipping build due to --skip-build flag")
+        rprint("[bold orange1]:fast_forward: Skipping build due to --skip-build flag")
     else:
         try:
             build_distributions(

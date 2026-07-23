@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import click
+import rich.markup
 from click.core import ParameterSource
 from git import InvalidGitRepositoryError
 from pydantic import ValidationError
@@ -110,7 +111,10 @@ class CliContextObj:
                 global_cli_options=self.global_opts,
             )
         except NotAReleaseBranch as exc:
-            rprint(f"[bold {'red' if self.global_opts.strict else 'orange1'}]{exc!s}")
+            emoji = ":stop_sign:" if self.global_opts.strict else ":warning:"
+            rprint(
+                f"[bold {'red' if self.global_opts.strict else 'orange1'}]{emoji} {rich.markup.escape(str(exc))}"
+            )
             # If not strict, exit 0 so other processes can continue. For example, in
             # multibranch CI it might be desirable to run a non-release branch's pipeline
             # without specifying conditional execution of PSR based on branch name

@@ -1,0 +1,3 @@
+## 2024-05-18 - [CLI Output Emojis and Rich Escape]
+**Learning:** Adding emojis to CLI output makes logs much easier to parse visually. However, when printing dynamic content via the `rich` library (e.g. exception messages or user commands), it's critical to wrap them in `rich.markup.escape()`. Otherwise, users can encounter `MarkupError` crashes if the dynamic string happens to contain brackets (like `pip install package[extras]`), which `rich` incorrectly interprets as style tags.
+**Action:** Always test modified terminal output text by running the E2E test suite since these tests often assert exact stdout/stderr string matches. Add `rich.markup.escape()` before any variable formatted with `rich` strings.

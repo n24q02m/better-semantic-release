@@ -176,7 +176,7 @@ def test_version_on_nonrelease_branch(
 
     branch = repo.create_head("next").checkout()
     expected_error_msg = (
-        f"branch '{branch.name}' isn't in any release groups; no release will be made\n"
+        f"⚠ branch '{branch.name}' isn't in any release groups; no release will be made\n"
     )
     repo_status_before = repo.git.status(short=True)
     head_before = repo.head.commit.hexsha
