@@ -497,11 +497,12 @@ class ScipyCommitParser(CommitParser[ParseResult, ScipyParserOptions]):
             normalized_message
         )
 
-        separate_commit_msgs: list[str] = reduce(
-            lambda all_msgs, msgs: all_msgs + msgs,
-            map(self._find_squashed_commits_in_str, obvious_squashed_commits),
-            [],
-        )
+        # Performance optimization: Use list comprehension instead of reduce with list concatenation to avoid O(N^2) complexity
+        separate_commit_msgs: list[str] = [
+            msg
+            for squashed_commit in obvious_squashed_commits
+            for msg in self._find_squashed_commits_in_str(squashed_commit)
+        ]
 
         return list(filter(None, separate_commit_msgs))
 
