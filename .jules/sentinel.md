@@ -1,4 +1,4 @@
-## 2024-07-22 - Rich Terminal Markup Injection (Crash Prevention)
-**Vulnerability:** The CLI application uses the `rich` library (`rprint`) to output colored terminal messages. However, dynamic user-controlled strings (like build commands or exception messages) were being interpolated directly into format strings (e.g., `rprint(f"[bold red]{exc!s}")`). If these strings contained unescaped brackets (e.g., `[invalid]`), `rich` would attempt to parse them as markup, resulting in a `MarkupError` crash or unintended terminal styling.
-**Learning:** This is a subtle but common issue when using terminal styling libraries that rely on in-band signaling (like `[color]text[/color]`). Unsanitized input can cause crashes (Denial of Service) or formatting corruption.
-**Prevention:** Always use `rich.markup.escape(str)` on any dynamic variable or user input before interpolating it into a `rich` formatting string.
+## 2023-11-20 - Command Injection in GitHub Actions Output
+**Vulnerability:** GitHub Actions environment variables (like `$GITHUB_OUTPUT`) populated with multiline values using a hardcoded `EOF` delimiter are vulnerable to injection attacks if the content contains the string `\nEOF\n`.
+**Learning:** This codebase incorrectly implemented GitHub Actions multiline strings using a static `EOF` string. When creating variables out of user-controlled input (like commit messages appearing in `release_notes`), a malicious commit message could break out of the multiline variable and define new environment variables or outputs.
+**Prevention:** Always use a randomly generated delimiter (e.g. `uuid.uuid4().hex`) to ensure there is no possibility of collisions or command injection when writing to `$GITHUB_OUTPUT`.
