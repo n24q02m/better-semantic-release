@@ -42,20 +42,18 @@ def test_version_github_actions_output_format(
         - Fixed bug
         """
     )
-    expected_output = (
-        dedent(
-            f"""\
-            released={'true' if released else 'false'}
-            version={version}
-            tag=v{version}
-            is_prerelease={'true' if is_prerelease else 'false'}
-            link={BASE_VCS_URL}/releases/tag/v{version}
-            previous_version={prev_version or ""}
-            commit_sha={commit_sha}
-            """
-        )
-        + f"release_notes<<EOF{os.linesep}{release_notes}EOF{os.linesep}"
-    )
+    from tests.util import actions_output_to_dict
+
+    expected_dict = {
+        "released": "true" if released else "false",
+        "version": version,
+        "tag": f"v{version}",
+        "is_prerelease": "true" if is_prerelease else "false",
+        "link": f"{BASE_VCS_URL}/releases/tag/v{version}",
+        "previous_version": prev_version or "",
+        "commit_sha": commit_sha,
+        "release_notes": release_notes,
+    }
 
     with mock.patch.dict(os.environ, {}, clear=True):
         actual_output_text = VersionGitHubActionsOutput(
@@ -67,8 +65,10 @@ def test_version_github_actions_output_format(
             prev_version=Version.parse(prev_version) if prev_version else None,
         ).to_output_text()
 
+    actual_dict = actions_output_to_dict(actual_output_text)
+
     # Evaluate (expected -> actual)
-    assert expected_output == actual_output_text
+    assert expected_dict == actual_dict
 
 
 def test_version_github_actions_output_fails_if_missing_released_param():

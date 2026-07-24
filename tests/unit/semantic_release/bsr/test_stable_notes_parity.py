@@ -103,7 +103,9 @@ def _build_beta_then_stable_fixture(
 
 def _append_bsr_table(proj: Path, extra_bsr: str) -> None:
     pyproject = proj / "pyproject.toml"
-    pyproject.write_text(pyproject.read_text(encoding="utf-8") + extra_bsr, encoding="utf-8")
+    pyproject.write_text(
+        pyproject.read_text(encoding="utf-8") + extra_bsr, encoding="utf-8"
+    )
 
 
 def _section(rendered: str, version_tag: str) -> str:
@@ -122,9 +124,11 @@ def _release_notes_block(gha_output: str) -> str:
     invocations regardless of this feature, since each makes its own fresh
     release-bump commit.
     """
-    match = re.search(r"release_notes<<EOF\r?\n(.*?)EOF\r?\n", gha_output, re.DOTALL)
+    match = re.search(
+        r"release_notes<<([a-zA-Z0-9_]+)\r?\n(.*?)\1\r?\n", gha_output, re.DOTALL
+    )
     assert match is not None, gha_output
-    return match.group(1)
+    return match.group(2)
 
 
 def test_explicit_false_matches_no_bsr_table_stdout_stderr_and_exit_code(

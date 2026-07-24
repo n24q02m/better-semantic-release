@@ -218,16 +218,16 @@ def xdist_sort_hack(it: Iterable[_R]) -> Iterable[_R]:
 
 def actions_output_to_dict(output: str) -> dict[str, str]:
     single_line_var_pattern = regexp(r"^(?P<name>\w+)=(?P<value>.*?)\r?$")
-    multiline_var_pattern = regexp(r"^(?P<name>\w+?)<<EOF\r?$")
-    multiline_var_pattern_end = regexp(r"^EOF\r?$")
+    multiline_var_pattern = regexp(r"^(?P<name>\w+?)<<(?P<delimiter>[a-zA-Z0-9_]+)\r?$")
 
+    current_delimiter = ""
     found_multiline_var = False
     current_var_name = ""
     current_var_value = ""
     result: dict[str, str] = {}
     for line in output.splitlines(keepends=True):
         if found_multiline_var:
-            if match := multiline_var_pattern_end.match(line):
+            if line.rstrip("\r\n") == current_delimiter:
                 # End of a multiline variable
                 found_multiline_var = False
                 result[current_var_name] = current_var_value
@@ -245,6 +245,7 @@ def actions_output_to_dict(output: str) -> dict[str, str]:
             # Start of a multiline variable
             found_multiline_var = True
             current_var_name = match.group("name")
+            current_delimiter = match.group("delimiter")
             current_var_value = ""
             continue
 

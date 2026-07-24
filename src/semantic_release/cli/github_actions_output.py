@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import uuid
 from enum import Enum
 from re import compile as regexp
 from typing import TYPE_CHECKING
@@ -159,14 +160,16 @@ class VersionGitHubActionsOutput:
         }
 
         output_lines = [
-            *[f"{key}={value!s}{os.linesep}" for key, value in output_values.items()],
-            *[
-                f"{key}<<EOF{os.linesep}{value}EOF{os.linesep}"
-                if value
-                else f"{key}={os.linesep}"
-                for key, value in multiline_output_values.items()
-            ],
+            *[f"{key}={value!s}{os.linesep}" for key, value in output_values.items()]
         ]
+        for key, value in multiline_output_values.items():
+            if value:
+                delimiter = uuid.uuid4().hex
+                output_lines.append(
+                    f"{key}<<{delimiter}{os.linesep}{value}{delimiter}{os.linesep}"
+                )
+            else:
+                output_lines.append(f"{key}={os.linesep}")
 
         return str.join("", output_lines)
 
