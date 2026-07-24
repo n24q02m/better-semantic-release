@@ -58,6 +58,16 @@ class MaskingFilter(LoggingFilter):
                 arg if type(arg) in (bool, int, float) else self.mask(str(arg))
                 for arg in record.args
             )
+
+        # 🛡️ Sentinel: Prevent sensitive data from leaking in exception tracebacks
+        if record.exc_info and not record.exc_text:
+            import logging
+            record.exc_text = logging.Formatter().formatException(record.exc_info)
+
+        if record.exc_text:
+            record.exc_text = self.mask(record.exc_text)
+            record.exc_info = None
+
         return True
 
     def mask(self, msg: str) -> str:
