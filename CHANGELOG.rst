@@ -4,6 +4,45 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.2.2-beta.1:
+
+v1.2.2-beta.1 (2026-07-24)
+==========================
+
+🪲 Bug Fixes
+------------
+
+* Configure Renovate with SHA pinning and rate limits (`PR#9`_, `466347b`_)
+
+* Consolidate dependency automation onto renovate (`98015b5`_)
+
+* Escape dynamic strings before Rich markup interpolation to prevent crashes (`9aea4d8`_)
+
+* Mask credentials in git command error logs (`7c44ebb`_)
+
+* Mask secrets in exception tracebacks in the logging filter (`3e2cbff`_)
+
+* Pin GitHub Action references to commit SHAs (`PR#16`_, `c2a24e8`_)
+
+* Rewrite sort_numerically as a linear loop to avoid O(n^2) list concatenation (`88bf262`_)
+
+* Use a random delimiter for multiline GitHub Actions output to prevent injection (`c75ca91`_)
+
+* **ci**: Bump actions/checkout to v7.0.1 and astral-sh/setup-uv to v8.3.2 (`b385406`_)
+
+.. _3e2cbff: https://github.com/n24q02m/better-semantic-release/commit/3e2cbffa5d9a47773cc108138942405cb7920bb2
+.. _466347b: https://github.com/n24q02m/better-semantic-release/commit/466347b5eb6c2bd4959c5b1bacd9df724100be4b
+.. _7c44ebb: https://github.com/n24q02m/better-semantic-release/commit/7c44ebb2aeff5e54fb7e5dee434cb2f87c3a8360
+.. _88bf262: https://github.com/n24q02m/better-semantic-release/commit/88bf26299822a6235cc21a961b1c697ec9aaa5f9
+.. _98015b5: https://github.com/n24q02m/better-semantic-release/commit/98015b5edd3a8d184669b641f87e4d2ad552288f
+.. _9aea4d8: https://github.com/n24q02m/better-semantic-release/commit/9aea4d8b53a844206c4d7d6464bb3207f08478ec
+.. _b385406: https://github.com/n24q02m/better-semantic-release/commit/b385406f1f40d317f0ac94ac12c827643cfd4bf1
+.. _c2a24e8: https://github.com/n24q02m/better-semantic-release/commit/c2a24e879059b82609241555083e4369ffe35280
+.. _c75ca91: https://github.com/n24q02m/better-semantic-release/commit/c75ca91053738a3aa4f95c9d4753a6e779155b20
+.. _PR#16: https://github.com/n24q02m/better-semantic-release/pull/16
+.. _PR#9: https://github.com/n24q02m/better-semantic-release/pull/9
+
+
 .. _changelog-v1.2.1:
 
 v1.2.1 (2026-07-18)
