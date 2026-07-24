@@ -52,6 +52,11 @@
       "matchManagers": ["mise"],
       "matchDepNames": ["python", "node", "go"],
       "enabled": false
+    },
+    {
+      "description": "ruff is pinned deliberately in the [dev] extra — the vendored config uses select=[\"ALL\"], so any bump surfaces a wall of new lint errors",
+      "matchPackageNames": ["ruff"],
+      "enabled": false
     }
   ],
   "semanticCommits": "enabled",
