@@ -123,7 +123,7 @@ class GitProject:
                 if "does not make sense" in stderr or "complete repository" in stderr:
                     self.logger.debug("Repository is already a full clone")
                 else:
-                    self.logger.exception(str(err))
+                    self.logger.error(self._cred_masker.mask(str(err)))  # noqa: TRY400
                     raise
 
     def git_add(
@@ -164,7 +164,7 @@ class GitProject:
                 except GitCommandError as err:  # noqa: PERF203, acceptable performance loss
                     err_msg = f"Failed to add path ({updated_path}) to index"
                     if strict:
-                        self.logger.exception(str(err))
+                        self.logger.error(self._cred_masker.mask(str(err)))  # noqa: TRY400
                         raise GitAddError(err_msg) from err
                     self.logger.warning(err_msg)
 
@@ -234,7 +234,7 @@ class GitProject:
                 try:
                     repo.git.commit(**git_args)
                 except GitCommandError as err:
-                    self.logger.exception(str(err))
+                    self.logger.error(self._cred_masker.mask(str(err)))  # noqa: TRY400
                     raise GitCommitError("Failed to commit changes") from err
 
     def git_tag(
@@ -290,7 +290,7 @@ class GitProject:
             try:
                 repo.git.tag(tag_name, a=True, m=message, force=force)
             except GitCommandError as err:
-                self.logger.exception(str(err))
+                self.logger.error(self._cred_masker.mask(str(err)))  # noqa: TRY400
                 raise GitTagError(f"Failed to create tag ({tag_name})") from err
 
     def git_push_branch(self, remote_url: str, branch: str, noop: bool = False) -> None:
@@ -309,7 +309,7 @@ class GitProject:
             try:
                 repo.git.push(remote_url, branch)
             except GitCommandError as err:
-                self.logger.exception(str(err))
+                self.logger.error(self._cred_masker.mask(str(err)))  # noqa: TRY400
                 raise GitPushError(
                     f"Failed to push branch ({branch}) to remote"
                 ) from err
@@ -332,7 +332,7 @@ class GitProject:
             try:
                 repo.git.push(remote_url, "tag", tag, force=force)
             except GitCommandError as err:
-                self.logger.exception(str(err))
+                self.logger.error(self._cred_masker.mask(str(err)))  # noqa: TRY400
                 raise GitPushError(f"Failed to push tag ({tag}) to remote") from err
 
     def verify_upstream_unchanged(  # noqa: C901
@@ -455,7 +455,7 @@ class GitProject:
                     # file:// URLs, test URLs, or when no authentication is needed
                     remote_ref_obj.fetch()
             except GitCommandError as err:
-                self.logger.exception(str(err))
+                self.logger.error(self._cred_masker.mask(str(err)))  # noqa: TRY400
                 err_msg = f"Failed to fetch from remote '{remote_name}'"
                 raise GitFetchError(err_msg) from err
 
@@ -464,7 +464,7 @@ class GitProject:
                 upstream_commit_ref = remote_ref_obj.refs[remote_branch_name].commit
                 upstream_sha = upstream_commit_ref.hexsha
             except AttributeError as err:
-                self.logger.exception(str(err))
+                self.logger.error(self._cred_masker.mask(str(err)))  # noqa: TRY400
                 err_msg = f"Unable to determine upstream branch SHA for '{upstream_full_ref_name}'"
                 raise GitFetchError(err_msg) from err
 
@@ -472,7 +472,7 @@ class GitProject:
             try:
                 local_commit = repo.commit(repo.git.rev_parse(local_ref))
             except GitCommandError as err:
-                self.logger.exception(str(err))
+                self.logger.error(self._cred_masker.mask(str(err)))  # noqa: TRY400
                 err_msg = f"Unable to determine the SHA for local ref '{local_ref}'"
                 raise LocalGitError(err_msg) from err
 
