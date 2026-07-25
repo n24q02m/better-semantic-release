@@ -4,8 +4,9 @@ from typing import TYPE_CHECKING
 
 import click
 from git import Repo
+from rich.markup import escape
 
-from semantic_release.cli.util import noop_report
+from semantic_release.cli.util import noop_report, rprint
 from semantic_release.errors import AssetUploadError
 from semantic_release.globals import logger
 from semantic_release.hvcs.remote_hvcs_base import RemoteHvcsBase
@@ -67,27 +68,27 @@ def publish(cli_ctx: CliContextObj, tag: str) -> None:
         try:
             tag = str(tags_and_versions(repo_tags, translator)[0][0])
         except IndexError:
-            click.echo(
+            rprint(
                 str.join(
                     " ",
                     [
-                        "No tags found with format",
-                        repr(translator.tag_format),
-                        "couldn't identify latest version",
+                        ":x: [bold red]No tags found with format[/bold red]",
+                        escape(repr(translator.tag_format)),
+                        "[bold red]couldn't identify latest version[/bold red]",
                     ],
-                ),
-                err=True,
+                )
             )
             ctx.exit(1)
 
     if tag not in {tag.name for tag in repo_tags}:
-        click.echo(f"Tag '{tag}' not found in local repository!", err=True)
+        rprint(
+            f":x: [bold red]Tag '{escape(str(tag))}' not found in local repository![/bold red]"
+        )
         ctx.exit(1)
 
     if not isinstance(hvcs_client, RemoteHvcsBase):
-        click.echo(
-            "Remote does not support artifact upload. Exiting with no action taken...",
-            err=True,
+        rprint(
+            ":warning: [bold yellow]Remote does not support artifact upload. Exiting with no action taken...[/bold yellow]"
         )
         return
 
@@ -99,5 +100,5 @@ def publish(cli_ctx: CliContextObj, tag: str) -> None:
             noop=runtime.global_cli_options.noop,
         )
     except AssetUploadError as err:
-        click.echo(err, err=True)
+        rprint(f":x: [bold red]{escape(str(err))}[/bold red]")
         ctx.exit(1)
