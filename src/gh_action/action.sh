@@ -3,50 +3,31 @@
 set -e
 
 explicit_run_cmd() {
-  local cmd=""
-  cmd="$(printf '%s' "$*" | sed 's/^ *//g' | sed 's/ *$//g')"
-  printf '%s\n' "$> $cmd"
-  eval "$cmd"
+  local cmd_str=""
+  for arg in "$@"; do
+    cmd_str="$cmd_str \"$arg\""
+  done
+  printf '%s\n' "$> ${cmd_str# }"
+  "$@"
 }
 
 # Convert "true"/"false" into command line args, returns "" if not defined
-eval_boolean_action_input() {
-	local -r input_name="$1"
-	shift
-	local -r flag_value="$1"
-	shift
-	local -r if_true="$1"
-	shift
-	local -r if_false="$1"
+append_boolean_action_input() {
+	local array_name="$1"
+	local -r input_name="$2"
+	local -r flag_value="$3"
+	local -r if_true="$4"
+	local -r if_false="$5"
 
-	if [ -z "$flag_value" ]; then
-		printf ""
-	elif [ "$flag_value" = "true" ]; then
-		printf '%s\n' "$if_true"
+	if [ "$flag_value" = "true" ]; then
+		if [ -n "$if_true" ]; then eval "$array_name+=(\"\$if_true\")"; fi
 	elif [ "$flag_value" = "false" ]; then
-		printf '%s\n' "$if_false"
-	else
-		printf 'Error: Invalid value for input %s: %s is not "true" or "false\n"' \
+		if [ -n "$if_false" ]; then eval "$array_name+=(\"\$if_false\")"; fi
+	elif [ -n "$flag_value" ]; then
+		printf 'Error: Invalid value for input %s: %s is not "true" or "false"\n' \
 			"$input_name" "$flag_value" >&2
 		return 1
 	fi
-}
-
-# Convert string input into command line args, returns "" if undefined
-eval_string_input() {
-	local -r input_name="$1"
-	shift
-	local -r if_defined="$1"
-	shift
-	local value
-	value="$(printf '%s' "$1" | tr -d ' ')"
-
-	if [ -z "$value" ]; then
-		printf ""
-		return 0
-	fi
-
-	printf '%s' "${if_defined/\%s/$value}"
 }
 
 # Convert inputs to command line arguments
@@ -63,7 +44,9 @@ for ((i = 0; i < INPUT_VERBOSITY; i++)); do
 	VERBOSITY_OPTIONS+="v"
 done
 
-ROOT_OPTIONS+=("$VERBOSITY_OPTIONS")
+if [ -n "$VERBOSITY_OPTIONS" ]; then
+	ROOT_OPTIONS+=("$VERBOSITY_OPTIONS")
+fi
 
 if [ -n "$INPUT_CONFIG_FILE" ]; then
 	# Check if the file exists
@@ -72,21 +55,21 @@ if [ -n "$INPUT_CONFIG_FILE" ]; then
 		exit 1
 	fi
 
-	ROOT_OPTIONS+=("$(eval_string_input "config_file" "--config %s" "$INPUT_CONFIG_FILE")") || exit 1
+	ROOT_OPTIONS+=("--config" "$INPUT_CONFIG_FILE")
 fi
 
-ROOT_OPTIONS+=("$(eval_boolean_action_input "strict" "$INPUT_STRICT" "--strict" "")") || exit 1
-ROOT_OPTIONS+=("$(eval_boolean_action_input "no_operation_mode" "$INPUT_NO_OPERATION_MODE" "--noop" "")") || exit 1
+append_boolean_action_input ROOT_OPTIONS "strict" "$INPUT_STRICT" "--strict" "" || exit 1
+append_boolean_action_input ROOT_OPTIONS "no_operation_mode" "$INPUT_NO_OPERATION_MODE" "--noop" "" || exit 1
 
 ARGS=()
 # v10 Breaking change as prerelease should be as_prerelease to match
-ARGS+=("$(eval_boolean_action_input "prerelease" "$INPUT_PRERELEASE" "--as-prerelease" "")") || exit 1
-ARGS+=("$(eval_boolean_action_input "commit" "$INPUT_COMMIT" "--commit" "--no-commit")") || exit 1
-ARGS+=("$(eval_boolean_action_input "tag" "$INPUT_TAG" "--tag" "--no-tag")") || exit 1
-ARGS+=("$(eval_boolean_action_input "push" "$INPUT_PUSH" "--push" "--no-push")") || exit 1
-ARGS+=("$(eval_boolean_action_input "changelog" "$INPUT_CHANGELOG" "--changelog" "--no-changelog")") || exit 1
-ARGS+=("$(eval_boolean_action_input "vcs_release" "$INPUT_VCS_RELEASE" "--vcs-release" "--no-vcs-release")") || exit 1
-ARGS+=("$(eval_boolean_action_input "build" "$INPUT_BUILD" "" "--skip-build")") || exit 1
+append_boolean_action_input ARGS "prerelease" "$INPUT_PRERELEASE" "--as-prerelease" "" || exit 1
+append_boolean_action_input ARGS "commit" "$INPUT_COMMIT" "--commit" "--no-commit" || exit 1
+append_boolean_action_input ARGS "tag" "$INPUT_TAG" "--tag" "--no-tag" || exit 1
+append_boolean_action_input ARGS "push" "$INPUT_PUSH" "--push" "--no-push" || exit 1
+append_boolean_action_input ARGS "changelog" "$INPUT_CHANGELOG" "--changelog" "--no-changelog" || exit 1
+append_boolean_action_input ARGS "vcs_release" "$INPUT_VCS_RELEASE" "--vcs-release" "--no-vcs-release" || exit 1
+append_boolean_action_input ARGS "build" "$INPUT_BUILD" "" "--skip-build" || exit 1
 
 # Handle --patch, --minor, --major
 # https://stackoverflow.com/a/47541882
@@ -100,11 +83,11 @@ else
 fi
 
 if [ -n "$INPUT_BUILD_METADATA" ]; then
-	ARGS+=("--build-metadata $INPUT_BUILD_METADATA")
+	ARGS+=("--build-metadata" "$INPUT_BUILD_METADATA")
 fi
 
 if [ -n "$INPUT_PRERELEASE_TOKEN" ]; then
-	ARGS+=("--prerelease-token $INPUT_PRERELEASE_TOKEN")
+	ARGS+=("--prerelease-token" "$INPUT_PRERELEASE_TOKEN")
 fi
 
 # Change to configured directory
@@ -158,8 +141,5 @@ fi
 # Copy inputs into correctly-named environment variables
 export GH_TOKEN="${INPUT_GITHUB_TOKEN}"
 
-# normalize extra spaces into single spaces as you combine the arguments
-CMD_ARGS="$(printf '%s' "${ROOT_OPTIONS[*]} version ${ARGS[*]}" | sed 's/  [ ]*/ /g' | sed 's/^ *//g')"
-
 # Run Semantic Release (explicitly use the GitHub action version)
-explicit_run_cmd "$PSR_VENV_BIN/semantic-release $CMD_ARGS"
+explicit_run_cmd "$PSR_VENV_BIN/semantic-release" "${ROOT_OPTIONS[@]}" "version" "${ARGS[@]}"
