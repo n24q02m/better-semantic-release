@@ -4,6 +4,28 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.2.2-beta.3:
+
+v1.2.2-beta.3 (2026-07-25)
+==========================
+
+🪲 Bug Fixes
+------------
+
+* Document the explain, actionable-errors, summary and stable-notes additions (`7d041bf`_)
+
+* Escape rich markup in publish error output (`80a5523`_)
+
+* Flatten commit-parser and algorithm lists in linear time instead of quadratic reduce (`979f796`_)
+
+* Highlight fatal CLI errors with color and semantic icons (`a7f10a1`_)
+
+.. _7d041bf: https://github.com/n24q02m/better-semantic-release/commit/7d041bf6896e6033dcbe55b991695668a4c2bac4
+.. _80a5523: https://github.com/n24q02m/better-semantic-release/commit/80a55236aa79ff6f31e65d053bd867a1a58a2be1
+.. _979f796: https://github.com/n24q02m/better-semantic-release/commit/979f796bd5cd1b3e76458a6f61a053c9d85e9a9f
+.. _a7f10a1: https://github.com/n24q02m/better-semantic-release/commit/a7f10a1895f5d9f898bd7826e977c309511386e6
+
+
 .. _changelog-v1.2.2-beta.2:
 
 v1.2.2-beta.2 (2026-07-25)
