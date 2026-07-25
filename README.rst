@@ -40,6 +40,21 @@ How it differs from upstream
        configured path(s) count toward its version bump / changelog)
      - None
      - Opt-in, off by default (drop-in)
+   * - Why a run did (or did not) release -- the real reason, not the
+       misattributed "already released" message
+     - Only at ``INFO`` log level, never surfaced
+     - Opt-in, off by default (``explain``)
+   * - Recurring cryptic failures (bad config key, unknown commit parser,
+       missing git remote, prerelease-bump mismatch)
+     - Raw ``str(exc)``, or an uncaught traceback
+     - Opt-in "what / why / fix" messages (``actionable_errors``)
+   * - Per-component "what would this release do" plan for a monorepo
+     - None
+     - Opt-in report-only table (``summary``)
+   * - Stable release notes after a prerelease line (prerelease tags
+       "consume" the commits, leaving the stable section empty)
+     - Won't fix upstream
+     - Opt-in aggregation (``stable_notes_aggregate``)
    * - Config / CLI / GitHub Action interface
      - --
      - Identical (drop-in)
@@ -60,6 +75,115 @@ How it differs from upstream
    would hit. In dry-run, the registry-collision guard still performs a live, read-only
    HTTP GET against the target registry (PyPI/npm) to check whether the computed version
    already exists; no commit, tag, or push is made either way.
+
+Configuration reference
+-----------------------
+
+Every fork addition lives under ``[tool.semantic_release.bsr]`` in the same config file
+upstream already reads (``pyproject.toml``, ``setup.cfg``, ``releaserc.toml``, ...). The
+two guards are **on** by default; everything else is **off** by default, so an untouched
+config behaves exactly like upstream.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 32 18 50
+
+   * - Key
+     - Default
+     - What it does
+   * - ``guard_orphan_tag``
+     - ``true``
+     - Fail loud when the version recomputes to an already-released tag that is no
+       longer reachable from ``HEAD`` (a rebase / force-push dropped the release commit).
+   * - ``guard_registry_collision``
+     - ``true``
+     - Fail closed when the computed version already exists on the target registry.
+   * - ``registry``
+     - auto
+     - ``"pypi"``, ``"npm"`` or ``"none"``. Auto-targets PyPI when ``[project].name``
+       is declared.
+   * - ``path_filter`` / ``paths``
+     - ``false`` / ``[]``
+     - Count only commits touching the configured path prefixes toward this
+       component's bump and changelog.
+   * - ``explain``
+     - ``false``
+     - Report the real reason a run did or did not release.
+   * - ``actionable_errors``
+     - ``false``
+     - Replace recurring cryptic failures with "what / why / fix" messages.
+   * - ``summary`` / ``components``
+     - ``false`` / ``[]``
+     - Print a report-only, per-component release plan for a monorepo.
+   * - ``stable_notes_aggregate`` / ``stable_notes_scope``
+     - ``false`` / ``"line"``
+     - Fold the notes of intervening prereleases into the stable release they
+       finalize.
+
+Every diagnostic below writes to **stderr**, so ``semantic-release version`` keeps
+printing only the version number on stdout and stays safe to capture in a shell
+substitution.
+
+Release diagnostics (``explain``)
+---------------------------------
+
+When ``next_version()`` recomputes a version that already exists, upstream always prints
+the same line -- ``No release will be made, X has already been released!`` -- no matter
+what actually happened. The usual real cause is that **no commit since the last release
+qualified for a bump**, a fact upstream only logs at ``INFO`` and never surfaces.
+
+.. code-block:: toml
+
+    [tool.semantic_release.bsr]
+    explain = true
+
+With ``explain`` on, that line is replaced by the classified cause:
+
+- ``NO_QUALIFYING_COMMITS`` -- commits were scanned, none were releasable (no
+  ``feat`` / ``fix`` / breaking-change commits). This is the case upstream misattributes.
+- ``ALREADY_RELEASED_NOOP`` -- the current tip is already tagged; a genuine re-dispatch
+  with nothing new to release.
+- ``ORPHAN`` -- the version recomputes to an already-released but *unreachable* tag,
+  which is the silent-release-freeze the orphan-tag guard exists for.
+
+On a run that *does* release, it also prints a "why this bump" line -- the bump level,
+the per-commit-type breakdown behind it, the base version, and how many commits were
+scanned::
+
+    better-semantic-release explain: minor bump from 2 feat, 3 fix commit(s) since 1.4.0 (5 commit(s) scanned).
+
+Actionable error messages (``actionable_errors``)
+-------------------------------------------------
+
+Upstream surfaces its most-cited failures as a bare ``str(exc)`` with no framing, and
+leaves two of them uncaught entirely (raw traceback).
+
+.. code-block:: toml
+
+    [tool.semantic_release.bsr]
+    actionable_errors = true
+
+With the flag on, these categories are rewritten as "what happened / why / how to fix":
+
+- **PRERELEASE BUMP MISMATCH** -- a prerelease-level bump was requested but the base
+  version is not already a prerelease.
+- **INVALID CONFIGURATION** -- each failing key is listed as
+  ``[tool.semantic_release.<key>]: <reason>`` instead of a raw pydantic dump.
+- **PARSER LOAD FAILED** -- lists the valid parser names (``angular``, ``conventional``,
+  ``conventional-monorepo``, ``emoji``, ``scipy``) and the ``module:ClassName`` form.
+- **GIT REMOTE NOT FOUND** -- shows both fixes (add the remote, or point
+  ``[tool.semantic_release.remote]`` at an existing one).
+- **TAG_FORMAT MISMATCH** -- a note emitted when the repository has git tags but *none*
+  match the configured ``tag_format``, which otherwise makes upstream silently treat the
+  repository as having no prior releases and start over from the initial version.
+
+.. note::
+
+   ``MissingGitRemote`` and ``ParserLoadError`` are not caught by upstream at all. With
+   ``actionable_errors`` off they are deliberately re-raised unchanged, so output stays
+   byte-for-byte identical to upstream; only with the flag on are they caught and
+   enriched. This is pure message enrichment -- no new exception types, and no change to
+   exit codes.
 
 Monorepo path filtering
 -----------------------
@@ -91,6 +215,76 @@ enable it under ``[tool.semantic_release.bsr]``.
 
    Path filtering applies to **both** the version-bump computation and the generated
    changelog -- a commit excluded from one is excluded from the other.
+
+Monorepo release-plan summary (``summary``)
+-------------------------------------------
+
+Neither upstream's ``conventional-monorepo`` parser nor the path filter above tells you
+what a release run *would* do across a monorepo's components before it does it.
+
+.. code-block:: toml
+
+    [tool.semantic_release.bsr]
+    summary = true
+    components = [
+        { name = "api", paths = ["apps/api", "libs/shared"] },
+        { name = "web", paths = ["apps/web"] },
+    ]
+
+Each row is computed with the **same** ``next_version()`` upstream uses for the real
+release, scoped to that component's paths:
+
+.. code-block:: text
+
+    better-semantic-release summary: monorepo release plan
+    component  would-release  level       commits  sample paths                            version
+    ---------  -------------  ----------  -------  --------------------------------------  -------
+    api        yes            MINOR       4        apps/api/main.go, apps/api/handlers.go  1.4.0
+    web        no             NO_RELEASE  0        -                                       1.2.3
+
+- The report is **read-only** -- nothing is committed, tagged, pushed or persisted, and
+  it renders before any persistence step, so it appears whether or not the run itself
+  ends up releasing.
+- ``components`` is optional. Left empty, you get a single row built from ``bsr.paths``
+  and named after ``[project].name`` -- so a non-monorepo project still gets a plan
+  instead of an empty report.
+- A component with no ``paths`` means "the whole repository" (the filter is a
+  passthrough), not "nothing".
+
+Stable release notes aggregation (``stable_notes_aggregate``)
+-------------------------------------------------------------
+
+Upstream buckets every commit under the *nearest* tag walking back from ``HEAD``. Once a
+line has ``rc``/``beta`` tags, those prereleases have already "consumed" the commits, so
+finalizing the stable version with no brand-new commits of its own produces a release
+section that is empty -- or fragmented across the prerelease tags instead of one grouped
+``vX.Y.Z`` section. This is the most-cited changelog complaint upstream (issues #555,
+#817, #1377, #1440) and is won't-fix there.
+
+.. code-block:: toml
+
+    [tool.semantic_release.bsr]
+    stable_notes_aggregate = true
+    stable_notes_scope = "line"  # or "since_stable"
+
+With this on, the notes of every intervening prerelease are merged into the stable
+release that finalizes them, de-duplicated by commit sha, covering **both** the written
+changelog and the VCS release notes. It only ever runs for a genuine stable finalize; a
+prerelease run is untouched.
+
+- ``scope = "line"`` (default) -- fold in prereleases sharing the stable version's
+  ``major.minor.patch``.
+- ``scope = "since_stable"`` -- walk back from the new version and fold in *every*
+  intervening prerelease regardless of line, stopping at (and excluding) the previous
+  stable tag. This differs from ``"line"`` when a prerelease track was abandoned
+  mid-line: if a forced bump moved ``0.2.0-beta.1`` to ``1.0.0-beta.1``, ``"line"``
+  picks up only ``1.0.0-beta.1`` while ``"since_stable"`` also folds in the abandoned
+  ``0.2.0-beta.1``.
+
+.. note::
+
+   This is off by default because -- unlike the diagnostics above -- it changes the
+   changelog **content**, which is a committed artifact.
 
 ----
 
