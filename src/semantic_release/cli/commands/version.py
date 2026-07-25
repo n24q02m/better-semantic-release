@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
 import click
+import rich
 import rich.markup
 import shellingham  # type: ignore[import]
 from click_option_group import MutuallyExclusiveOptionGroup, optgroup
@@ -845,8 +846,8 @@ def version(  # noqa: C901
                 noop=opts.noop,
             )
         except BuildDistributionsError as exc:
-            click.echo(str(exc), err=True)
-            click.echo("Build failed, aborting release", err=True)
+            rprint(f"[bold red]:x: {rich.markup.escape(str(exc))}[/bold red]")
+            rprint("[bold red]:stop_sign: Build failed, aborting release[/bold red]")
             ctx.exit(1)
 
     license_cfg = runtime.project_metadata.get(
@@ -922,10 +923,9 @@ def version(  # noqa: C901
                     noop=opts.noop,
                 )
             except UpstreamBranchChangedError as exc:
-                click.echo(str(exc), err=True)
-                click.echo(
-                    "Upstream branch has changed. Please pull the latest changes and try again.",
-                    err=True,
+                rprint(f"[bold red]:x: {rich.markup.escape(str(exc))}[/bold red]")
+                rprint(
+                    "[bold red]:stop_sign: Upstream branch has changed. Please pull the latest changes and try again.[/bold red]"
                 )
                 ctx.exit(1)
             except (
@@ -935,8 +935,10 @@ def version(  # noqa: C901
                 GitFetchError,
                 LocalGitError,
             ) as exc:
-                click.echo(str(exc), err=True)
-                click.echo("Unable to verify upstream due to error!", err=True)
+                rprint(f"[bold red]:x: {rich.markup.escape(str(exc))}[/bold red]")
+                rprint(
+                    "[bold red]:stop_sign: Unable to verify upstream due to error![/bold red]"
+                )
                 ctx.exit(1)
 
             # TODO: integrate into push branch
@@ -1022,11 +1024,10 @@ def version(  # noqa: C901
     finally:
         if exception is not None:
             logger.exception(exception)
-            click.echo(str(exception), err=True)
+            rprint(f"[bold red]:x: {rich.markup.escape(str(exception))}[/bold red]")
             if help_message:
-                click.echo(help_message, err=True)
-            click.echo(
-                f"Failed to create release on {hvcs_client.__class__.__name__}!",
-                err=True,
+                rprint(f"[bold red]{rich.markup.escape(help_message)}[/bold red]")
+            rprint(
+                f"[bold red]:stop_sign: Failed to create release on {rich.markup.escape(hvcs_client.__class__.__name__)}![/bold red]"
             )
             ctx.exit(1)
