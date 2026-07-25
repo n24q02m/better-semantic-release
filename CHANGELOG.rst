@@ -4,6 +4,19 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.2.2-beta.2:
+
+v1.2.2-beta.2 (2026-07-25)
+==========================
+
+🪲 Bug Fixes
+------------
+
+* Build the semantic-release argv directly instead of eval-ing a command string (`2e4d812`_)
+
+.. _2e4d812: https://github.com/n24q02m/better-semantic-release/commit/2e4d8122661f080fec53632f2b93d8d80a45b331
+
+
 .. _changelog-v1.2.2-beta.1:
 
 v1.2.2-beta.1 (2026-07-24)
