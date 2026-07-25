@@ -290,7 +290,7 @@ def build_distributions(
     :raises: BuildDistributionsError: if the build command fails
     """
     if not build_command:
-        rprint("[green]No build command specified, skipping")
+        rprint("[yellow]:warning: No build command specified, skipping")
         return
 
     if noop:
@@ -331,7 +331,7 @@ def build_distributions(
 
     try:
         shell(build_command, env=build_env_vars, check=True)
-        rprint("[bold green]Build completed successfully!")
+        rprint("[bold green]:white_check_mark: Build completed successfully!")
     except subprocess.CalledProcessError as exc:
         logger.exception(exc)
         logger.error("Build command failed with exit code %s", exc.returncode)  # noqa: TRY400
