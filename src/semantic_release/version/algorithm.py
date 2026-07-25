@@ -3,7 +3,6 @@ from __future__ import annotations
 import logging
 from collections import Counter
 from contextlib import suppress
-from functools import reduce
 from queue import LifoQueue
 from typing import TYPE_CHECKING, Iterable
 
@@ -362,19 +361,16 @@ def next_version(
     parsed_results = list(map(commit_parser.parse, commits_since_last_release))
 
     # Step 5A. Accumulate all parsed results into a single list accounting for possible multiple results per commit
-    consolidated_results: list[ParseResult] = reduce(
-        lambda accumulated_results, p_results: [
-            *accumulated_results,
-            *(
-                # Cast to list if not already a list
-                p_results
-                if isinstance(p_results, list) or type(p_results) == tuple
-                else [p_results]
-            ),
-        ],
-        parsed_results,
-        [],
-    )
+    # Performance optimization: Use list comprehension instead of reduce with array unpacking to avoid O(N^2) complexity
+    consolidated_results: list[ParseResult] = [
+        res
+        for p_results in parsed_results
+        for res in (
+            p_results
+            if isinstance(p_results, list) or type(p_results) == tuple
+            else [p_results]
+        )
+    ]
 
     # Step 5B. Validation type check for the parser results (important because of possible custom parsers)
     if not validate_types_in_sequence(consolidated_results, (ParseError, ParsedCommit)):
