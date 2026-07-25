@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "better-semantic-release"
-version = "1.2.2-beta.3"
+version = "1.2.2"
 description = "Drop-in python-semantic-release fork with built-in release-safety guards (orphan-tag + registry-collision)."
 requires-python = "~= 3.8"
 license = { text = "MIT" }
