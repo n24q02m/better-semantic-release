@@ -14,6 +14,23 @@ requires pointing the ``uses:`` line at the fork:
 
     uses: n24q02m/better-semantic-release@v<major>
 
+.. note::
+
+   For anything beyond a quick trial, pin the full commit SHA and record the exact
+   version beside it, as `GitHub's own hardening guide`_ recommends for third-party
+   actions:
+
+   .. code-block:: yaml
+
+       uses: n24q02m/better-semantic-release@<40-char-sha>  # v1.2.3
+
+   The trailing comment is not decoration -- it is what Renovate (and Dependabot)
+   read to decide what the pin currently *is*. Pin the SHA but write ``# v<major>``
+   in the comment and the bot tracks a **moving** tag: the only update it can offer
+   is an opaque "update digest" pull request with no version anywhere in it, which
+   is how a pin silently falls several minor versions behind while every dashboard
+   still looks healthy.
+
 On top of that, the fork adds release-safety guards that run automatically before any
 commit, tag, or push is made. Guards can be opted out of per-repository under the
 ``[tool.semantic_release.bsr]`` table in ``pyproject.toml``.
@@ -307,6 +324,7 @@ When using the Python Semantic Release GitHub Action, it executes the command
 The usage information and examples for this GitHub Action is available under
 the `GitHub Actions section`_ of `python-semantic-release.readthedocs.io`_.
 
+.. _GitHub's own hardening guide: https://docs.github.com/en/actions/reference/secure-use-reference#using-third-party-actions
 .. _python-semantic-release: https://pypi.org/project/python-semantic-release/
 .. _python-semantic-release.readthedocs.io: https://python-semantic-release.readthedocs.io/en/stable/
 .. _GitHub Actions section: https://python-semantic-release.readthedocs.io/en/stable/configuration/automatic-releases/github-actions.html
