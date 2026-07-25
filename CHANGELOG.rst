@@ -4,6 +4,19 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.2.3:
+
+v1.2.3 (2026-07-25)
+===================
+
+🪲 Bug Fixes
+------------
+
+* Document SHA pinning and why the version comment matters (`90f98e6`_)
+
+.. _90f98e6: https://github.com/n24q02m/better-semantic-release/commit/90f98e639e7ff99d51c6b0cf294afe989792ff2b
+
+
 .. _changelog-v1.2.2:
 
 v1.2.2 (2026-07-25)
