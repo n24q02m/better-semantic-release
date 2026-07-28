@@ -1,7 +1,3 @@
-## 2024-05-19 - Semantic error outputs with emojis
-**Learning:** Raw `click.echo` prints plain text that users often miss in wall-of-text CI logs. Replacing this with rich `rprint` using red text and visual signs (like 🛑 or ❌) makes fatal CLI states stand out, significantly improving terminal UX accessibility. The `rich` CLI testing runner strips markup, meaning tests aren't typically broken when adding markup text.
-**Action:** Always prefer `rprint` with appropriate semantic colors and emojis over plain `click.echo` for CLI error outputs. Use `rich.markup.escape` when printing dynamic strings to prevent `MarkupError`.
-
-## 2024-05-24 - Semantic Error/Warning Colors
-**Learning:** Terminal errors and warnings displayed with basic `click.echo` often get lost in noisy CI logs or standard output streams. By using Rich's colors and emojis, developers get instant visual confirmation of the failure state.
-**Action:** Always favor formatting terminal CLI errors and warnings with appropriate semantics (e.g. `[bold red]` and `:x:`) over plain text.
+## 2025-02-22 - Replacing standard prints with rich formatted prints in CLI tools
+**Learning:** When modifying CLI tools output to include semantic color formatting (like swapping `click.echo` with `rich`), it is critical to preserve the output stream (stdout vs stderr). `rprint` from some libraries may default to stderr or stdout depending on the context. If the original code explicitly uses `err=True` (like `click.echo`), the replacement must guarantee the output still goes to stderr to prevent breaking shell pipelining or script logging expectations. A reliable approach in `rich` is `rich.console.Console(stderr=True).print()`.
+**Action:** Always inspect the target stream of the print statements being replaced in CLI tools and match them precisely when applying UI/UX enhancements.

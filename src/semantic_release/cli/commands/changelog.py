@@ -5,8 +5,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import click
+import rich.console
 import tomlkit
 from git import GitCommandError, Repo
+from rich.markup import escape
 
 from semantic_release.changelog.release_history import ReleaseHistory
 from semantic_release.cli.changelog_writer import (
@@ -125,29 +127,29 @@ def changelog(cli_ctx: CliContextObj, release_tag: str | None) -> None:
         return
 
     if not isinstance(hvcs_client, RemoteHvcsBase):
-        click.echo(
-            "Remote does not support releases. Skipping release notes update...",
-            err=True,
+        rich.console.Console(stderr=True).print(
+            "[yellow]Remote does not support releases. Skipping release notes update...[/yellow]",
         )
         return
 
     if not (version := translator.from_tag(release_tag)):
-        click.echo(
+        rich.console.Console(stderr=True).print(
             str.join(
                 " ",
                 [
-                    f"Tag {release_tag!r} does not match the tag format",
+                    f"[bold red]Tag {escape(release_tag)!r} does not match the tag format[/bold red]",
                     repr(translator.tag_format),
                 ],
-            ),
-            err=True,
+            )
         )
         ctx.exit(1)
 
     try:
         release = release_history.released[version]
     except KeyError:
-        click.echo(f"tag {release_tag} not in release history", err=True)
+        rich.console.Console(stderr=True).print(
+            f"[bold red]tag {escape(release_tag)} not in release history[/bold red]"
+        )
         ctx.exit(2)
 
     release_notes = generate_release_notes(
@@ -173,5 +175,7 @@ def changelog(cli_ctx: CliContextObj, release_tag: str | None) -> None:
         )
     except Exception as e:  # noqa: BLE001 # TODO: catch specific exceptions
         logger.exception(e)
-        click.echo("Failed to post release notes to remote", err=True)
+        rich.console.Console(stderr=True).print(
+            "[bold red]:x: Failed to post release notes to remote[/bold red]"
+        )
         ctx.exit(1)

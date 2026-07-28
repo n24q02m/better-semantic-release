@@ -1,0 +1,53 @@
+--- src/semantic_release/cli/commands/changelog.py
++++ src/semantic_release/cli/commands/changelog.py
+@@ -10,9 +10,10 @@
+ from git import GitCommandError, Repo
++from rich.markup import escape
+
+ from semantic_release.changelog.release_history import ReleaseHistory
+ from semantic_release.cli.changelog_writer import (
+     generate_release_notes,
+     write_changelog_files,
+ )
+-from semantic_release.cli.util import noop_report
++from semantic_release.cli.util import noop_report, rprint
+ from semantic_release.globals import logger
+@@ -124,19 +125,18 @@
+         return
+
+     if not isinstance(hvcs_client, RemoteHvcsBase):
+-        click.echo(
+-            "Remote does not support releases. Skipping release notes update...",
+-            err=True,
++        rprint(
++            "[yellow]Remote does not support releases. Skipping release notes update...[/yellow]",
+         )
+         return
+
+     if not (version := translator.from_tag(release_tag)):
+-        click.echo(
++        rprint(
+             str.join(
+                 " ",
+                 [
+-                    f"Tag {release_tag!r} does not match the tag format",
++                    f"[bold red]Tag {escape(release_tag)!r} does not match the tag format[/bold red]",
+                     repr(translator.tag_format),
+                 ],
+-            ),
+-            err=True,
++            )
+         )
+         ctx.exit(1)
+
+@@ -144,3 +144,3 @@
+     except KeyError:
+-        click.echo(f"tag {release_tag} not in release history", err=True)
++        rprint(f"[bold red]tag {escape(release_tag)} not in release history[/bold red]")
+         ctx.exit(2)
+@@ -171,3 +171,3 @@
+     except Exception as e:  # noqa: BLE001 # TODO: catch specific exceptions
+         logger.exception(e)
+-        click.echo("Failed to post release notes to remote", err=True)
++        rprint("[bold red]:x: Failed to post release notes to remote[/bold red]")
+         ctx.exit(1)
