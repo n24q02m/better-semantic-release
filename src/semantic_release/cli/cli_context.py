@@ -4,7 +4,6 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-import click
 import rich.markup
 from click.core import ParameterSource
 from git import InvalidGitRepositoryError
@@ -27,6 +26,8 @@ from semantic_release.errors import (
 )
 
 if TYPE_CHECKING:  # pragma: no cover
+    import click
+
     from semantic_release.cli.config import GlobalCommandLineOptions
 
     class CliContext(click.Context):
