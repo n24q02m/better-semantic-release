@@ -17,7 +17,12 @@ if TYPE_CHECKING:
 
 @pytest.mark.parametrize(
     "status, expected",
-    [(200, ProbeResult.EXISTS), (404, ProbeResult.FREE), (500, ProbeResult.UNKNOWN), (None, ProbeResult.UNKNOWN)],
+    [
+        (200, ProbeResult.EXISTS),
+        (404, ProbeResult.FREE),
+        (500, ProbeResult.UNKNOWN),
+        (None, ProbeResult.UNKNOWN),
+    ],
 )
 def test_probe_maps_status(monkeypatch, status, expected):
     monkeypatch.setattr(reg, "_http_status", lambda _url, _timeout: status)
@@ -27,7 +32,9 @@ def test_probe_maps_status(monkeypatch, status, expected):
 def test_pypi_url_shape(monkeypatch):
     captured = {}
     monkeypatch.setattr(
-        reg, "_http_status", lambda url, _timeout: captured.setdefault("url", url) or 404
+        reg,
+        "_http_status",
+        lambda url, _timeout: captured.setdefault("url", url) or 404,
     )
     probe_registry("pypi", "my-pkg", "1.2.3-beta.2")
     assert captured["url"] == "https://pypi.org/pypi/my-pkg/1.2.3-beta.2/json"
@@ -36,7 +43,9 @@ def test_pypi_url_shape(monkeypatch):
 def test_npm_url_shape(monkeypatch):
     captured = {}
     monkeypatch.setattr(
-        reg, "_http_status", lambda url, _timeout: captured.setdefault("url", url) or 404
+        reg,
+        "_http_status",
+        lambda url, _timeout: captured.setdefault("url", url) or 404,
     )
     probe_registry("npm", "@scope/pkg", "0.1.0")
     assert captured["url"] == "https://registry.npmjs.org/%40scope%2Fpkg/0.1.0"
@@ -93,3 +102,10 @@ def test_http_status_connection_failure_returns_none():
     failure, without touching the internet.
     """
     assert reg._http_status(_closed_port_url(), timeout=2.0) is None
+
+
+@pytest.mark.parametrize("scheme", ["file", "ftp", "gopher", ""])
+def test_http_status_rejects_invalid_schemes(scheme):
+    """`_http_status` raises ValueError on non-HTTP/HTTPS URLs to prevent SSRF/LFI."""
+    with pytest.raises(ValueError, match="Invalid URL scheme"):
+        reg._http_status(f"{scheme}:///etc/passwd", timeout=2.0)
