@@ -120,7 +120,7 @@ def test_not_a_release_branch_detached_head_exit_code(
     repo_result: BuiltRepoResult,
     run_cli: RunCliFn,
 ):
-    expected_err_msg = (
+    expected_err_msg = "❌ " + (
         "Detached HEAD state cannot match any release groups; no release will be made"
     )
 

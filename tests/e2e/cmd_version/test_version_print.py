@@ -973,7 +973,7 @@ def test_version_print_next_version_fails_on_detached_head(
     strip_logging_messages: StripLoggingMessagesFn,
 ):
     repo = repo_result["repo"]
-    expected_error_msg = (
+    expected_error_msg = "❌ " + (
         "Detached HEAD state cannot match any release groups; no release will be made"
     )
 
@@ -1035,7 +1035,7 @@ def test_version_print_next_tag_fails_on_detached_head(
     strip_logging_messages: StripLoggingMessagesFn,
 ):
     repo = repo_result["repo"]
-    expected_error_msg = (
+    expected_error_msg = "❌ " + (
         "Detached HEAD state cannot match any release groups; no release will be made"
     )
 
