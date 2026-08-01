@@ -21,6 +21,11 @@ def _http_status(url: str, timeout: float) -> int | None:
 
     Returns None on any network-level failure.
     """
+    parsed = urllib.parse.urlparse(url)
+    if parsed.scheme not in ("http", "https"):
+        # Prevent SSRF and Local File Inclusion (LFI) vulnerabilities via file:// etc.
+        raise ValueError(f"Invalid URL scheme: {parsed.scheme}")
+
     req = urllib.request.Request(  # noqa: S310
         url, method="GET", headers={"User-Agent": "better-semantic-release-guard"}
     )
