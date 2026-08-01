@@ -6,6 +6,7 @@ better-semantic-release
 ----
 
 ``better-semantic-release`` is a drop-in fork of `python-semantic-release`_ (MIT licensed).
+This fork is distributed under Apache-2.0; the upstream MIT terms are preserved in ``LICENSE-MIT``.
 It keeps the same ``[tool.semantic_release]`` configuration schema, the same
 ``semantic-release`` CLI, and the same GitHub Action interface -- switching over only
 requires pointing the ``uses:`` line at the fork:
