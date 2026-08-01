@@ -1,0 +1,8 @@
+better-semantic-release
+Copyright 2026 n24q02m
+
+This product is a fork of python-semantic-release
+(https://github.com/python-semantic-release/python-semantic-release), Copyright (c)
+2015 Rolf Erik Lekang and contributors, originally licensed under the MIT License.
+The majority of the code in this repository originates upstream; those terms are
+preserved in LICENSE-MIT and continue to apply to the portions they cover.

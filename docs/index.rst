@@ -1,7 +1,7 @@
 Python Semantic Release
 ***********************
 
-|PyPI Version| |conda-forge version| |Last Release| |Monthly Downloads| |PSR License| |Issues|
+|PyPI Version| |conda-forge version| |Last Release| |Monthly Downloads| |License| |Issues|
 
 **Python Semantic Release (PSR)** provides an automated release mechanism
 determined by SemVer and Commit Message Conventions for your Git projects.
@@ -39,8 +39,8 @@ Read more about the setup and configuration in our :ref:`Getting Started Guide <
    :target: https://github.com/python-semantic-release/python-semantic-release/releases/latest
    :alt: GitHub Release Date
 
-.. |PSR License| image:: https://img.shields.io/pypi/l/python-semantic-release?color=blue
-   :target: https://github.com/python-semantic-release/python-semantic-release/blob/master/LICENSE
+.. |License| image:: https://img.shields.io/pypi/l/better-semantic-release?color=blue
+   :target: https://github.com/n24q02m/better-semantic-release/blob/main/LICENSE
    :alt: PyPI - License
 
 .. |Issues| image:: https://img.shields.io/github/issues/python-semantic-release/python-semantic-release
