@@ -110,7 +110,7 @@ def test_version_on_nonrelease_branch_when_strict(
     # Evaluate
     assert_exit_code(2, result, cli_cmd)
     assert not result.stdout
-    assert expected_error_msg == strip_logging_messages(result.stderr)
+    assert f"⚠ {expected_error_msg}" == strip_logging_messages(result.stderr)
 
     # assert nothing else happened (no code changes, no commit, no tag, no push, no vcs release)
     tags_after = sorted([tag.name for tag in repo.tags])
