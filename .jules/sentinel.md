@@ -2,3 +2,7 @@
 **Vulnerability:** GitHub Actions environment variables (like `$GITHUB_OUTPUT`) populated with multiline values using a hardcoded `EOF` delimiter are vulnerable to injection attacks if the content contains the string `\nEOF\n`.
 **Learning:** This codebase incorrectly implemented GitHub Actions multiline strings using a static `EOF` string. When creating variables out of user-controlled input (like commit messages appearing in `release_notes`), a malicious commit message could break out of the multiline variable and define new environment variables or outputs.
 **Prevention:** Always use a randomly generated delimiter (e.g. `uuid.uuid4().hex`) to ensure there is no possibility of collisions or command injection when writing to `$GITHUB_OUTPUT`.
+## 2024-08-04 - SSRF and Local File Inclusion in urllib Requests
+**Vulnerability:** `urllib.request.urlopen` blindly fetches any provided URL. If a URL containing a non-HTTP scheme like `file://` or `ftp://` is passed, it can lead to Server-Side Request Forgery (SSRF) or Local File Inclusion (LFI).
+**Learning:** Even though the function was named `_http_status`, the `urllib` library does not restrict schemes to HTTP/HTTPS by default. The static analyzer (Bandit) had flagged it with `# noqa: S310`, which was silencing a valid risk that should have been mitigated at runtime rather than ignored.
+**Prevention:** Always enforce runtime URL scheme validation (e.g., using `urllib.parse.urlparse`) explicitly checking for `http` and `https` before passing dynamic URLs to `urllib.request` functions.
