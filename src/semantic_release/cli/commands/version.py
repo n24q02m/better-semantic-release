@@ -697,7 +697,7 @@ def version(  # noqa: C901
     # If the new version has already been released, we fail and abort if strict;
     # otherwise we exit with 0.
     if new_version in previously_released_versions:
-        err_msg = f"No release will be made, {new_version!s} has already been released!"
+        err_msg = f"💤 No release will be made, {new_version!s} has already been released!"
         orange1_code = 214  # https://rich.readthedocs.io/en/stable/appendix/colors.html
 
         # BSR-PATCH: release-decision explainer (better-semantic-release). Compute
