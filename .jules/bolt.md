@@ -5,3 +5,6 @@
 ## 2024-07-24 - Avoiding `reduce` with list concatenation for list flattening
 **Learning:** Continuing on the previous learning, I found multiple instances in this codebase (`semantic-release`) where `reduce` is used to flatten lists (e.g. `reduce(lambda all_msgs, msgs: all_msgs + msgs, map(...), [])` or `reduce(lambda acc, p_results: [*acc, ...], ...)`). This results in O(N^2) time complexity and memory allocations because it creates a new list copy on every iteration.
 **Action:** Replace these usages of `reduce` with O(N) alternatives such as list comprehensions (e.g., `[item for sublist in lists for item in sublist]`) or `itertools.chain.from_iterable` to significantly improve performance when handling larger numbers of commits.
+## 2024-07-24 - Avoiding any/all with eager collections
+**Learning:** Using `all([A, B, C])` or `any((A, B, C))` forces Python to evaluate all elements in the collection before passing them to the function, negating any short-circuiting benefits. This is a common performance anti-pattern.
+**Action:** Replace these patterns with explicit lazy boolean evaluations like `A and B and C` or `A or B or C` to take advantage of short-circuiting, especially when evaluating conditions can be expensive.
