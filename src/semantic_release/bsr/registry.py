@@ -21,6 +21,11 @@ def _http_status(url: str, timeout: float) -> int | None:
 
     Returns None on any network-level failure.
     """
+    # Enforce runtime URL scheme validation to prevent SSRF or local file inclusion
+    parsed_url = urllib.parse.urlparse(url)
+    if parsed_url.scheme not in ("http", "https"):
+        return None
+
     req = urllib.request.Request(  # noqa: S310
         url, method="GET", headers={"User-Agent": "better-semantic-release-guard"}
     )
