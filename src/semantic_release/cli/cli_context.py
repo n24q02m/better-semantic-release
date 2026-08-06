@@ -4,7 +4,7 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-import click
+import click  # noqa: TCH002
 import rich.markup
 from click.core import ParameterSource
 from git import InvalidGitRepositoryError
@@ -91,7 +91,7 @@ class CliContextObj:
             return RawConfig.model_validate(config_obj)
         except FileNotFoundError as exc:
             rprint(f"[bold red][:x:] {rich.markup.escape(str(exc))}[/bold red]")
-            self.ctx.exit(2)
+            self.ctx.exit(2)  # noqa: TCH002
         except (
             ValidationError,
             InvalidConfiguration,
