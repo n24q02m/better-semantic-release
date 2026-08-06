@@ -277,6 +277,9 @@ def stable_today_date() -> datetime:
     starting_day_of_year = curr_time.timetuple().tm_yday
     ending_day_of_year = est_test_completion.timetuple().tm_yday
 
+    if starting_day_of_year < ending_day_of_year:
+        return est_test_completion
+
     return curr_time
 
 
