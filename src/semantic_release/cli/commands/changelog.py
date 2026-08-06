@@ -5,6 +5,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import click
+import rich
+import rich.markup
 import tomlkit
 from git import GitCommandError, Repo
 
@@ -13,7 +15,7 @@ from semantic_release.cli.changelog_writer import (
     generate_release_notes,
     write_changelog_files,
 )
-from semantic_release.cli.util import noop_report
+from semantic_release.cli.util import noop_report, rprint, rprint, rprint
 from semantic_release.globals import logger
 from semantic_release.hvcs.remote_hvcs_base import RemoteHvcsBase
 
@@ -125,29 +127,27 @@ def changelog(cli_ctx: CliContextObj, release_tag: str | None) -> None:
         return
 
     if not isinstance(hvcs_client, RemoteHvcsBase):
-        click.echo(
-            "Remote does not support releases. Skipping release notes update...",
-            err=True,
+        rprint(
+            "[bold orange1][:zzz: NOP] Remote does not support releases. Skipping release notes update...[/bold orange1]"
         )
         return
 
     if not (version := translator.from_tag(release_tag)):
-        click.echo(
+        rprint(
             str.join(
                 " ",
                 [
-                    f"Tag {release_tag!r} does not match the tag format",
-                    repr(translator.tag_format),
+                    f"[bold red][:x:] Tag {rich.markup.escape(repr(release_tag))} does not match the tag format",
+                    rich.markup.escape(repr(translator.tag_format)) + "[/bold red]",
                 ],
-            ),
-            err=True,
+            )
         )
         ctx.exit(1)
 
     try:
         release = release_history.released[version]
     except KeyError:
-        click.echo(f"tag {release_tag} not in release history", err=True)
+        rprint(f"[bold red][:x:] tag {rich.markup.escape(release_tag)} not in release history[/bold red]")
         ctx.exit(2)
 
     release_notes = generate_release_notes(
@@ -173,5 +173,5 @@ def changelog(cli_ctx: CliContextObj, release_tag: str | None) -> None:
         )
     except Exception as e:  # noqa: BLE001 # TODO: catch specific exceptions
         logger.exception(e)
-        click.echo("Failed to post release notes to remote", err=True)
+        rprint("[bold red][:x:] Failed to post release notes to remote[/bold red]")
         ctx.exit(1)

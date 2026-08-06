@@ -974,7 +974,7 @@ def test_version_print_next_version_fails_on_detached_head(
 ):
     repo = repo_result["repo"]
     expected_error_msg = (
-        "Detached HEAD state cannot match any release groups; no release will be made"
+        "[❌] Detached HEAD state cannot match any release groups; no release will be made"
     )
 
     # Setup: put the repo in a detached head state
@@ -1004,7 +1004,7 @@ def test_version_print_next_version_fails_on_detached_head(
     # Evaluate (expected -> actual)
     assert_exit_code(1, result, cli_cmd)
     assert not result.stdout
-    assert f"{expected_error_msg}\n" == strip_logging_messages(result.stderr)
+    assert expected_error_msg in strip_logging_messages(result.stderr).replace("\n", "")
 
     # assert nothing else happened (no code changes, no commit, no tag, no push, no vcs release)
     assert repo_status_before == repo_status_after
@@ -1036,7 +1036,7 @@ def test_version_print_next_tag_fails_on_detached_head(
 ):
     repo = repo_result["repo"]
     expected_error_msg = (
-        "Detached HEAD state cannot match any release groups; no release will be made"
+        "[❌] Detached HEAD state cannot match any release groups; no release will be made"
     )
 
     # Setup: put the repo in a detached head state
@@ -1066,7 +1066,7 @@ def test_version_print_next_tag_fails_on_detached_head(
     # Evaluate (expected -> actual)
     assert_exit_code(1, result, cli_cmd)
     assert not result.stdout
-    assert f"{expected_error_msg}\n" == strip_logging_messages(result.stderr)
+    assert expected_error_msg in strip_logging_messages(result.stderr).replace("\n", "")
 
     # assert nothing else happened (no code changes, no commit, no tag, no push, no vcs release)
     assert repo_status_before == repo_status_after

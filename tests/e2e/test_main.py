@@ -121,7 +121,7 @@ def test_not_a_release_branch_detached_head_exit_code(
     run_cli: RunCliFn,
 ):
     expected_err_msg = (
-        "Detached HEAD state cannot match any release groups; no release will be made"
+        "[❌] Detached HEAD state cannot match any release groups; no release will be made"
     )
 
     # cause repo to be in detached head state without file changes
@@ -133,7 +133,7 @@ def test_not_a_release_branch_detached_head_exit_code(
 
     # detached head states should throw an error as release branches cannot be determined
     assert_exit_code(1, result, cli_cmd)
-    assert expected_err_msg in result.stderr
+    assert expected_err_msg in result.stderr.replace("\n", "")
 
 
 @pytest.fixture

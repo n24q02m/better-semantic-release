@@ -495,7 +495,7 @@ def version(  # noqa: C901
                 add_partial_tags=config.add_partial_tags,
             )
         ):
-            logger.warning("No release tags found.")
+            rprint("[bold orange1][:warning: NOP] No release tags found.[/bold orange1]")
             return
 
         click.echo(last_release[0] if print_last_released_tag else last_release[1])
@@ -556,18 +556,18 @@ def version(  # noqa: C901
 
     # Only push if we're committing changes
     if push_changes and not commit_changes and not create_tag:
-        logger.info("changes will not be pushed because --no-commit disables pushing")
+        rprint("[bold orange1][:zzz: NOP] changes will not be pushed because --no-commit disables pushing[/bold orange1]")
         push_changes &= commit_changes
 
     # Only push if we're creating a tag
     if push_changes and not create_tag and not commit_changes:
-        logger.info("new tag will not be pushed because --no-tag disables pushing")
+        rprint("[bold orange1][:zzz: NOP] new tag will not be pushed because --no-tag disables pushing[/bold orange1]")
         push_changes &= create_tag
 
     # Only make a release if we're pushing the changes
     if make_vcs_release and not push_changes:
-        logger.info(
-            "No vcs release will be created because pushing changes is disabled"
+        rprint(
+            "[bold orange1][:zzz: NOP] No vcs release will be created because pushing changes is disabled[/bold orange1]"
         )
         make_vcs_release &= push_changes
 
@@ -887,7 +887,7 @@ def version(  # noqa: C901
                 noop=opts.noop,
             )
         except GitCommitEmptyIndexError:
-            logger.info("No local changes to add to any commit, skipping")
+            rprint("[bold orange1][:zzz: NOP] No local changes to add to any commit, skipping[/bold orange1]")
             commit_changes = False
 
     # Tag the version after potentially creating a new HEAD commit.
@@ -987,7 +987,7 @@ def version(  # noqa: C901
         return
 
     if not isinstance(hvcs_client, RemoteHvcsBase):
-        logger.info("Remote does not support releases. Skipping release creation...")
+        rprint("[bold orange1][:zzz: NOP] Remote does not support releases. Skipping release creation...[/bold orange1]")
         return
 
     exception: Exception | None = None

@@ -90,7 +90,7 @@ class CliContextObj:
 
             return RawConfig.model_validate(config_obj)
         except FileNotFoundError as exc:
-            click.echo(str(exc), err=True)
+            rprint(f"[bold red][:x:] {rich.markup.escape(str(exc))}[/bold red]")
             self.ctx.exit(2)
         except (
             ValidationError,
@@ -100,7 +100,7 @@ class CliContextObj:
             # BSR-PATCH: actionable error messages (better-semantic-release)
             bsr_cfg = load_bsr_config(self.global_opts.config_file)
             msg = format_actionable(exc) if bsr_cfg.actionable_errors else None
-            click.echo(msg or str(exc), err=True)
+            rprint(f"[bold red][:x:] {rich.markup.escape(msg or str(exc))}[/bold red]")
             self.ctx.exit(1)
 
     def _init_runtime_ctx(self) -> RuntimeContext:
@@ -138,7 +138,7 @@ class CliContextObj:
             ):
                 raise
             msg = format_actionable(exc) if bsr_cfg.actionable_errors else None
-            click.echo(msg or str(exc), err=True)
+            rprint(f"[bold red][:x:] {rich.markup.escape(msg or str(exc))}[/bold red]")
             self.ctx.exit(1)
 
         # This allows us to mask secrets in the logging
