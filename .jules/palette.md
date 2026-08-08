@@ -5,3 +5,7 @@
 ## 2024-05-24 - Semantic Error/Warning Colors
 **Learning:** Terminal errors and warnings displayed with basic `click.echo` often get lost in noisy CI logs or standard output streams. By using Rich's colors and emojis, developers get instant visual confirmation of the failure state.
 **Action:** Always favor formatting terminal CLI errors and warnings with appropriate semantics (e.g. `[bold red]` and `:x:`) over plain text.
+
+## 2024-05-25 - Rejected UX change: Emojis in CLI outputs
+**Learning:** Adding emojis or altering default CLI output phrasing in tools consumed by CI environments can cause downstream breakage or conflict with other machine-readable formats. A PR to add emojis was rejected because maintainers have decided against new emojis, and output text serves as a contract for CI parsers.
+**Action:** Do not alter standard CLI output messages (such as adding emojis or changing wording) for the sake of decoration, especially when these outputs are parsed by scripts or CI platforms. Respect project maintainers' stated design preferences against new emojis.
