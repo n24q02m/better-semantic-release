@@ -5,3 +5,9 @@
 ## 2024-05-24 - Semantic Error/Warning Colors
 **Learning:** Terminal errors and warnings displayed with basic `click.echo` often get lost in noisy CI logs or standard output streams. By using Rich's colors and emojis, developers get instant visual confirmation of the failure state.
 **Action:** Always favor formatting terminal CLI errors and warnings with appropriate semantics (e.g. `[bold red]` and `:x:`) over plain text.
+## 2024-08-01 - Rich Markup Tag Best Practices
+**Learning:** Adding explicit closing tags (e.g., `[/green]`) to `rich` statements where the styling applies to the very end of the string isn't strictly necessary since `rich` handles unclosed tags gracefully, but it is a good practice for maintainability. Also, scratchpad files like `plan.md` shouldn't be left in the root directory.
+**Action:** Close rich markup explicitly for robustness. Ensure temporary files are cleaned up prior to requesting code review or submitting.
+## 2024-08-01 - Emojis in CLI Output
+**Learning:** Adding UX emojis to CLI output in this repository is explicitly forbidden. Maintainer preference states no new emoji in this project's output. Furthermore, altering CLI output breaks downstream parsing in 21 repositories.
+**Action:** Do not add emojis or modify existing CLI output prefixes/wording in this repository unless required for functionality.

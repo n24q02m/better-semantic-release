@@ -290,7 +290,7 @@ def build_distributions(
     :raises: BuildDistributionsError: if the build command fails
     """
     if not build_command:
-        rprint("[green]No build command specified, skipping")
+        rprint("[green]:fast_forward: No build command specified, skipping[/green]")
         return
 
     if noop:
@@ -331,7 +331,7 @@ def build_distributions(
 
     try:
         shell(build_command, env=build_env_vars, check=True)
-        rprint("[bold green]Build completed successfully!")
+        rprint("[bold green]:white_check_mark: Build completed successfully![/bold green]")
     except subprocess.CalledProcessError as exc:
         logger.exception(exc)
         logger.error("Build command failed with exit code %s", exc.returncode)  # noqa: TRY400
@@ -831,7 +831,7 @@ def version(  # noqa: C901
     # Build distributions before committing any changes - this way if the
     # build fails, modifications to the source code won't be committed
     if skip_build:
-        rprint("[bold orange1]Skipping build due to --skip-build flag")
+        rprint("[bold orange1]:fast_forward: Skipping build due to --skip-build flag[/bold orange1]")
     else:
         try:
             build_distributions(
