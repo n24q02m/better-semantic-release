@@ -36,8 +36,10 @@ jobs:
       - name: Ruff (repo config, select=ALL) on bsr additions
         run: uv run --no-sync ruff check --config pyproject.toml src/semantic_release/bsr src/semantic_release/cli/commands/version.py src/semantic_release/cli/cli_context.py src/semantic_release/version/algorithm.py tests/unit/semantic_release/bsr
 
+      # Targets live in [tool.mypy] files in pyproject.toml so this job and the
+      # pre-commit hook check the same set without either drifting.
       - name: Mypy on bsr additions + patched version command
-        run: uv run --no-sync mypy src/semantic_release/bsr src/semantic_release/cli/commands/version.py src/semantic_release/cli/cli_context.py src/semantic_release/version/algorithm.py
+        run: uv run --no-sync mypy
 
       # Coverage is measured on semantic_release.bsr only. The rest of the tree is
       # stock python-semantic-release, kept close to upstream on purpose, so its

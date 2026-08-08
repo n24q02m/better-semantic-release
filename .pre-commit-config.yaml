@@ -2,7 +2,10 @@
 default_language_version:
   python: python3
 
-exclude: "^CHANGELOG.md$"
+# The changelog is generated, so the whitespace and end-of-file fixers must not
+# rewrite it. This fork's docs toolchain is reStructuredText; the pattern named
+# CHANGELOG.md, which does not exist here, so nothing was actually excluded.
+exclude: "^CHANGELOG\\.rst$"
 
 repos:
   # Meta hooks
@@ -49,14 +52,18 @@ repos:
       - id: ruff-format
         name: ruff (format)
 
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: "v1.16.1"
+  # mypy runs from the project's own environment rather than pre-commit's
+  # isolated one. The isolated environment cannot see click, rich or GitPython,
+  # so it would report import errors that ci.yml never sees -- a hook that
+  # disagrees with CI is worse than no hook. Targets come from [tool.mypy] files
+  # in pyproject.toml, which is why this passes no arguments.
+  - repo: local
     hooks:
       - id: mypy
-        additional_dependencies:
-          - "pydantic>=2,<3"
-          - "types-requests"
-        log_file: "mypy.log"
+        name: mypy
+        entry: uv run --no-sync mypy
+        language: system
+        types: [python]
         files: "^(src|tests)/.*"
         pass_filenames: false
 
@@ -75,13 +82,20 @@ repos:
   - repo: https://github.com/jendrikseipp/vulture
     rev: "v2.11"
     hooks:
+      # Scoped to the product code, and to a fixed path rather than to whatever
+      # is staged. This fork uses a src layout, so the bare "semantic_release"
+      # this hook used to name resolved to nothing and it failed on every Python
+      # commit. `tests/` is deliberately excluded: pytest hook signatures,
+      # Protocol.__call__ parameters and base-class overrides are full of names
+      # that are unused locally but load-bearing, which is the same reason ruff
+      # ignores ARG001/ARG002 for tests in pyproject.toml.
       - id: vulture
+        pass_filenames: false
         args:
           - --min-confidence
           - "100"
           - --sort-by-size
-          - "semantic_release"
-          - "tests"
+          - "src/semantic_release"
 
   - repo: https://github.com/pycqa/bandit
     rev: 1.7.8
@@ -102,4 +116,6 @@ repos:
     hooks:
       - id: check-github-workflows
       - id: check-readthedocs
-      - id: check-dependabot
+      # Dependency updates here are driven by renovate.json; there is no
+      # dependabot config for check-dependabot to ever apply to.
+      - id: check-renovate

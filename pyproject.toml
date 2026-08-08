@@ -185,6 +185,17 @@ commands =
 
 
 [tool.mypy]
+# The single source of truth for what this fork type-checks. The rest of the
+# tree is stock python-semantic-release, kept close to upstream on purpose and
+# not type-clean, so checking it would fail on code this fork does not own.
+# ci.yml and the pre-commit hook both invoke bare `mypy` so they cannot drift
+# from this list.
+files = [
+  "src/semantic_release/bsr",
+  "src/semantic_release/cli/commands/version.py",
+  "src/semantic_release/cli/cli_context.py",
+  "src/semantic_release/version/algorithm.py",
+]
 show_column_numbers = true
 show_error_context = true
 pretty = true
