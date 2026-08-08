@@ -30,6 +30,27 @@ Additions go in `src/semantic_release/bsr/` and are wired into stock files behin
 possible so rebases remain cheap. A change to stock code needs a reason that could not
 be satisfied inside `bsr/`.
 
+## Machine-readable output
+
+`version` and `publish` accept `--format json`. Prefer it over parsing the human output.
+
+Under that flag, **stdout carries exactly one JSON document and nothing else**, on every
+exit either command has — a run that releases, a run that does not, `--print`,
+`--print-last-released`, and the failure paths. So `json.loads` over the whole stream is
+safe without special-casing; there is no "except when…" to remember. Narration and logs
+already go to stderr, including at `-vv`.
+
+Without the flag, stdout is byte-for-byte what it was before the option existed. That
+parity is a tested guarantee, not an intention — `tests/unit/semantic_release/bsr/
+test_jsonout_cli.py` asserts the exact bytes. Any change to a stdout line in
+`cli/commands/` breaks it on purpose.
+
+`schema_version` is `1` and is shared by both documents. Adding a field is fine; removing
+one or changing what it means is a `schema_version` bump. Both documents are assembled in
+`bsr/jsonout.py` rather than inline at the call sites, so keep them there — that is what
+stops the two surfaces drifting into two dialects. Field reference:
+`docs/api/commands.rst`, under the `--format` option of each command.
+
 ## Release
 
 Releases are triggered manually via `workflow_dispatch` on `cd.yml`. Choose `beta` or

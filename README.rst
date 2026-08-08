@@ -101,6 +101,10 @@ How it differs from upstream
        "consume" the commits, leaving the stable section empty)
      - Won't fix upstream
      - Opt-in aggregation (``stable_notes_aggregate``)
+   * - Machine-readable output for the release decision (a CI job or agent
+       reading the result has to parse English prose)
+     - None -- prose on stderr, one bare version string on stdout
+     - Opt-in ``--format json`` on ``version`` and ``publish``
    * - Config / CLI / GitHub Action interface
      - --
      - Identical (drop-in)
@@ -331,6 +335,53 @@ prerelease run is untouched.
 
    This is off by default because -- unlike the diagnostics above -- it changes the
    changelog **content**, which is a committed artifact.
+
+Machine-readable output (``--format json``)
+--------------------------------------------
+
+Everything above is reported as English prose. That is the right default for a human
+reading a CI log, and the wrong one for the CI job itself: to answer "did this release,
+and why not", a script has to either match on message text or re-derive the answer from
+``git``. ``--format json`` is the exit for the data the tool already computed.
+
+It is a **CLI flag, not a** ``[tool.semantic_release.bsr]`` **key** -- it describes how
+one invocation reports, not how the repository releases, so it does not belong in a
+committed config that every other run would inherit.
+
+.. code-block:: console
+
+    $ semantic-release version --print --format json
+    {
+      "schema_version": 1,
+      "released": false,
+      "version": "1.3.0",
+      "tag": "v1.3.0",
+      "is_prerelease": false,
+      "previous_version": "1.2.3",
+      "reason": null,
+      "commit_count": 7,
+      "level_bump": "minor",
+      "type_counts": { "features": 4, "bug fixes": 3 },
+      "components": []
+    }
+
+Three guarantees, with no exceptions to memorize:
+
+- **stdout carries exactly one JSON document and nothing else** -- for every way the
+  command can end, including ``--print``, ``--print-last-released``, a run that makes no
+  release, and the failure exits. A caller can run ``json.loads`` over the whole stream
+  without special-casing any path. (``--print-last-released`` has no bare line to print
+  in this mode; its datum travels in ``previous_version``.)
+- **Human output is unchanged without the flag** -- byte-for-byte, asserted directly by
+  the test suite. Anything parsing today's ``--print`` line is unaffected.
+- **The decision data does not depend on the diagnostics being on.** ``explain`` controls
+  what is *narrated*; the document reports ``reason``, ``level_bump`` and ``type_counts``
+  whether or not it is set. (``components`` is the one exception: it mirrors the
+  ``summary`` report, so it is ``[]`` unless ``summary`` is configured.)
+
+The full field reference for both documents is in ``docs/api/commands.rst``, under the
+``--format`` option of each command. ``schema_version`` is ``1``; it exists so a
+consumer can pin behavior if fields are ever added or renamed.
 
 ----
 

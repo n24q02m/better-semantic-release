@@ -193,6 +193,7 @@ commands =
 files = [
   "src/semantic_release/bsr",
   "src/semantic_release/cli/commands/version.py",
+  "src/semantic_release/cli/commands/publish.py",
   "src/semantic_release/cli/cli_context.py",
   "src/semantic_release/version/algorithm.py",
 ]

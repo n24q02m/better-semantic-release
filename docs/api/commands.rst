@@ -438,6 +438,77 @@ implied by supplying only ``--no-commit``), otherwise ``--vcs-release``
 If passed, skip execution of the :ref:`build_command <config-build_command>` after
 version stamping and changelog generation.
 
+.. _cmd-version-option-format:
+
+``--format``
+************
+
+``table`` (the default) or ``json``. This option is an addition of
+better-semantic-release and has no equivalent upstream.
+
+With ``--format json``, **stdout carries exactly one JSON document and nothing else**,
+for every way the command can end: a run that releases, a run that does not, the
+:ref:`cmd-version-option-print` and :ref:`cmd-version-option-print-last-released` exits,
+and the error paths. A caller can therefore parse the whole stream without
+special-casing any of them. The bare version line those ``--print`` flags normally emit
+is not printed in this mode -- the datum is a field instead, so there is never a second
+thing on stdout to confuse a parser.
+
+Human-facing output is untouched by the flag: the narration this command writes already
+goes to stderr, and without ``--format json`` stdout is byte-for-byte what it was before
+the option existed.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 22 14 64
+
+   * - Field
+     - Type
+     - Meaning
+   * - ``schema_version``
+     - integer
+     - Currently ``1``. Bumped if a field is removed or changes meaning, so a
+       consumer can pin behavior.
+   * - ``released``
+     - boolean
+     - The new version was applied and tagged. Under ``--noop`` this reports the
+       simulated run, the same as the ``released`` GitHub Actions output.
+   * - ``version``
+     - string or null
+     - The version the run computed. On a no-release run this is the current version,
+       matching what :ref:`cmd-version-option-print` would have printed.
+   * - ``tag``
+     - string or null
+     - ``version`` rendered through :ref:`config-tag_format`.
+   * - ``is_prerelease``
+     - boolean
+     - Whether ``version`` carries a SemVer prerelease segment. Build metadata
+       (``1.0.0+build-7``) does not make a version a prerelease.
+   * - ``previous_version``
+     - string or null
+     - The last released version found in the Git tags.
+   * - ``reason``
+     - string or null
+     - Null when the run released. Otherwise the classified cause:
+       ``NO_QUALIFYING_COMMITS``, ``ALREADY_RELEASED_NOOP`` or ``ORPHAN`` -- the same
+       classification the ``explain`` diagnostic prints, reported here whether or not
+       ``explain`` is enabled.
+   * - ``commit_count``
+     - integer
+     - Commits scanned since the last release.
+   * - ``level_bump``
+     - string or null
+     - ``major``, ``minor``, ``patch``, ``prerelease_revision`` or ``no_release``.
+   * - ``type_counts``
+     - object
+     - Commit counts keyed by the parser's own category names (``features``,
+       ``bug fixes``, ...), not by the raw commit type prefixes.
+   * - ``components``
+     - array
+     - One entry per monorepo component -- ``name``, ``would_release``, ``level``,
+       ``commit_count``, ``sample_paths``, ``resulting_version`` -- mirroring the
+       ``summary`` report. Empty unless ``summary`` is configured.
+
 .. _cmd-publish:
 
 ``semantic-release publish``
@@ -465,6 +536,46 @@ repository to identify the latest version, and attempt to publish to a
 Release corresponding to this version.
 
 **Default:** "latest"
+
+.. _cmd-publish-option-format:
+
+``--format``
+************
+
+``table`` (the default) or ``json``, carrying the same contract as
+:ref:`cmd-version-option-format`: with ``--format json``, stdout carries exactly one
+JSON document and nothing else, on every exit this command has -- no tags found, a tag
+that is not in the repository, a remote that cannot take artifacts, and an upload
+failure included. Those are precisely the runs whose result a caller most needs to read,
+so the document is emitted on them too rather than only on success.
+
+Without the flag this command's stdout stays empty, as it has always been; everything it
+prints goes to stderr.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 22 14 64
+
+   * - Field
+     - Type
+     - Meaning
+   * - ``schema_version``
+     - integer
+     - Currently ``1``, shared with the ``version`` document.
+   * - ``published``
+     - boolean
+     - The upload step ran to completion. Under :ref:`cmd-main-option-noop` this
+       reports the simulated run.
+   * - ``tag``
+     - string or null
+     - The tag actually operated on, with ``latest`` already resolved to a concrete
+       tag. Null when it could not be resolved because the repository has no matching
+       tags -- the field reports what was published to, not what was asked for.
+   * - ``assets``
+     - array of strings
+     - The distribution files matched by :ref:`config-publish-dist_glob_patterns`,
+       relative to the working directory, sorted and always ``/``-separated so the
+       document does not vary by platform or by filesystem ordering.
 
 .. _cmd-generate-config:
 

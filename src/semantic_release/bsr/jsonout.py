@@ -5,10 +5,14 @@ The release decision is already structured -- `bsr.explain` produces
 ReleaseDecision and BumpStats, `bsr.summary` produces ComponentPlan -- but it
 only ever leaves the process as English prose on stderr. Repositories drive this
 tool from CI; an agent driving one of them should not have to parse that prose.
-This module is the JSON exit for data that already exists.
+This module is the JSON exit for data that already exists. (`resolve_dist_assets`
+is the one exception, and says why in its own docstring.)
 
 Field names follow `cli.github_actions_output.VersionGitHubActionsOutput` so the
-CLI surface and the Actions surface use one vocabulary.
+CLI surface and the Actions surface use one vocabulary. Both documents -- the one
+`version` emits and the one `publish` emits -- are built here rather than inline
+at their call sites, so they share a single `SCHEMA_VERSION` and cannot drift
+apart into two dialects.
 
 The contract is that stdout carries exactly one JSON document and nothing else.
 Keeping it needs no stream juggling here, because narration is already
@@ -24,7 +28,9 @@ redirect quietly papering over it.
 
 from __future__ import annotations
 
+import glob
 import json
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import click
@@ -104,6 +110,45 @@ def build_version_document(
             }
             for c in components
         ],
+    }
+
+
+def resolve_dist_assets(dist_glob_patterns: Sequence[str]) -> list[str]:
+    """
+    The distribution files `publish` matched, as POSIX-style relative paths.
+
+    Unlike everything else in this module, these names are derived rather than
+    read back: `RemoteHvcsBase.upload_dists` reports how *many* files it uploaded,
+    not which ones. The expansion here is deliberately the same one it performs --
+    `glob.glob(..., recursive=True)` kept to real files, resolved against the
+    working directory both run from -- and lives next to the field it feeds so an
+    upstream change to that expansion surfaces in one place instead of drifting
+    quietly.
+
+    Sorted and POSIX-separated because glob order is filesystem-dependent and the
+    document is read by machines that should not see a run-to-run or
+    platform-to-platform difference.
+    """
+    return sorted(
+        Path(match).as_posix()
+        for pattern in dist_glob_patterns
+        for match in glob.glob(pattern, recursive=True)  # noqa: PTH207
+        if Path(match).is_file()
+    )
+
+
+def build_publish_document(
+    *,
+    published: bool,
+    tag: str | None,
+    assets: Sequence[str],
+) -> dict[str, Any]:
+    """Assemble the `publish` command's JSON document."""
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "published": published,
+        "tag": tag,
+        "assets": list(assets),
     }
 
 
