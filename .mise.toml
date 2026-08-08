@@ -1,0 +1,51 @@
+# Mise configuration for better-semantic-release
+# https://mise.jdx.dev/
+#
+# Setup: mise run setup
+#
+# The task bodies mirror .github/workflows/ci.yml step for step. CI is the
+# authority; if a command here stops matching the workflow, change it here.
+
+[tools]
+python = "3.13"
+uv = "latest"
+
+[settings]
+trusted_config_paths = ["."]
+
+[env]
+UV_LINK_MODE = "copy"
+
+[tasks.setup]
+description = "Set up the development environment"
+run = [
+  "mise install",
+  "uv venv --python 3.13",
+  "uv pip install -e '.[test,mypy,dev]'",
+  "uv run --no-sync pre-commit install",
+]
+
+# Ruff runs with select=ALL from the repo config, which stock python-semantic-release
+# does not satisfy. Both linters are therefore scoped to the fork's own additions and
+# the stock files it patches, exactly as CI scopes them.
+[tasks.lint]
+description = "Ruff + mypy over the fork's additions and patched files"
+run = [
+  "uv run --no-sync ruff check --config pyproject.toml src/semantic_release/bsr src/semantic_release/cli/commands/version.py src/semantic_release/cli/cli_context.py src/semantic_release/version/algorithm.py tests/unit/semantic_release/bsr",
+  "uv run --no-sync mypy src/semantic_release/bsr src/semantic_release/cli/commands/version.py src/semantic_release/cli/cli_context.py src/semantic_release/version/algorithm.py",
+]
+
+[tasks.fix]
+description = "Auto-fix lint and formatting in the fork's own modules"
+run = [
+  "uv run --no-sync ruff check --fix --config pyproject.toml src/semantic_release/bsr tests/unit/semantic_release/bsr",
+  "uv run --no-sync ruff format --config pyproject.toml src/semantic_release/bsr tests/unit/semantic_release/bsr",
+]
+
+[tasks.test]
+description = "Run the default test suite"
+run = "uv run --no-sync pytest -q"
+
+[tasks.test-bsr]
+description = "Run only the fork's own tests (fast inner loop)"
+run = "uv run --no-sync pytest tests/unit/semantic_release/bsr -q"
