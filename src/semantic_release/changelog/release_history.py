@@ -51,7 +51,8 @@ class ReleaseHistory:
         exclude_commit_patterns: Iterable[Pattern[str]] = (),
         *,
         # BSR-PATCH: optional monorepo commit path-filter (better-semantic-release)
-        commit_path_filter: Callable[[Sequence[Commit]], Sequence[Commit]] | None = None,
+        commit_path_filter: Callable[[Sequence[Commit]], Sequence[Commit]]
+        | None = None,
     ) -> ReleaseHistory:
         all_git_tags_and_versions = tags_and_versions(repo.tags, translator)
         unreleased: dict[str, list[ParseResult]] = defaultdict(list)
@@ -90,7 +91,7 @@ class ReleaseHistory:
         for commit in commits:
             # Determine if we have found another release
             logger.debug("checking if commit %s matches any tags", commit.hexsha[:7])
-            t_v = tag_sha_2_version_lookup.get(commit.hexsha, None)
+            t_v = tag_sha_2_version_lookup.get(commit.hexsha)
 
             if t_v is None:
                 logger.debug("no tags correspond to commit %s", commit.hexsha)
@@ -136,18 +137,13 @@ class ReleaseHistory:
             # it is usually one, but we split a commit if a squashed merge is detected
             parse_results = commit_parser.parse(commit)
 
-            if not any(
-                (
-                    isinstance(parse_results, (ParseError, ParsedCommit)),
-                    (
-                        (
-                            isinstance(parse_results, list)
-                            or type(parse_results) == tuple
-                        )
-                        and validate_types_in_sequence(
-                            parse_results, (ParseError, ParsedCommit)
-                        )
-                    ),
+            if not (
+                isinstance(parse_results, (ParseError, ParsedCommit))
+                or (
+                    (isinstance(parse_results, list) or type(parse_results) == tuple)
+                    and validate_types_in_sequence(
+                        parse_results, (ParseError, ParsedCommit)
+                    )
                 )
             ):
                 raise TypeError("Unexpected type returned from commit_parser.parse")
