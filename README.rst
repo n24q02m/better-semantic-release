@@ -3,6 +3,30 @@ better-semantic-release
 
 *A drop-in fork of python-semantic-release with built-in release-safety guards.*
 
+.. image:: https://github.com/n24q02m/better-semantic-release/actions/workflows/ci.yml/badge.svg
+   :target: https://github.com/n24q02m/better-semantic-release/actions/workflows/ci.yml
+   :alt: CI status
+
+.. image:: https://github.com/n24q02m/better-semantic-release/actions/workflows/cd.yml/badge.svg
+   :target: https://github.com/n24q02m/better-semantic-release/actions/workflows/cd.yml
+   :alt: CD status
+
+.. image:: https://codecov.io/github/n24q02m/better-semantic-release/graph/badge.svg
+   :target: https://app.codecov.io/github/n24q02m/better-semantic-release
+   :alt: Coverage of src/semantic_release/bsr
+
+.. image:: https://img.shields.io/pypi/v/better-semantic-release
+   :target: https://pypi.org/project/better-semantic-release/
+   :alt: Latest release on PyPI
+
+.. image:: https://img.shields.io/pypi/pyversions/better-semantic-release
+   :target: https://pypi.org/project/better-semantic-release/
+   :alt: Supported Python versions
+
+.. image:: https://img.shields.io/badge/license-Apache--2.0-blue
+   :target: https://github.com/n24q02m/better-semantic-release/blob/main/LICENSE
+   :alt: Apache-2.0 licence
+
 ----
 
 ``better-semantic-release`` is a drop-in fork of `python-semantic-release`_ (MIT licensed).
@@ -35,6 +59,10 @@ requires pointing the ``uses:`` line at the fork:
 On top of that, the fork adds release-safety guards that run automatically before any
 commit, tag, or push is made. Guards can be opted out of per-repository under the
 ``[tool.semantic_release.bsr]`` table in ``pyproject.toml``.
+
+.. contents:: Table of contents
+   :depth: 2
+   :local:
 
 How it differs from upstream
 =============================
