@@ -322,13 +322,10 @@ def next_version(
         if not prerelease
         else next(
             filter(
-                lambda version: all(
-                    [
-                        version.is_prerelease,
-                        version.prerelease_token == translator.prerelease_token,
-                        version >= latest_full_release_version,
-                    ]
-                ),
+                # Performance optimization: Use explicit boolean short-circuiting instead of all([cond1, cond2]) which forces eager evaluation and list allocation
+                lambda version: version.is_prerelease
+                and version.prerelease_token == translator.prerelease_token
+                and version >= latest_full_release_version,
                 historic_versions,
             ),
             latest_full_release_version,  # default
@@ -349,7 +346,9 @@ def next_version(
 
     # BSR-PATCH: optional monorepo commit path-filter (better-semantic-release)
     if commit_path_filter is not None:
-        commits_since_last_release = list(commit_path_filter(commits_since_last_release))
+        commits_since_last_release = list(
+            commit_path_filter(commits_since_last_release)
+        )
 
     logger.info(
         f"Found {len(commits_since_last_release)} commits since the last release!"
@@ -405,14 +404,15 @@ def next_version(
             and parsed_result.bump is not LevelBump.NO_RELEASE
         )
         bump_stats_sink(
-            level_bump, len(commits_since_last_release), latest_version, dict(type_counts)
+            level_bump,
+            len(commits_since_last_release),
+            latest_version,
+            dict(type_counts),
         )
 
-    if all(
-        [
-            level_bump is LevelBump.NO_RELEASE,
-            latest_version.major != 0 or allow_zero_version,
-        ]
+    # Performance optimization: Use explicit boolean short-circuiting instead of all([cond1, cond2]) which forces eager evaluation and list allocation
+    if level_bump is LevelBump.NO_RELEASE and (
+        latest_version.major != 0 or allow_zero_version
     ):
         logger.info("No release will be made")
         return latest_version
