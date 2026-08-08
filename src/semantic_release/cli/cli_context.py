@@ -112,7 +112,7 @@ class CliContextObj:
             )
         except NotAReleaseBranch as exc:
             rprint(
-                f"[bold {'red' if self.global_opts.strict else 'orange1'}]{rich.markup.escape(str(exc))}"
+                f"[bold {'red' if self.global_opts.strict else 'orange1'}]:warning: {rich.markup.escape(str(exc))}[/]"
             )
             # If not strict, exit 0 so other processes can continue. For example, in
             # multibranch CI it might be desirable to run a non-release branch's pipeline
