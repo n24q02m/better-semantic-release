@@ -47,6 +47,13 @@ jobs:
           fetch-depth: 0
           token: ${{ steps.app-token.outputs.token }}
 
+      # Before the release step rather than before the publish step: if the
+      # packaging metadata is wrong there is no version worth tagging either,
+      # and a PyPI upload can only be yanked, never replaced. Uses the runner's
+      # own python3 -- the script is stdlib-only, so nothing needs installing.
+      - name: Verify README registry metadata
+        run: python3 scripts/repo-bootstrap/verify_readme_sync.py --repo-root=.
+
       - name: Run better-semantic-release (dogfooding our own action)
         id: release
         uses: ./
