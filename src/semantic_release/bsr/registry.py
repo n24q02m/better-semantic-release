@@ -21,6 +21,9 @@ def _http_status(url: str, timeout: float) -> int | None:
 
     Returns None on any network-level failure.
     """
+    if not url.startswith(("http://", "https://")):
+        return None
+
     req = urllib.request.Request(  # noqa: S310
         url, method="GET", headers={"User-Agent": "better-semantic-release-guard"}
     )
