@@ -225,7 +225,7 @@ def test_version_on_last_release(
         repo_result["definition"]
     )[-1]
     expected_error_msg = (
-        f"No release will be made, {latest_release_version} has already been released!"
+        f"💤 No release will be made, {latest_release_version} has already been released!"
     )
 
     # Setup: take measurement before running the version command
