@@ -39,8 +39,16 @@ jobs:
       - name: Mypy on bsr additions + patched version command
         run: uv run --no-sync mypy src/semantic_release/bsr src/semantic_release/cli/commands/version.py src/semantic_release/cli/cli_context.py src/semantic_release/version/algorithm.py
 
+      # Coverage is measured on semantic_release.bsr only. The rest of the tree is
+      # stock python-semantic-release, kept close to upstream on purpose, so its
+      # number would report on upstream's testing rather than on this fork's.
       - name: Pytest (full default suite on Linux)
-        run: uv run --no-sync pytest -q
+        run: uv run --no-sync pytest -q --cov=semantic_release.bsr --cov-report=xml
+
+      - uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
+        with:
+          files: ./coverage.xml
+          fail_ci_if_error: false
 
   action-smoke-test:
     name: composite action installs + runs forked source (linux)

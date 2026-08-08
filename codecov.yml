@@ -1,0 +1,24 @@
+# Coverage is reported for src/semantic_release/bsr only. Everything else in this
+# repository is stock python-semantic-release, kept close to upstream so rebases stay
+# cheap; reporting on it would measure upstream's test suite, not this fork's.
+coverage:
+  status:
+    project:
+      default:
+        target: 95%
+        threshold: 1%
+        # Informational while the fork's module set is still growing: a drop shows up
+        # on the pull request without failing a check that has no owner yet.
+        informational: true
+    patch:
+      default:
+        target: 95%
+        informational: true
+
+comment:
+  layout: "reach, diff, flags, files"
+  require_changes: true
+
+ignore:
+  - "tests/**"
+  - "docs/**"
