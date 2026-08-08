@@ -4,6 +4,53 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.3.0-beta.1:
+
+v1.3.0-beta.1 (2026-08-08)
+==========================
+
+✨ Features
+-----------
+
+* Add --format json to publish and document the machine-readable contract (`76a653e`_)
+
+* Add --format json to version so the release decision is machine-readable (`807a4cd`_)
+
+* Add contributor, security and agent-facing repository files (`490e0c0`_)
+
+* Add status badges and a table of contents to the readme (`f170d1c`_)
+
+* Block a release when the packaging metadata does not match the README on disk (`8d8119c`_)
+
+* Govern bot pull requests with a rate limit and duplicate detection (`34f24c5`_)
+
+* Measure and upload coverage for the fork's own modules (`20549ae`_)
+
+🪲 Bug Fixes
+------------
+
+* Move this repo to Apache-2.0, keeping the upstream MIT terms (`PR#53`_, `2d22ae0`_)
+
+* Record why the bolt, palette and sentinel proposal clusters were closed (`bf41043`_)
+
+* Reject non-http url schemes in the registry probe (`bd2068b`_)
+
+* Repair four pre-commit hooks that could never pass (`46faf9a`_)
+
+.. _20549ae: https://github.com/n24q02m/better-semantic-release/commit/20549ae7ec2949c1d9af6dfdb2f2a294ac4c1092
+.. _2d22ae0: https://github.com/n24q02m/better-semantic-release/commit/2d22ae01a4d2b222193c0a340273a3a458a636c9
+.. _34f24c5: https://github.com/n24q02m/better-semantic-release/commit/34f24c51f0e442bb1b14e5ef8ce49a467dfe23f8
+.. _46faf9a: https://github.com/n24q02m/better-semantic-release/commit/46faf9a8a690f61834e43a58b9afb54b140fd629
+.. _490e0c0: https://github.com/n24q02m/better-semantic-release/commit/490e0c0c6f2a127c25faf1264feb5e5734675054
+.. _76a653e: https://github.com/n24q02m/better-semantic-release/commit/76a653ea88ebb2109559cf9c5a1373be7b4314fa
+.. _807a4cd: https://github.com/n24q02m/better-semantic-release/commit/807a4cdfefc6ff5796a2687be36401fbd02d5080
+.. _8d8119c: https://github.com/n24q02m/better-semantic-release/commit/8d8119c42b6f0c5fda10d75aaf71c6d34c31faee
+.. _bd2068b: https://github.com/n24q02m/better-semantic-release/commit/bd2068b2ca6608affc4df6fcc731a6b22e7a69dc
+.. _bf41043: https://github.com/n24q02m/better-semantic-release/commit/bf4104349032a90731a5ec16d3578ef8f983870b
+.. _f170d1c: https://github.com/n24q02m/better-semantic-release/commit/f170d1c8468588b56df8438d051c4012ba670aff
+.. _PR#53: https://github.com/n24q02m/better-semantic-release/pull/53
+
+
 .. _changelog-v1.2.3:
 
 v1.2.3 (2026-07-25)
