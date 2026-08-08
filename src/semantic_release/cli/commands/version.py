@@ -15,6 +15,9 @@ from click_option_group import MutuallyExclusiveOptionGroup, optgroup
 from git import GitCommandError, Repo
 from requests import HTTPError
 
+# BSR-PATCH: machine-readable output (better-semantic-release)
+from semantic_release.bsr import jsonout
+
 # BSR-PATCH: built-in release-safety guards (better-semantic-release)
 from semantic_release.bsr.config import load_bsr_config
 from semantic_release.bsr.errors import BsrGuardError, bsr_silent_freeze_message
@@ -78,7 +81,7 @@ from semantic_release.version.translator import VersionTranslator
 
 if TYPE_CHECKING:  # pragma: no cover
     from pathlib import Path
-    from typing import Mapping, Sequence
+    from typing import Any, Mapping, Sequence
 
     from git.refs.tag import Tag
 
@@ -443,6 +446,8 @@ def build_distributions(
     is_flag=True,
     help="Skip building the current project",
 )
+# BSR-PATCH: machine-readable output (better-semantic-release)
+@jsonout.add_format_option
 @click.pass_obj
 def version(  # noqa: C901
     cli_ctx: CliContextObj,
@@ -459,6 +464,8 @@ def version(  # noqa: C901
     make_vcs_release: bool,
     build_metadata: str | None,
     skip_build: bool,
+    # BSR-PATCH: machine-readable output (better-semantic-release)
+    output_format: str = jsonout.FORMAT_TABLE,
     force_level: str | None = None,
 ) -> None:
     """
@@ -482,6 +489,40 @@ def version(  # noqa: C901
     """
     ctx = click.get_current_context()
 
+    # BSR-PATCH: machine-readable output (better-semantic-release). Under
+    # `--format json` stdout carries exactly one JSON document and nothing else,
+    # for every way this command can end. This command has a dozen exits --
+    # no-release, --print, a completed release, and the error paths in between --
+    # so the document is emitted from a close-callback, the same mechanism
+    # gha_output already uses below to cover them all from one place. The fields
+    # are collected into `_json_state` as they become known.
+    _json_mode = output_format == jsonout.FORMAT_JSON
+    _json_state: dict[str, Any] = {
+        "released": False,
+        "version": None,
+        "tag": None,
+        "previous_version": None,
+        "decision": None,
+        "bump_stats": None,
+        "components": (),
+    }
+
+    def _emit_json_document() -> None:
+        jsonout.emit(
+            jsonout.build_version_document(
+                released=_json_state["released"],
+                version=_json_state["version"],
+                tag=_json_state["tag"],
+                previous_version=_json_state["previous_version"],
+                decision=_json_state["decision"],
+                bump_stats=_json_state["bump_stats"],
+                components=_json_state["components"],
+            )
+        )
+
+    if _json_mode:
+        ctx.call_on_close(_emit_json_document)
+
     # Enable any cli overrides of configuration before asking for the runtime context
     config = cli_ctx.raw_config
 
@@ -496,6 +537,13 @@ def version(  # noqa: C901
             )
         ):
             logger.warning("No release tags found.")
+            return
+
+        # BSR-PATCH: machine-readable output (better-semantic-release). In JSON
+        # mode the datum travels in the document's `previous_version` field
+        # instead of as a bare line, so stdout keeps carrying exactly one thing.
+        if _json_mode:
+            _json_state["previous_version"] = str(last_release[1])
             return
 
         click.echo(last_release[0] if print_last_released_tag else last_release[1])
@@ -606,8 +654,13 @@ def version(  # noqa: C901
                     allow_zero_version=runtime.allow_zero_version,
                     # BSR-PATCH: optional monorepo commit path-filter (better-semantic-release)
                     commit_path_filter=_bsr_path_filter,
-                    # BSR-PATCH: release-decision explainer (better-semantic-release)
-                    bump_stats_sink=_stash_bump_stats if _bsr_cfg.explain else None,
+                    # BSR-PATCH: release-decision explainer (better-semantic-release).
+                    # `_json_mode` widens the gate: the JSON document reports the
+                    # same commit_count/level_bump/type_counts even when the prose
+                    # explainer is switched off.
+                    bump_stats_sink=(
+                        _stash_bump_stats if (_bsr_cfg.explain or _json_mode) else None
+                    ),
                 )
             except ValueError as ve:
                 # BSR-PATCH: actionable error messages (better-semantic-release)
@@ -662,6 +715,8 @@ def version(  # noqa: C901
                 allow_zero_version=runtime.allow_zero_version,
             )
         click.echo(render_summary_table(_plans), err=True)
+        # BSR-PATCH: machine-readable output (better-semantic-release)
+        _json_state["components"] = _plans
 
     if build_metadata:
         new_version.build_metadata = build_metadata
@@ -674,8 +729,26 @@ def version(  # noqa: C901
     # Make string variant of version or appropriate tag as necessary
     version_to_print = str(new_version) if not print_only_tag else new_version.as_tag()
 
-    # Print the new version so that command-line output capture will work
-    click.echo(version_to_print)
+    # BSR-PATCH: machine-readable output (better-semantic-release). The document
+    # reports version and tag as separate fields, so the bare line -- which is
+    # one or the other depending on --print-tag -- would be a second, ambiguous
+    # thing on stdout. `previous_version` is resolved here rather than at the
+    # release-path call site further down, because the no-release and --print
+    # exits both come before it and need the field populated too.
+    if _json_mode:
+        _json_state["version"] = str(new_version)
+        _json_state["tag"] = new_version.as_tag()
+        if _bump_stats_box:
+            _json_state["bump_stats"] = _bump_stats_box[0]
+        if _last_release := last_released(
+            config.repo_dir,
+            tag_format=config.tag_format,
+            add_partial_tags=add_partial_tags,
+        ):
+            _json_state["previous_version"] = str(_last_release[1])
+    else:
+        # Print the new version so that command-line output capture will work
+        click.echo(version_to_print)
 
     with Repo(str(runtime.repo_dir)) as git_repo:
         # TODO: performance improvement - cache the result of tags_and_versions (previously done in next_version())
@@ -705,16 +778,19 @@ def version(  # noqa: C901
         # need it -- only when actually needed (guard on, or explain on) to avoid
         # the extra repo scan on the stock hot path.
         _is_orphaned = bool(
-            (_bsr_cfg.guard_orphan_tag or _bsr_cfg.explain)
+            (_bsr_cfg.guard_orphan_tag or _bsr_cfg.explain or _json_mode)
             and is_orphaned_recompute(runtime.repo_dir, translator, new_version)
         )
         _display_msg = err_msg
-        if _bsr_cfg.explain:
+        if _bsr_cfg.explain or _json_mode:
             _decision = classify_no_release(
                 is_orphaned=_is_orphaned,
                 bump_stats=_bump_stats_box[0] if _bump_stats_box else None,
             )
-            _display_msg = format_no_release_reason(_decision, new_version)
+            # BSR-PATCH: machine-readable output (better-semantic-release)
+            _json_state["decision"] = _decision
+            if _bsr_cfg.explain:
+                _display_msg = format_no_release_reason(_decision, new_version)
 
         if opts.strict:
             click.secho(_display_msg, err=True, fg=orange1_code, bold=True)
@@ -982,6 +1058,11 @@ def version(  # noqa: C901
 
     # Update GitHub Actions output value now that release has occurred
     gha_output.released = True
+    # BSR-PATCH: machine-readable output (better-semantic-release). Set from the
+    # same point, and therefore with the same meaning, as the Actions output: the
+    # version was applied and tagged. Everything past here (vcs release creation)
+    # has its own exits, which the close-callback covers.
+    _json_state["released"] = True
 
     if not make_vcs_release:
         return
