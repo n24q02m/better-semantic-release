@@ -32,7 +32,9 @@ def _build_minimal_project(
     )
     repo = Repo.init(proj)
     repo.index.add(["pyproject.toml"])
-    repo.index.commit("feat: initial", author=Actor("t", "t@t"), committer=Actor("t", "t@t"))
+    repo.index.commit(
+        "feat: initial", author=Actor("t", "t@t"), committer=Actor("t", "t@t")
+    )
     # PSR resolves the hvcs client from the `origin` remote URL; without one,
     # `git remote get-url origin` fails before the command reaches the guard seam.
     repo.create_remote("origin", "https://github.com/example-owner/example-repo.git")
@@ -130,7 +132,9 @@ def _build_orphaned_tag_project(
     then recomputes, from the still-reachable v1.0.0 base plus the new feat
     commit, the same version already consumed by the now-unreachable tag.
     """
-    proj = _build_minimal_project(tmp_path, monkeypatch, extra_pyproject=extra_pyproject)
+    proj = _build_minimal_project(
+        tmp_path, monkeypatch, extra_pyproject=extra_pyproject
+    )
     repo = Repo(str(proj))
 
     printed = CliRunner(mix_stderr=True).invoke(main, ["--noop", "version", "--print"])

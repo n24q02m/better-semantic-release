@@ -268,9 +268,13 @@ def test_since_stable_scope_matches_line_scope_for_a_single_prerelease_track(
         since_stable_history, new_version=v02, scope="since_stable"
     )
 
-    line_shas = {c.hexsha for commits in line_result["elements"].values() for c in commits}
+    line_shas = {
+        c.hexsha for commits in line_result["elements"].values() for c in commits
+    }
     since_stable_shas = {
-        c.hexsha for commits in since_stable_result["elements"].values() for c in commits
+        c.hexsha
+        for commits in since_stable_result["elements"].values()
+        for c in commits
     }
     assert line_shas == since_stable_shas
     assert len(line_shas) == 2

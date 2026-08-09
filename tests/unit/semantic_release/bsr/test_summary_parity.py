@@ -62,7 +62,9 @@ def test_summary_false_matches_no_bsr_table(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     _build_project(
-        tmp_path, monkeypatch, extra_pyproject="\n[tool.semantic_release.bsr]\nsummary = false\n"
+        tmp_path,
+        monkeypatch,
+        extra_pyproject="\n[tool.semantic_release.bsr]\nsummary = false\n",
     )
     explicit_false = _invoke_mixed()
 
@@ -92,14 +94,18 @@ def test_summary_off_stdout_and_exit_code_untouched(
         monkeypatch,
         extra_pyproject="\n[tool.semantic_release.bsr]\nsummary = false\n",
     )
-    explicit_false = CliRunner(mix_stderr=False).invoke(main, ["--noop", "version", "--print"])
+    explicit_false = CliRunner(mix_stderr=False).invoke(
+        main, ["--noop", "version", "--print"]
+    )
 
     pyproject = proj / "pyproject.toml"
     pyproject.write_text(
         pyproject.read_text(encoding="utf-8").split("[tool.semantic_release.bsr]")[0],
         encoding="utf-8",
     )
-    no_bsr_table = CliRunner(mix_stderr=False).invoke(main, ["--noop", "version", "--print"])
+    no_bsr_table = CliRunner(mix_stderr=False).invoke(
+        main, ["--noop", "version", "--print"]
+    )
 
     assert no_bsr_table.exit_code == explicit_false.exit_code == 0
     assert no_bsr_table.stdout == explicit_false.stdout
@@ -111,7 +117,9 @@ def test_summary_on_never_writes_to_stdout(
 ) -> None:
     """Even with `summary = true`, stdout carries ONLY the version -- never the table."""
     _build_project(
-        tmp_path, monkeypatch, extra_pyproject="\n[tool.semantic_release.bsr]\nsummary = true\n"
+        tmp_path,
+        monkeypatch,
+        extra_pyproject="\n[tool.semantic_release.bsr]\nsummary = true\n",
     )
     result = CliRunner(mix_stderr=False).invoke(main, ["--noop", "version", "--print"])
     assert result.exit_code == 0

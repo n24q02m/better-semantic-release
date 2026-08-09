@@ -51,7 +51,8 @@ class ReleaseHistory:
         exclude_commit_patterns: Iterable[Pattern[str]] = (),
         *,
         # BSR-PATCH: optional monorepo commit path-filter (better-semantic-release)
-        commit_path_filter: Callable[[Sequence[Commit]], Sequence[Commit]] | None = None,
+        commit_path_filter: Callable[[Sequence[Commit]], Sequence[Commit]]
+        | None = None,
     ) -> ReleaseHistory:
         all_git_tags_and_versions = tags_and_versions(repo.tags, translator)
         unreleased: dict[str, list[ParseResult]] = defaultdict(list)

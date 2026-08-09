@@ -73,12 +73,16 @@ class TestTagFormatSanityNote:
 
     def test_no_note_when_no_tags(self) -> None:
         assert (
-            tag_format_sanity_note(total_tags=0, matched_tags=0, tag_format="v{version}")
+            tag_format_sanity_note(
+                total_tags=0, matched_tags=0, tag_format="v{version}"
+            )
             is None
         )
 
     def test_no_note_when_some_tags_matched(self) -> None:
         assert (
-            tag_format_sanity_note(total_tags=5, matched_tags=3, tag_format="v{version}")
+            tag_format_sanity_note(
+                total_tags=5, matched_tags=3, tag_format="v{version}"
+            )
             is None
         )

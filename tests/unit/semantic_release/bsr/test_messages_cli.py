@@ -102,7 +102,10 @@ class TestValidationErrorAtInitRawConfig:
         explicit_false = _invoke_print()
 
         _build_project(
-            tmp_path, monkeypatch, extra_pyproject=self._BAD_BRANCH_CONFIG, subdir="proj2"
+            tmp_path,
+            monkeypatch,
+            extra_pyproject=self._BAD_BRANCH_CONFIG,
+            subdir="proj2",
         )
         no_bsr_table = _invoke_print()
 
@@ -156,7 +159,8 @@ class TestParserLoadErrorAtInitRuntimeCtx:
     ) -> None:
         _build_project(tmp_path, monkeypatch)
         monkeypatch.setattr(
-            "semantic_release.cli.cli_context.RuntimeContext.from_raw_config", self._boom
+            "semantic_release.cli.cli_context.RuntimeContext.from_raw_config",
+            self._boom,
         )
         result = _invoke_print()
         assert result.exit_code != 0
@@ -172,7 +176,8 @@ class TestParserLoadErrorAtInitRuntimeCtx:
             extra_pyproject="\n[tool.semantic_release.bsr]\nactionable_errors = true\n",
         )
         monkeypatch.setattr(
-            "semantic_release.cli.cli_context.RuntimeContext.from_raw_config", self._boom
+            "semantic_release.cli.cli_context.RuntimeContext.from_raw_config",
+            self._boom,
         )
         result = _invoke_print()
         assert result.exit_code == 1
@@ -188,13 +193,15 @@ class TestParserLoadErrorAtInitRuntimeCtx:
             extra_pyproject="\n[tool.semantic_release.bsr]\nactionable_errors = false\n",
         )
         monkeypatch.setattr(
-            "semantic_release.cli.cli_context.RuntimeContext.from_raw_config", self._boom
+            "semantic_release.cli.cli_context.RuntimeContext.from_raw_config",
+            self._boom,
         )
         explicit_false = _invoke_print()
 
         _build_project(tmp_path, monkeypatch, subdir="proj2")
         monkeypatch.setattr(
-            "semantic_release.cli.cli_context.RuntimeContext.from_raw_config", self._boom
+            "semantic_release.cli.cli_context.RuntimeContext.from_raw_config",
+            self._boom,
         )
         no_bsr_table = _invoke_print()
 
@@ -225,7 +232,8 @@ class TestMissingGitRemoteAtInitRuntimeCtx:
     ) -> None:
         _build_project(tmp_path, monkeypatch)
         monkeypatch.setattr(
-            "semantic_release.cli.cli_context.RuntimeContext.from_raw_config", self._boom
+            "semantic_release.cli.cli_context.RuntimeContext.from_raw_config",
+            self._boom,
         )
         result = _invoke_print()
         assert result.exit_code != 0
@@ -241,7 +249,8 @@ class TestMissingGitRemoteAtInitRuntimeCtx:
             extra_pyproject="\n[tool.semantic_release.bsr]\nactionable_errors = true\n",
         )
         monkeypatch.setattr(
-            "semantic_release.cli.cli_context.RuntimeContext.from_raw_config", self._boom
+            "semantic_release.cli.cli_context.RuntimeContext.from_raw_config",
+            self._boom,
         )
         result = _invoke_print()
         assert result.exit_code == 1
@@ -257,13 +266,15 @@ class TestMissingGitRemoteAtInitRuntimeCtx:
             extra_pyproject="\n[tool.semantic_release.bsr]\nactionable_errors = false\n",
         )
         monkeypatch.setattr(
-            "semantic_release.cli.cli_context.RuntimeContext.from_raw_config", self._boom
+            "semantic_release.cli.cli_context.RuntimeContext.from_raw_config",
+            self._boom,
         )
         explicit_false = _invoke_print()
 
         _build_project(tmp_path, monkeypatch, subdir="proj2")
         monkeypatch.setattr(
-            "semantic_release.cli.cli_context.RuntimeContext.from_raw_config", self._boom
+            "semantic_release.cli.cli_context.RuntimeContext.from_raw_config",
+            self._boom,
         )
         no_bsr_table = _invoke_print()
 

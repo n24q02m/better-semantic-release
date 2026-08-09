@@ -77,7 +77,9 @@ def test_explain_on_reports_no_qualifying_commits_not_already_released(
     PSR's misattributed "has already been released!" wording.
     """
     proj = _build_minimal_project(
-        tmp_path, monkeypatch, extra_pyproject="\n[tool.semantic_release.bsr]\nexplain = true\n"
+        tmp_path,
+        monkeypatch,
+        extra_pyproject="\n[tool.semantic_release.bsr]\nexplain = true\n",
     )
     _print = CliRunner(mix_stderr=True).invoke(main, ["--noop", "version", "--print"])
     assert _print.exit_code == 0
@@ -102,7 +104,9 @@ def test_explain_on_reports_already_released_noop_for_zero_new_commits(
     classifies as ALREADY_RELEASED_NOOP, not NO_QUALIFYING_COMMITS.
     """
     proj = _build_minimal_project(
-        tmp_path, monkeypatch, extra_pyproject="\n[tool.semantic_release.bsr]\nexplain = true\n"
+        tmp_path,
+        monkeypatch,
+        extra_pyproject="\n[tool.semantic_release.bsr]\nexplain = true\n",
     )
     _print = CliRunner(mix_stderr=True).invoke(main, ["--noop", "version", "--print"])
     assert _print.exit_code == 0
@@ -121,7 +125,9 @@ def test_explain_on_prints_why_this_bump_for_a_real_release(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     _build_minimal_project(
-        tmp_path, monkeypatch, extra_pyproject="\n[tool.semantic_release.bsr]\nexplain = true\n"
+        tmp_path,
+        monkeypatch,
+        extra_pyproject="\n[tool.semantic_release.bsr]\nexplain = true\n",
     )
     result = CliRunner(mix_stderr=True).invoke(
         main, ["--noop", "version", "--no-commit", "--no-tag", "--no-push"]
@@ -146,7 +152,9 @@ def test_explain_strict_mode_also_gets_classified_reason(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     proj = _build_minimal_project(
-        tmp_path, monkeypatch, extra_pyproject="\n[tool.semantic_release.bsr]\nexplain = true\n"
+        tmp_path,
+        monkeypatch,
+        extra_pyproject="\n[tool.semantic_release.bsr]\nexplain = true\n",
     )
     _print = CliRunner(mix_stderr=True).invoke(main, ["--noop", "version", "--print"])
     assert _print.exit_code == 0

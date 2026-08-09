@@ -65,7 +65,10 @@ def test_from_git_history_filter_excludes_non_touching_commits(tmp_path: Path) -
     _commit(repo, "apps/web/y.py", "y", "feat: web")
 
     rh = _from_git_history(
-        repo, commit_path_filter=lambda commits: filter_commits_by_paths(commits, ("apps/api",))
+        repo,
+        commit_path_filter=lambda commits: filter_commits_by_paths(
+            commits, ("apps/api",)
+        ),
     )
     assert _unreleased_feature_hashes(rh) == {c1.hexsha}
 
@@ -76,7 +79,9 @@ def test_from_git_history_filter_keeping_all_matches_baseline(tmp_path: Path) ->
     _commit(repo, "apps/web/y.py", "y", "feat: web")
 
     baseline = _unreleased_feature_hashes(_from_git_history(repo))
-    filtered = _unreleased_feature_hashes(_from_git_history(repo, commit_path_filter=list))
+    filtered = _unreleased_feature_hashes(
+        _from_git_history(repo, commit_path_filter=list)
+    )
     assert filtered == baseline
     assert len(baseline) == 2
 
@@ -113,7 +118,10 @@ def test_rendered_changelog_excludes_web_only_commit_includes_api_commit(
     _commit(repo, "apps/web/y.py", "y", "feat: add web contact form")
 
     release_history = _from_git_history(
-        repo, commit_path_filter=lambda commits: filter_commits_by_paths(commits, ("apps/api",))
+        repo,
+        commit_path_filter=lambda commits: filter_commits_by_paths(
+            commits, ("apps/api",)
+        ),
     ).release(
         Version.parse("0.1.0"),
         tagger=_AUTHOR,
@@ -127,7 +135,9 @@ def test_rendered_changelog_excludes_web_only_commit_includes_api_commit(
     assert "web contact form" not in changelog_text
 
 
-def test_rendered_changelog_without_filter_includes_both_commits(tmp_path: Path) -> None:
+def test_rendered_changelog_without_filter_includes_both_commits(
+    tmp_path: Path,
+) -> None:
     """
     Baseline for the test above: with no filter, both commits' descriptions
     are present -- proving the exclusion above is the filter's doing, not an

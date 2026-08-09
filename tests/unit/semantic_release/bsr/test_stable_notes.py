@@ -40,7 +40,9 @@ class _FakeCommit:
     hexsha: str
 
 
-def _parsed(sha: str, commit_type: str = "feature", description: str = "x") -> ParsedCommit:
+def _parsed(
+    sha: str, commit_type: str = "feature", description: str = "x"
+) -> ParsedCommit:
     return ParsedCommit(
         bump=LevelBump.MINOR,
         type=commit_type,
@@ -167,7 +169,9 @@ def test_since_stable_scope_stops_at_previous_stable_boundary() -> None:
     c_old_line, c_current = _parsed("cOLD"), _parsed("cNEW")
     v0_0_1_beta1 = Version.parse("0.0.1-beta.1")
     released = {
-        v0_0_1_beta1: _release(v0_0_1_beta1, {"feature": [c_old_line]}, minutes_ago=200),
+        v0_0_1_beta1: _release(
+            v0_0_1_beta1, {"feature": [c_old_line]}, minutes_ago=200
+        ),
         V01: _release(V01, {}, minutes_ago=100),  # the boundary: previous stable
         V02_BETA1: _release(V02_BETA1, {"feature": [c_current]}, minutes_ago=30),
         V02: _release(V02, {}, minutes_ago=0),
