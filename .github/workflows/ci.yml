@@ -139,6 +139,28 @@ jobs:
           changelog: "false"
           vcs_release: "false"
 
+  # The one job this repo forfeited by keeping its own ci.yml out of the shared
+  # template's reach (see .repo-bootstrap.toml). Ported by hand rather than by
+  # taking the template wholesale, which would have dropped the three jobs above.
+  dependency-review:
+    name: Dependency Review
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write # comment-summary-in-pr
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: moderate
+          comment-summary-in-pr: always
+        # Advisory, not a gate: the action fails the step on any pre-existing
+        # moderate advisory in a dependency the PR merely touches, which blocks
+        # unrelated work on a finding the PR did not introduce. The PR comment is
+        # the deliverable here.
+        continue-on-error: true
+
   codeql:
     name: CodeQL analyze (python)
     runs-on: ubuntu-latest
