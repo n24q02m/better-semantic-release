@@ -1,0 +1,41 @@
+# Scaffold files this repository keeps its own, and why.
+#
+# The repo-standards tool renders a shared template tree into every repo. Most
+# of that is right here too. These three are not, and the files cannot say so
+# themselves -- a `uses: ./` looks like any other step until you know this repo
+# is the action being called.
+#
+# Each entry states a claim a later reader can agree or disagree with. If one of
+# these reasons stops being true, delete the entry and let the template land.
+
+[[exempt]]
+path = ".github/workflows/cd.yml"
+reason = """
+This repo releases itself with itself: the release step runs `uses: ./`, so a
+release exercises the code being released. The template's cd.yml calls the
+published action instead, which is correct everywhere else and here would end
+the dogfooding silently -- CD stays green either way, it just stops testing
+what it ships.
+"""
+
+[[exempt]]
+path = ".github/workflows/ci.yml"
+reason = """
+CI here is a fork's CI, not a package's. It gates the patched stock files
+(ruff, ruff format, mypy over a path list this fork maintains), smoke-tests the
+composite action against its own source, and runs CodeQL because the repo is
+public. The template's jobs do none of that, so the two files have no overlap
+to reconcile -- the narrowing guard refuses this replacement on every run, and
+that refusal is the correct answer written down as an error.
+
+Forfeited by this: the template's dependency-review job. Worth adopting on its
+own terms, as an addition to this file rather than a replacement of it.
+"""
+
+[[exempt]]
+path = "Dockerfile"
+reason = """
+Not containerised. This ships as a PyPI package and a composite GitHub Action;
+there is no service to build an image for, and an unused Dockerfile is a file
+that rots and then gets believed.
+"""
