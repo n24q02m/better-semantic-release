@@ -1,6 +1,12 @@
 from __future__ import annotations
 
-from os import linesep
+# BSR-PATCH: these expectations say "\n", not os.linesep (better-semantic-release).
+# The declaration reads and writes through text mode, which already translates the
+# newline on the way out and back on the way in, so what the test sees is always
+# "\n" whatever the platform. Writing os.linesep into a text-mode file double-
+# translates it: "1.2.3\r\n" is stored as "1.2.3\r\r\n" and read back as
+# "1.2.3\n\n", which is how eight of these failed on Windows while passing on
+# Linux, where the translation is a no-op and the bug is invisible.
 from pathlib import Path
 
 import pytest
@@ -59,7 +65,7 @@ def test_file_declaration_is_version_replacer():
                 lazy_fixture(default_tag_format_str.__name__),
                 # File contains only version
                 "1.0.0",
-                f"{next_version}{linesep}",
+                f"{next_version}\n",
             ),
             (
                 "Explicit number format for file replacement",
@@ -68,7 +74,7 @@ def test_file_declaration_is_version_replacer():
                 lazy_fixture(default_tag_format_str.__name__),
                 # File contains only version
                 "1.0.0",
-                f"{next_version}{linesep}",
+                f"{next_version}\n",
             ),
             (
                 "Using default tag format for file replacement",
@@ -76,7 +82,7 @@ def test_file_declaration_is_version_replacer():
                 lazy_fixture(default_tag_format_str.__name__),
                 # File contains version with v-prefix
                 "v1.0.0",
-                f"v{next_version}{linesep}",
+                f"v{next_version}\n",
             ),
             (
                 "Using custom tag format for file replacement",
@@ -84,7 +90,7 @@ def test_file_declaration_is_version_replacer():
                 "module-v{version}",
                 # File contains version with custom prefix
                 "module-v1.0.0",
-                f"module-v{next_version}{linesep}",
+                f"module-v{next_version}\n",
             ),
             (
                 "File with trailing newline",
@@ -92,7 +98,7 @@ def test_file_declaration_is_version_replacer():
                 lazy_fixture(default_tag_format_str.__name__),
                 # File contains version with newline
                 "1.0.0\n",
-                f"{next_version}{linesep}",
+                f"{next_version}\n",
             ),
             (
                 "File with whitespace",
@@ -100,7 +106,7 @@ def test_file_declaration_is_version_replacer():
                 lazy_fixture(default_tag_format_str.__name__),
                 # File contains version with whitespace
                 "  1.0.0  \n",
-                f"{next_version}{linesep}",
+                f"{next_version}\n",
             ),
         ]
     ],
@@ -148,7 +154,7 @@ def test_file_declaration_no_file_change():
     test_file = "VERSION"
     expected_filepath = Path(test_file).resolve()
     next_version = Version.parse("1.2.3")
-    starting_contents = f"{next_version}{linesep}"
+    starting_contents = f"{next_version}\n"
 
     # Setup: create file with initial contents
     expected_filepath.write_text(starting_contents)
@@ -173,7 +179,7 @@ def test_file_declaration_no_file_change():
 @pytest.mark.usefixtures(change_to_ex_proj_dir.__name__)
 def test_file_declaration_creates_when_missing_file():
     new_version = Version.parse("1.2.3")
-    expected_contents = f"{new_version}{linesep}"
+    expected_contents = f"{new_version}\n"
     missing_file_path = Path("nonexistent_file")
 
     # Ensure missing file does not exist before test

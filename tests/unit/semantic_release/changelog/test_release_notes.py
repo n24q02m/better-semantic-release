@@ -667,10 +667,18 @@ def test_release_notes_context_release_url_filter(
     with mock.patch.dict(os.environ, {}, clear=True):
         hvcs_client = hvcs_client_class(remote_url=example_git_https_url)
 
-        expected_content = dedent(
-            f"""\
-            [{version.as_tag()}]({hvcs_client.create_release_url(version.as_tag())})
-            """
+        # BSR-PATCH: os.linesep, not the "\n" dedent gives (better-semantic-release).
+        # generate_release_notes ends its output with os.linesep and rejoins the body
+        # with it (changelog_writer.py), which every other expectation in this file
+        # already mirrors -- these few used dedent and so only agreed with the code on
+        # platforms where the two happen to be the same string.
+        expected_content = str.join(
+            os.linesep,
+            [
+                f"[{version.as_tag()}]"
+                f"({hvcs_client.create_release_url(version.as_tag())})",
+                "",
+            ],
         )
 
         actual_content = generate_release_notes(
@@ -708,12 +716,16 @@ def test_release_notes_context_format_w_official_name_filter(
 
     with mock.patch.dict(os.environ, {}, clear=True):
         hvcs_client = hvcs_client_class(remote_url=example_git_https_url)
-        expected_content = dedent(
-            f"""\
-            {hvcs_client.OFFICIAL_NAME}
-            {hvcs_client.OFFICIAL_NAME}
-            {hvcs_client.OFFICIAL_NAME}
-            """
+        # BSR-PATCH: os.linesep, not the "\n" dedent gives (better-semantic-release).
+        # See the note on the release-url filter test above.
+        expected_content = str.join(
+            os.linesep,
+            [
+                hvcs_client.OFFICIAL_NAME,
+                hvcs_client.OFFICIAL_NAME,
+                hvcs_client.OFFICIAL_NAME,
+                "",
+            ],
         )
 
         actual_content = generate_release_notes(

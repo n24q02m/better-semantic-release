@@ -427,6 +427,7 @@ def test_git_remote_url_w_insteadof_alias(
     example_git_https_url: str,
     hvcs_type: str,
     update_pyproject_toml: UpdatePyprojectTomlFn,
+    clean_os_environment: dict[str, str],
 ):
     expected_url = parse_url(example_git_https_url)
     repo_name_suffix = PurePosixPath(expected_url.path or "").name
@@ -445,7 +446,14 @@ def test_git_remote_url_w_insteadof_alias(
     update_pyproject_toml("tool.semantic_release.remote.type", hvcs_type)
 
     # Act: load the configuration (in clear environment)
-    with mock.patch.dict(os.environ, {}, clear=True):
+    # BSR-PATCH: clean_os_environment, not {} (better-semantic-release). What this
+    # wants gone is the HVCS variables, and that fixture drops exactly those while
+    # keeping PATH and the Windows OS set. An empty dict also takes PATH, and the
+    # config load below shells out to git: POSIX still finds it, because execvp
+    # falls back to a default search path, but CreateProcess has no such fallback,
+    # so on Windows this raised "[WinError 2] The system cannot find the file
+    # specified" from inside GitPython and read as a broken repository.
+    with mock.patch.dict(os.environ, clean_os_environment, clear=True):
         # Essentially the same as CliContextObj._init_runtime_ctx()
         project_config = tomlkit.loads(
             example_pyproject_toml.read_text(encoding="utf-8")

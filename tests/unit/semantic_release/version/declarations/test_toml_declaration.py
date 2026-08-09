@@ -326,7 +326,13 @@ def test_toml_declaration_noop_warning_on_no_version_in_file(
         )
         for replacement_def, error_msg in [
             (
-                f"{Path(__file__)!s}",
+                # BSR-PATCH: the file's NAME, not its full path
+                # (better-semantic-release). This case has to be a definition with
+                # no colon in it, and every absolute Windows path has one in the
+                # drive letter -- the parser split "C:\..." at that colon and
+                # raised nothing, so the test asserted the opposite of its intent
+                # on the platform where the ambiguity is real.
+                Path(__file__).name,
                 regexp(r"Invalid TOML replacement definition .*, missing ':'"),
             ),
             (
