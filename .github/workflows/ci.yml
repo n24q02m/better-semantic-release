@@ -82,6 +82,42 @@ jobs:
           files: ./coverage.xml
           fail_ci_if_error: false
 
+  # Tests only. Lint, types and coverage are platform-independent and stay in the
+  # Linux job -- running them twice would double the noise without doubling the
+  # information.
+  #
+  # This exists because a suite that only ever runs on one platform stops being
+  # able to disagree with that platform. Twenty-one tests here had written Linux
+  # details into their own expectations -- os.linesep through text-mode files, an
+  # absolute path assumed to contain no colon, an emptied environment assumed to
+  # still find git on PATH -- and every one of them was wrong about the code while
+  # passing on every release for thirteen releases. Windows found all twenty-one
+  # the first time it ran them.
+  test-windows:
+    name: test (windows)
+    if: github.event_name != 'schedule'
+    runs-on: windows-latest
+    # The Linux job runs this suite in about ninety seconds. Windows is far
+    # slower here because the tests spawn git constantly and process creation is
+    # expensive on it, so this is a stop-a-hang bound, not an expectation.
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+
+      - name: Create venv (Python 3.13)
+        run: uv venv --python 3.13
+
+      # [test] only -- the same set tox declares for its test environment.
+      - name: Install project + test deps
+        run: uv pip install -e ".[test]"
+
+      - name: Pytest (full default suite on Windows)
+        run: uv run --no-sync pytest -q
+
   action-smoke-test:
     name: composite action installs + runs forked source (linux)
     if: github.event_name != 'schedule'
