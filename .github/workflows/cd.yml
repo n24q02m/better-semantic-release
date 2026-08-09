@@ -63,6 +63,39 @@ jobs:
           prerelease_token: beta
           build: "true"
 
+      # `semantic-release version` tags and writes the release notes; it does not
+      # attach anything. `upload_to_vcs_release = true` is read by
+      # `semantic-release publish`, which is a separate command and a separate
+      # action -- so without this step the setting was on, the notes linked to
+      # "GitHub Release Assets", and every release from v1.2.3 through v1.3.0
+      # pointed at an empty assets list.
+      #
+      # Upstream's publish-action, not this fork: the fork's reason to exist is
+      # the version-decision guards, and it has nothing to add to an upload. The
+      # venv the install step above builds is handed on by step output rather
+      # than $GITHUB_ENV precisely so it cannot leak into this container.
+      - name: Attach the built distributions to the GitHub release
+        if: steps.release.outputs.released == 'true'
+        uses: python-semantic-release/publish-action@5a5718ce47b892ef699f2972dae122297771d641 # v10.6.1
+        with:
+          github_token: ${{ steps.app-token.outputs.token }}
+          tag: ${{ steps.release.outputs.tag }}
+
       - name: Publish to PyPI (trusted publishing, OIDC)
         if: steps.release.outputs.released == 'true'
         uses: pypa/gh-action-pypi-publish@ba38be9e461d3875417946c167d0b5f3d385a247 # v1.14.1
+
+# No downstream notification is dispatched from here, and that is a decision
+# rather than an omission -- worth writing down, because a shared library cutting
+# a stable release is exactly the case where you would expect one.
+#
+# Consumers pin this action by commit SHA with the version in a trailing comment,
+# the form the README recommends. Renovate reads that comment, and the bump PR it
+# opens is the propagation path; it has been carrying releases across consumers
+# already. A dispatch-based notifier would sit alongside that, not replace it,
+# and there is no handler listening for such a dispatch today -- an unhandled
+# `repository_dispatch` fails by doing nothing, silently, on the one run a year
+# where it mattered.
+#
+# Revisit when a handler exists. Until then the pins are covered, and this
+# workflow is not pretending otherwise.

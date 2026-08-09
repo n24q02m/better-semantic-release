@@ -16,6 +16,11 @@ release exercises the code being released. The template's cd.yml calls the
 published action instead, which is correct everywhere else and here would end
 the dogfooding silently -- CD stays green either way, it just stops testing
 what it ships.
+
+The cost is that template improvements have to be ported by hand, and one had
+already gone missing: the publish step that attaches the built distributions to
+the release. All thirteen releases to date shipped with notes linking to an
+empty assets list before anyone compared the two files.
 """
 
 [[exempt]]
