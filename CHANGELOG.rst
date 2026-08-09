@@ -4,6 +4,25 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.3.0:
+
+v1.3.0 (2026-08-09)
+===================
+
+✨ Features
+-----------
+
+* Record which scaffold files this repo keeps its own, and why (`52bebd2`_)
+
+🪲 Bug Fixes
+------------
+
+* Hold every BSR-PATCH file to ruff, ruff format and mypy (`330491a`_)
+
+.. _330491a: https://github.com/n24q02m/better-semantic-release/commit/330491abdf7853194aa00e4cf06a4636b26bda60
+.. _52bebd2: https://github.com/n24q02m/better-semantic-release/commit/52bebd2456d32d11fd2a0d1bb13910f400429406
+
+
 .. _changelog-v1.3.0-beta.1:
 
 v1.3.0-beta.1 (2026-08-08)
