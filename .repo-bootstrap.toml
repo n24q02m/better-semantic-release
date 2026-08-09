@@ -33,8 +33,9 @@ public. The template's jobs do none of that, so the two files have no overlap
 to reconcile -- the narrowing guard refuses this replacement on every run, and
 that refusal is the correct answer written down as an error.
 
-Forfeited by this: the template's dependency-review job. Worth adopting on its
-own terms, as an addition to this file rather than a replacement of it.
+One template job was worth having on its own terms, and dependency-review has
+since been added to this file directly rather than imported by replacing it.
+Nothing else in the template's ci.yml has an equivalent here to reconcile.
 """
 
 [[exempt]]
