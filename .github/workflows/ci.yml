@@ -1,8 +1,15 @@
 name: ci
 
+# These two cover disjoint ground: pull_request tests code before it lands,
+# push-on-main tests it after, including anything that arrives by a direct commit
+# or an admin merge. A branch pattern here would cover neither -- it repeats what
+# pull_request already does, and since the two events carry different refs the
+# concurrency group below cannot collapse them, so both run to completion. That
+# was `feat/**`, and at ninety seconds a run nobody noticed; the Windows job made
+# it twenty-four minutes of runner time and two of every check on the PR.
 on:
   push:
-    branches: [main, "feat/**"]
+    branches: [main]
   pull_request:
     branches: [main]
   schedule:
