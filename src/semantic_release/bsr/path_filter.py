@@ -56,7 +56,9 @@ def commit_touches_paths(commit: Commit, paths: tuple[str, ...]) -> bool:
             if changed_path is not None:
                 if has_empty_path:
                     return True
-                if changed_path in exact_matches or changed_path.startswith(prefix_tuple):
+                if changed_path in exact_matches or changed_path.startswith(
+                    prefix_tuple
+                ):
                     return True
 
     return False
