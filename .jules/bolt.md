@@ -16,3 +16,7 @@
 None of the twelve carried a timing. Several also re-wrapped unrelated lines, including the `BSR-PATCH` call sites, which is churn the pull request did not claim to make.
 
 **Action:** Before proposing a performance change, measure it and put the numbers in the pull request body: the benchmark or timing command, the before and after, and the input size used. Restrict proposals to code that a measurement shows is hot, and confine the diff to the lines the measurement covers. Prefer changes inside `src/semantic_release/bsr/`, which this fork owns; stock python-semantic-release files are kept close to upstream so rebases stay cheap, so a change there needs a correspondingly larger measured gain.
+
+## 2026-10-25 - Using `str.startswith()` with a tuple for performance
+**Learning:** Checking if a string starts with any of a list of prefixes is significantly faster using Python's native `str.startswith(tuple)` rather than an explicit Python loop or an `any(...)` generator expression. This takes advantage of optimized C-level iteration and provides a measurable impact, especially in hot paths like filtering thousands of paths for every commit.
+**Action:** Replace `any(path.startswith(prefix) for prefix in prefixes)` with `path.startswith(tuple(prefixes))` when `prefixes` can be converted into a tuple cheaply, specifically on hot paths where a measurable performance gain can be documented.

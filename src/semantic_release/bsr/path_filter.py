@@ -43,20 +43,23 @@ def commit_touches_paths(commit: Commit, paths: tuple[str, ...]) -> bool:
         return False
 
     comparand = commit.parents[0] if commit.parents else NULL_TREE
-    diff_index = commit.diff(comparand)
-    changed_paths = {
-        changed_path
-        for diff in diff_index
-        for changed_path in (diff.a_path, diff.b_path)
-        if changed_path is not None
-    }
 
     normalized_paths = tuple(_normalize_prefix(path) for path in paths)
-    return any(
-        _path_under_prefix(changed_path, prefix)
-        for changed_path in changed_paths
-        for prefix in normalized_paths
-    )
+    has_empty_path = not all(normalized_paths)
+
+    exact_matches = set(normalized_paths)
+    prefix_tuple = tuple(f"{p}/" for p in normalized_paths)
+
+    for diff in commit.diff(comparand):
+        # changed_path can be None for additions (a_path) or deletions (b_path)
+        for changed_path in (diff.a_path, diff.b_path):
+            if changed_path is not None:
+                if has_empty_path:
+                    return True
+                if changed_path in exact_matches or changed_path.startswith(prefix_tuple):
+                    return True
+
+    return False
 
 
 def filter_commits_by_paths(
