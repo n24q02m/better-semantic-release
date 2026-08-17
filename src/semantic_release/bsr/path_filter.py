@@ -52,11 +52,18 @@ def commit_touches_paths(commit: Commit, paths: tuple[str, ...]) -> bool:
     }
 
     normalized_paths = tuple(_normalize_prefix(path) for path in paths)
-    return any(
-        _path_under_prefix(changed_path, prefix)
-        for changed_path in changed_paths
-        for prefix in normalized_paths
-    )
+
+    if "" in normalized_paths:
+        return bool(changed_paths)
+
+    paths_with_slash = tuple(f"{p}/" for p in normalized_paths)
+    for changed_path in changed_paths:
+        if changed_path in normalized_paths or changed_path.startswith(
+            paths_with_slash
+        ):
+            return True
+
+    return False
 
 
 def filter_commits_by_paths(
