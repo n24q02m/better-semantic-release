@@ -110,9 +110,12 @@ if [[ -n "$INPUT_SSH_PUBLIC_SIGNING_KEY" && -n "$INPUT_SSH_PRIVATE_SIGNING_KEY" 
 
 	# Write keys to disk
 	mkdir -vp ~/.ssh
-	echo -e "$INPUT_SSH_PUBLIC_SIGNING_KEY" >>~/.ssh/signing_key.pub
+	printf '%s\n' "$INPUT_SSH_PUBLIC_SIGNING_KEY" >>~/.ssh/signing_key.pub
 	cat ~/.ssh/signing_key.pub
-	echo -e "$INPUT_SSH_PRIVATE_SIGNING_KEY" >>~/.ssh/signing_key
+	(
+		umask 077
+		printf '%s\n' "$INPUT_SSH_PRIVATE_SIGNING_KEY" >>~/.ssh/signing_key
+	)
 	# DO NOT CAT private key for security reasons
 	sha256sum ~/.ssh/signing_key
 	# Ensure read only private key
