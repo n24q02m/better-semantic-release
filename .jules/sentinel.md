@@ -12,3 +12,8 @@
 ## 2024-05-18 - Release-safety helpers fail closed and never raise
 **Learning:** `bsr/registry.py` and `bsr/guards.py` implement release-safety guards. `_http_status` documents "Returns None on any network-level failure" and `probe_registry` documents "Fails closed to UNKNOWN on any ambiguous or unreachable state". A hardening change that raises an exception instead of returning `None` escapes `probe_registry`, reaches the guard call at `bsr/guards.py:93`, and aborts a release run that should merely have degraded to `UNKNOWN`. Three separate proposals (#55, #63 and one earlier variant) made exactly this substitution while describing themselves as pure hardening.
 **Action:** When hardening any helper under `src/semantic_release/bsr/`, signal rejection through the value the function already documents - `None` for `_http_status`, `ProbeResult.UNKNOWN` for `probe_registry` - and add a test asserting the fail-closed value. Read the function docstring for its failure contract before choosing between returning and raising.
+
+## 2024-08-18 - TOCTOU Vulnerability in SSH Key Creation
+**Vulnerability:** A Time-of-Check to Time-of-Use (TOCTOU) vulnerability where SSH private keys are written with default permissions using `echo` and subsequently restricted using `chmod`, temporarily exposing them as world-readable.
+**Learning:** In bash scripts, writing a sensitive file and later changing its permissions creates a brief window where the file can be read by a malicious local process or an attacker in a shared environment.
+**Prevention:** Ensure atomic file creation with secure permissions by using a subshell with a restricted umask, e.g., `(umask 077; printf '%s\n' "$var" > file)`.
