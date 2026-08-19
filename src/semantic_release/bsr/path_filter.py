@@ -18,12 +18,6 @@ def _normalize_prefix(prefix: str) -> str:
     return prefix.replace("\\", "/").strip("/")
 
 
-def _path_under_prefix(changed_path: str, prefix: str) -> bool:
-    if not prefix:
-        return True
-    return changed_path == prefix or changed_path.startswith(f"{prefix}/")
-
-
 def commit_touches_paths(commit: Commit, paths: tuple[str, ...]) -> bool:
     """
     True if any file changed in `commit` is under any prefix in `paths`.
@@ -52,10 +46,14 @@ def commit_touches_paths(commit: Commit, paths: tuple[str, ...]) -> bool:
     }
 
     normalized_paths = tuple(_normalize_prefix(path) for path in paths)
+    if not all(normalized_paths):
+        return True
+
+    # Performance optimization: Use C-level startswith(tuple) to avoid nested O(N*M) Python loops
+    normalized_prefixes = tuple(f"{p}/" for p in normalized_paths)
     return any(
-        _path_under_prefix(changed_path, prefix)
+        changed_path in normalized_paths or changed_path.startswith(normalized_prefixes)
         for changed_path in changed_paths
-        for prefix in normalized_paths
     )
 
 
