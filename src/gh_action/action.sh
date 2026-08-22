@@ -112,10 +112,15 @@ if [[ -n "$INPUT_SSH_PUBLIC_SIGNING_KEY" && -n "$INPUT_SSH_PRIVATE_SIGNING_KEY" 
 	mkdir -vp ~/.ssh
 	echo -e "$INPUT_SSH_PUBLIC_SIGNING_KEY" >>~/.ssh/signing_key.pub
 	cat ~/.ssh/signing_key.pub
-	echo -e "$INPUT_SSH_PRIVATE_SIGNING_KEY" >>~/.ssh/signing_key
+	(
+		# Security: Use a subshell with umask 077 to avoid TOCTOU race condition
+		# when creating the private key file.
+		umask 077
+		printf '%b\n' "$INPUT_SSH_PRIVATE_SIGNING_KEY" >>~/.ssh/signing_key
+	)
 	# DO NOT CAT private key for security reasons
 	sha256sum ~/.ssh/signing_key
-	# Ensure read only private key
+	# Defense in depth: Ensure read only private key if it already existed
 	chmod 400 ~/.ssh/signing_key
 
 	# Enable ssh-agent & add signing key

@@ -12,3 +12,8 @@
 ## 2024-05-18 - Release-safety helpers fail closed and never raise
 **Learning:** `bsr/registry.py` and `bsr/guards.py` implement release-safety guards. `_http_status` documents "Returns None on any network-level failure" and `probe_registry` documents "Fails closed to UNKNOWN on any ambiguous or unreachable state". A hardening change that raises an exception instead of returning `None` escapes `probe_registry`, reaches the guard call at `bsr/guards.py:93`, and aborts a release run that should merely have degraded to `UNKNOWN`. Three separate proposals (#55, #63 and one earlier variant) made exactly this substitution while describing themselves as pure hardening.
 **Action:** When hardening any helper under `src/semantic_release/bsr/`, signal rejection through the value the function already documents - `None` for `_http_status`, `ProbeResult.UNKNOWN` for `probe_registry` - and add a test asserting the fail-closed value. Read the function docstring for its failure contract before choosing between returning and raising.
+
+## 2024-05-24 - TOCTOU vulnerability when creating private keys
+**Vulnerability:** Writing a private key using `echo` and then running `chmod 400` creates a Time-of-Check to Time-of-Use (TOCTOU) vulnerability where the key is briefly readable by anyone.
+**Learning:** Using a subshell with `umask 077` ensures the file is created with secure permissions right from the start. Also, `printf '%b\n'` is safer than `echo -e` for writing multi-line string payloads.
+**Prevention:** Always write sensitive data to disk in a secure subshell with `umask 077` and use `printf` instead of `echo`.
