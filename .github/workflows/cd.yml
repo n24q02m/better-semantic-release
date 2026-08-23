@@ -32,6 +32,10 @@ jobs:
   release:
     name: Release
     runs-on: ubuntu-latest
+    # The environment must be provisioned with reviewers and branch policy before dispatch.
+    # Without that external settings gate, GitHub must not be used for publication.
+    environment:
+      name: ${{ inputs.release_type == 'beta' && 'beta-publish' || 'stable-publish' }}
 
     steps:
       - name: Mint a token from the CI GitHub App
