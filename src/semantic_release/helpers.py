@@ -213,13 +213,23 @@ class ParsedGitUrl(NamedTuple):
 
 
 def _hide_credentials_in_url(url: str) -> str:
-    url_parts = urlsplit(url)
+    """Return a URL-shaped diagnostic value without userinfo, path, or query data."""
+    try:
+        url_parts = urlsplit(url)
+        hostname = url_parts.hostname
+        port = url_parts.port
+    except ValueError:
+        return "<redacted-url>"
 
-    if not url_parts.scheme or "@" not in url_parts.netloc:
-        return url
+    if not url_parts.scheme or not hostname:
+        return "<redacted-url>"
 
-    _, _, host = url_parts.netloc.rpartition("@")
-    return urlunsplit(url_parts._replace(netloc=f"<credentials>@{host}"))
+    host = f"[{hostname}]" if ":" in hostname else hostname
+    if port is not None:
+        host = f"{host}:{port}"
+    netloc = f"<credentials>@{host}" if "@" in url_parts.netloc else host
+    path = "/<redacted>" if url_parts.path else ""
+    return urlunsplit((url_parts.scheme, netloc, path, "", ""))
 
 
 @lru_cache(maxsize=512)
