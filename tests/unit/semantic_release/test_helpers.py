@@ -142,7 +142,7 @@ def test_parse_git_url_does_not_log_credentials(caplog: pytest.LogCaptureFixture
     assert expected_parsed_url == actual_parsed_url
     assert username not in caplog.text
     assert secret not in caplog.text
-    assert "<credentials>@github.example.com" in caplog.text
+    assert caplog.records[-1].getMessage() == "Parsing git url"
 
 
 @pytest.mark.parametrize(

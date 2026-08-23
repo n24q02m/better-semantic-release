@@ -6,6 +6,7 @@ from contextlib import nullcontext
 from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
+from urllib.parse import urlsplit
 
 from git import GitCommandError, Repo
 
@@ -31,6 +32,16 @@ if TYPE_CHECKING:  # pragma: no cover
     from typing import Sequence
 
     from git import Actor
+
+
+def _is_example_test_remote(url: str) -> bool:
+    """Return whether ``url`` uses the exact example.com test host."""
+    candidate = url if "://" in url else f"ssh://{url}"
+    try:
+        hostname = urlsplit(candidate).hostname
+    except ValueError:
+        return False
+    return hostname is not None and hostname.casefold() == "example.com"
 
 
 class GitProject:
@@ -423,7 +434,7 @@ class GitProject:
                 configured_url = remote_ref_obj.url
                 is_local_or_test_remote = (
                     configured_url.startswith(("file://", "/", "C:/", "H:/"))
-                    or "example.com" in configured_url
+                    or _is_example_test_remote(configured_url)
                     or not configured_url.startswith(
                         (
                             "https://",

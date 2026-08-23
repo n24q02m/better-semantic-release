@@ -254,7 +254,7 @@ def test_verify_upstream_unchanged_with_remote_url(
     mock_gitproject: GitProject, mock_repo: RepoMock
 ):
     """Test that verify_upstream_unchanged uses remote_url when provided."""
-    remote_url = "https://token:x-oauth-basic@github.com/owner/repo.git"
+    remote_url = "https://placeholder@github.com/owner/repo.git"
 
     # Should not raise an exception
     mock_gitproject.verify_upstream_unchanged(
@@ -267,6 +267,37 @@ def test_verify_upstream_unchanged_with_remote_url(
     )
     # Verify that remote_ref_obj.fetch() was NOT called
     mock_repo.remotes["origin"].fetch.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "configured_url, uses_authenticated_fetch",
+    [
+        ("https://example.com/owner/repo.git", False),
+        ("https://example.com.evil/owner/repo.git", True),
+    ],
+)
+def test_verify_upstream_unchanged_matches_test_host_exactly(
+    mock_gitproject: GitProject,
+    mock_repo: RepoMock,
+    configured_url: str,
+    uses_authenticated_fetch: bool,
+):
+    """Only the exact example.com host is treated as a test remote."""
+    mock_repo.remotes["origin"].url = configured_url
+    remote_url = "https://placeholder@github.com/owner/repo.git"
+
+    mock_gitproject.verify_upstream_unchanged(
+        local_ref="HEAD", remote_url=remote_url, noop=False
+    )
+
+    if uses_authenticated_fetch:
+        mock_repo.git.fetch.assert_called_once_with(
+            remote_url, "refs/heads/main:refs/remotes/origin/main"
+        )
+        mock_repo.remotes["origin"].fetch.assert_not_called()
+    else:
+        mock_repo.remotes["origin"].fetch.assert_called_once()
+        mock_repo.git.fetch.assert_not_called()
 
 
 def test_is_shallow_clone_true(mock_gitproject: GitProject, tmp_path: Path) -> None:
