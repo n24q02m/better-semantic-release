@@ -145,6 +145,21 @@ def test_parse_git_url_does_not_log_credentials(caplog: pytest.LogCaptureFixture
     assert "<credentials>@github.example.com" in caplog.text
 
 
+def test_parse_git_url_does_not_log_query_or_path_secrets(
+    caplog: pytest.LogCaptureFixture,
+):
+    """The debug log must not copy secrets outside URL userinfo either."""
+    secret = "ghp_query_secret"
+    url = f"https://github.example.com/owner/{secret}.git?token={secret}"
+
+    parse_git_url.cache_clear()
+    caplog.set_level("DEBUG", logger=logger.name)
+
+    parse_git_url(url)
+
+    assert secret not in caplog.text
+
+
 @pytest.mark.parametrize(
     "url",
     [

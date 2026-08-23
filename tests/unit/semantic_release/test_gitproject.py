@@ -269,6 +269,23 @@ def test_verify_upstream_unchanged_with_remote_url(
     mock_repo.remotes["origin"].fetch.assert_not_called()
 
 
+def test_verify_upstream_unchanged_does_not_treat_similar_hostname_as_test_remote(
+    mock_gitproject: GitProject, mock_repo: RepoMock
+):
+    """An attacker-controlled hostname containing example.com must not bypass auth."""
+    mock_repo.remotes["origin"].url = "https://evil-example.com/owner/repo.git"
+    remote_url = "https://token:x-oauth-basic@evil-example.com/owner/repo.git"
+
+    mock_gitproject.verify_upstream_unchanged(
+        local_ref="HEAD", remote_url=remote_url, noop=False
+    )
+
+    mock_repo.git.fetch.assert_called_once_with(
+        remote_url, "refs/heads/main:refs/remotes/origin/main"
+    )
+    mock_repo.remotes["origin"].fetch.assert_not_called()
+
+
 def test_is_shallow_clone_true(mock_gitproject: GitProject, tmp_path: Path) -> None:
     """Test is_shallow_clone returns True when shallow file exists."""
     # Create a shallow file

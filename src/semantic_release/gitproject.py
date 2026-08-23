@@ -6,6 +6,7 @@ from contextlib import nullcontext
 from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
+from urllib.parse import urlsplit
 
 from git import GitCommandError, Repo
 
@@ -418,12 +419,20 @@ class GitProject:
                 # Only use remote_url if:
                 # 1. It's provided and different from the configured remote URL
                 # 2. It contains authentication credentials (@ symbol)
-                # 3. The configured remote is NOT a local path, file:// URL, or test URL (example.com)
-                #    This ensures we don't break tests or local development
+                # 3. The configured remote is NOT a local path, file:// URL, or exact test host
+                #    (example.com). This ensures we don't break tests or local development.
                 configured_url = remote_ref_obj.url
+                try:
+                    configured_hostname = urlsplit(configured_url).hostname
+                except ValueError:
+                    configured_hostname = None
+
                 is_local_or_test_remote = (
                     configured_url.startswith(("file://", "/", "C:/", "H:/"))
-                    or "example.com" in configured_url
+                    or (
+                        configured_hostname is not None
+                        and configured_hostname.casefold() == "example.com"
+                    )
                     or not configured_url.startswith(
                         (
                             "https://",
