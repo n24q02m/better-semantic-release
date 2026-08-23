@@ -17,7 +17,6 @@ identical across both copies; only the config differs.
 from __future__ import annotations
 
 import re
-import shutil
 from typing import TYPE_CHECKING
 
 from click.testing import CliRunner
@@ -70,6 +69,11 @@ def _commit(proj: Path, relpath: str, content: str, message: str) -> None:
     repo = Repo(str(proj))
     repo.index.add([relpath])
     repo.index.commit(message, author=_AUTHOR, committer=_AUTHOR)
+
+
+def _clone_project(source: Path, destination: Path) -> None:
+    """Clone without hardlinks so later test runs cannot race source objects."""
+    Repo.clone_from(str(source), str(destination), multi_options=["--no-hardlinks"])
 
 
 def _run_version(*extra_args: str, env: dict[str, str] | None = None) -> object:
@@ -138,8 +142,8 @@ def test_explicit_false_matches_no_bsr_table_stdout_stderr_and_exit_code(
 
     proj_false = tmp_path / "proj_false"
     proj_no_table = tmp_path / "proj_no_table"
-    shutil.copytree(shared, proj_false)
-    shutil.copytree(shared, proj_no_table)
+    _clone_project(shared, proj_false)
+    _clone_project(shared, proj_no_table)
     _append_bsr_table(
         proj_false, "\n[tool.semantic_release.bsr]\nstable_notes_aggregate = false\n"
     )
@@ -162,8 +166,8 @@ def test_explicit_false_matches_no_bsr_table_changelog_byte_identical(
 
     proj_false = tmp_path / "proj_false"
     proj_no_table = tmp_path / "proj_no_table"
-    shutil.copytree(shared, proj_false)
-    shutil.copytree(shared, proj_no_table)
+    _clone_project(shared, proj_false)
+    _clone_project(shared, proj_no_table)
     _append_bsr_table(
         proj_false, "\n[tool.semantic_release.bsr]\nstable_notes_aggregate = false\n"
     )
@@ -197,8 +201,8 @@ def test_explicit_false_matches_no_bsr_table_release_notes_byte_identical(
 
     proj_false = tmp_path / "proj_false"
     proj_no_table = tmp_path / "proj_no_table"
-    shutil.copytree(shared, proj_false)
-    shutil.copytree(shared, proj_no_table)
+    _clone_project(shared, proj_false)
+    _clone_project(shared, proj_no_table)
     _append_bsr_table(
         proj_false, "\n[tool.semantic_release.bsr]\nstable_notes_aggregate = false\n"
     )
@@ -245,8 +249,8 @@ def test_on_actually_differs_from_off_not_a_vacuous_parity(
 
     proj_on = tmp_path / "proj_on"
     proj_off = tmp_path / "proj_off"
-    shutil.copytree(shared, proj_on)
-    shutil.copytree(shared, proj_off)
+    _clone_project(shared, proj_on)
+    _clone_project(shared, proj_off)
     _append_bsr_table(
         proj_on, "\n[tool.semantic_release.bsr]\nstable_notes_aggregate = true\n"
     )
