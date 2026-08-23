@@ -4,6 +4,40 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.4.0-beta.1:
+
+v1.4.0-beta.1 (2026-08-23)
+==========================
+
+✨ Features
+-----------
+
+* Run dependency review on pull requests (`cbf1190`_)
+
+* Run the test suite on Windows as well as Linux (`PR#75`_, `87d9cc5`_)
+
+🪲 Bug Fixes
+------------
+
+* Attach the built distributions the release notes have always promised (`6a97f59`_)
+
+* Hold the suite to what the code does, not to what Linux does (`a67083a`_)
+
+* Stop running ci twice for every push to a branch with a pull request (`PR#76`_, `700b29b`_)
+
+* Stop the ci.yml exemption calling dependency-review forfeited (`PR#74`_, `cae37be`_)
+
+.. _6a97f59: https://github.com/n24q02m/better-semantic-release/commit/6a97f591483e9a69c5a69ad471fced6dc79151ed
+.. _700b29b: https://github.com/n24q02m/better-semantic-release/commit/700b29bb73499f8b1a6b0b398624f67a3ae465dc
+.. _87d9cc5: https://github.com/n24q02m/better-semantic-release/commit/87d9cc588905552f467950db8e9f7d82ce514117
+.. _a67083a: https://github.com/n24q02m/better-semantic-release/commit/a67083a439f36f424c20f181bf72e6b9dc513ced
+.. _cae37be: https://github.com/n24q02m/better-semantic-release/commit/cae37bed866ed2b75d9fae744694a94b9093db11
+.. _cbf1190: https://github.com/n24q02m/better-semantic-release/commit/cbf11909e208c886857d2f77a05a23b7b3433d35
+.. _PR#74: https://github.com/n24q02m/better-semantic-release/pull/74
+.. _PR#75: https://github.com/n24q02m/better-semantic-release/pull/75
+.. _PR#76: https://github.com/n24q02m/better-semantic-release/pull/76
+
+
 .. _changelog-v1.3.0:
 
 v1.3.0 (2026-08-09)
