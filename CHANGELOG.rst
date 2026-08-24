@@ -4,6 +4,29 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.4.0-beta.2:
+
+v1.4.0-beta.2 (2026-08-24)
+==========================
+
+✨ Features
+-----------
+
+* **bsr**: Reconcile governed path contracts (`PR#99`_, `4d0e68c`_)
+
+🪲 Bug Fixes
+------------
+
+* Bind releases to channel environments (`8c702c3`_)
+
+* Harden URL handling for release fetches (`d364587`_)
+
+.. _4d0e68c: https://github.com/n24q02m/better-semantic-release/commit/4d0e68ca23adee9b36ec68482ae18d0574566b8e
+.. _8c702c3: https://github.com/n24q02m/better-semantic-release/commit/8c702c3e8cb048c43318cd91943f2211ba317207
+.. _d364587: https://github.com/n24q02m/better-semantic-release/commit/d3645877d093fb0a2a3853fa96f869678ab85fab
+.. _PR#99: https://github.com/n24q02m/better-semantic-release/pull/99
+
+
 .. _changelog-v1.4.0-beta.1:
 
 v1.4.0-beta.1 (2026-08-23)
