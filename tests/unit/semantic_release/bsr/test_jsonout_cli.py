@@ -33,12 +33,25 @@ def _write(path: Path, content: str) -> None:
 
 
 def _pyproject_toml(extra_bsr: str) -> str:
+    extra_bsr = extra_bsr.replace(
+        "\n[tool.semantic_release.bsr]\n",
+        "\n[tool.semantic_release.bsr]\nschema_version = 1\n",
+        1,
+    )
+    if (
+        "\n[[tool.semantic_release.bsr.components]]\n" in extra_bsr
+        and "schema_version" not in extra_bsr
+    ):
+        extra_bsr = extra_bsr.replace(
+            "\n[[tool.semantic_release.bsr.components]]\n",
+            "\n[tool.semantic_release.bsr]\nschema_version = 1\n"
+            "[[tool.semantic_release.bsr.components]]\n",
+            1,
+        )
     return (
         '[project]\nname = "demo"\nversion = "0.1.0"\n\n'
         "[tool.semantic_release]\n"
-        'tag_format = "v{version}"\n'
-        # Same reasoning as test_summary_cli.py: without this, PSR forces a MAJOR
-        # bump out of 0.x.x regardless of which commits matched.
+        # NOTE: PSR forces a MAJOR bump out of 0.x.x regardless of which commits matched.
         "allow_zero_version = true\n" + extra_bsr
     )
 

@@ -185,6 +185,7 @@ qualified for a bump**, a fact upstream only logs at ``INFO`` and never surfaces
 .. code-block:: toml
 
     [tool.semantic_release.bsr]
+    schema_version = 1
     explain = true
 
 With ``explain`` on, that line is replaced by the classified cause:
@@ -211,6 +212,7 @@ leaves two of them uncaught entirely (raw traceback).
 .. code-block:: toml
 
     [tool.semantic_release.bsr]
+    schema_version = 1
     actionable_errors = true
 
 With the flag on, these categories are rewritten as "what happened / why / how to fix":
@@ -247,6 +249,7 @@ enable it under ``[tool.semantic_release.bsr]``.
 .. code-block:: toml
 
     [tool.semantic_release.bsr]
+    schema_version = 1
     path_filter = true
     paths = ["apps/api", "libs/shared"]
 
@@ -275,6 +278,7 @@ what a release run *would* do across a monorepo's components before it does it.
 .. code-block:: toml
 
     [tool.semantic_release.bsr]
+    schema_version = 1
     summary = true
     components = [
         { name = "api", paths = ["apps/api", "libs/shared"] },
@@ -314,6 +318,7 @@ section that is empty -- or fragmented across the prerelease tags instead of one
 .. code-block:: toml
 
     [tool.semantic_release.bsr]
+    schema_version = 1
     stable_notes_aggregate = true
     stable_notes_scope = "line"  # or "since_stable"
 

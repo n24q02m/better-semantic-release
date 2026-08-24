@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import pytest
 from git import Actor, Repo
 
 from semantic_release.bsr.config import BsrConfig
@@ -74,6 +75,26 @@ def test_commit_touches_paths_empty_paths_returns_false(tmp_path: Path) -> None:
     repo = Repo.init(tmp_path)
     c1 = _commit(repo, "apps/api/x.py", "x", "feat: api")
     assert commit_touches_paths(c1, ()) is False
+
+
+def test_commit_touches_paths_exact_file_path(tmp_path: Path) -> None:
+    repo = Repo.init(tmp_path)
+    commit = _commit(repo, "apps/api/x.py", "x", "feat: api")
+
+    assert commit_touches_paths(commit, ("apps/api/x.py",)) is True
+
+
+def test_commit_touches_paths_empty_diff_returns_false(tmp_path: Path) -> None:
+    repo = Repo.init(tmp_path)
+    parent = _commit(repo, "apps/api/x.py", "x", "feat: api")
+    empty_commit = repo.index.commit(
+        "chore: empty",
+        author=_AUTHOR,
+        committer=_AUTHOR,
+    )
+
+    assert tuple(empty_commit.diff(parent)) == ()
+    assert commit_touches_paths(empty_commit, ("apps/api",)) is False
 
 
 def test_commit_touches_paths_rename_into_path_counts(tmp_path: Path) -> None:
@@ -185,6 +206,8 @@ def test_make_path_filter_working_closure_with_explicit_paths(
     path_filter = make_path_filter(cfg, tmp_path)
     assert path_filter is not None
     assert path_filter([c1, c2]) == [c1]
+    del c1, c2, path_filter
+    repo.close()
 
 
 def test_make_path_filter_run_dir_default_at_repo_root_is_noop(
@@ -196,7 +219,8 @@ def test_make_path_filter_run_dir_default_at_repo_root_is_noop(
     cfg = BsrConfig(path_filter=True, paths=())
     path_filter = make_path_filter(cfg, tmp_path)
     assert path_filter is not None
-    assert path_filter([c1, c2]) == [c1, c2]
+    del c1, c2, path_filter
+    repo.close()
 
 
 def test_make_path_filter_run_dir_default_from_subdirectory(
@@ -211,3 +235,34 @@ def test_make_path_filter_run_dir_default_from_subdirectory(
     path_filter = make_path_filter(cfg, run_dir)
     assert path_filter is not None
     assert path_filter([c1, c2]) == [c1]
+
+
+def test_make_path_filter_normalizes_relative_prefixes(tmp_path: Path) -> None:
+    repo = Repo.init(tmp_path)
+    c1 = _commit(repo, "apps/api/x.py", "x", "feat: api")
+    c2 = _commit(repo, "apps/web/y.py", "y", "feat: web")
+
+    cfg = BsrConfig(path_filter=True, paths=("./apps//api/",))
+    path_filter = make_path_filter(cfg, tmp_path)
+
+    assert path_filter is not None
+    assert path_filter([c1, c2]) == [c1]
+
+
+@pytest.mark.parametrize(
+    "invalid_path",
+    (
+        "/apps/api",
+        r"C:\apps\api",
+        r"\\server\share",
+        "../apps/api",
+        "apps/../web",
+    ),
+)
+def test_make_path_filter_rejects_non_repository_relative_paths(
+    tmp_path: Path, invalid_path: str
+) -> None:
+    Repo.init(tmp_path)
+
+    with pytest.raises(ValueError, match="repository-relative"):
+        make_path_filter(BsrConfig(path_filter=True, paths=(invalid_path,)), tmp_path)

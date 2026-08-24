@@ -26,6 +26,7 @@ from semantic_release.version import (
     tags_and_versions,
 )
 
+# BSR-PATCH: use this distribution's package metadata name (better-semantic-release)
 __version__ = importlib.metadata.version("better-semantic-release")
 
 __all__ = [

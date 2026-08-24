@@ -17,16 +17,18 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from semantic_release.bsr.component_map import map_paths
 from semantic_release.bsr.config import BsrComponent
 from semantic_release.bsr.path_filter import filter_commits_by_paths
 from semantic_release.version.algorithm import next_version
 
 if TYPE_CHECKING:
-    from typing import Mapping, Sequence
+    from typing import Callable, Mapping, Sequence
 
     from git.objects.commit import Commit
     from git.repo.base import Repo
 
+    from semantic_release.bsr.component_map import ComponentPathMap
     from semantic_release.bsr.config import BsrConfig
     from semantic_release.commit_parser import (
         CommitParser,
@@ -71,6 +73,26 @@ def resolve_components(
     filter config), so a project that never configured `components` still
     gets a one-row summary instead of an empty report.
     """
+    if bsr_config.component_path_map is not None:
+        component_map = bsr_config.component_path_map
+        return tuple(
+            BsrComponent(
+                name=component.component_id,
+                paths=tuple(
+                    dict.fromkeys(
+                        (
+                            *component.roots,
+                            *(
+                                rule.path
+                                for rule in component_map.rules
+                                if component.component_id in rule.components
+                            ),
+                        )
+                    )
+                ),
+            )
+            for component in component_map.components
+        )
     if bsr_config.components:
         return bsr_config.components
     return (BsrComponent(name=default_name, paths=bsr_config.paths),)
@@ -99,6 +121,7 @@ def build_component_plan(
     prerelease: bool,
     major_on_zero: bool,
     allow_zero_version: bool,
+    path_filter: Callable[[Sequence[Commit]], Sequence[Commit]] | None = None,
 ) -> ComponentPlan:
     """
     Compute one component's release plan.
@@ -113,7 +136,11 @@ def build_component_plan(
     matched_commits_box: list[Sequence[Commit]] = []
 
     def _capturing_filter(commits: Sequence[Commit]) -> Sequence[Commit]:
-        matched = filter_commits_by_paths(commits, component.paths)
+        matched = (
+            path_filter(commits)
+            if path_filter is not None
+            else filter_commits_by_paths(commits, component.paths)
+        )
         matched_commits_box.append(matched)
         return matched
 
@@ -150,6 +177,20 @@ def build_component_plan(
     )
 
 
+def _component_map_filter(
+    component_name: str, component_map: ComponentPathMap
+) -> Callable[[Sequence[Commit]], Sequence[Commit]]:
+    def _filter(commits: Sequence[Commit]) -> Sequence[Commit]:
+        matched: list[Commit] = []
+        for commit in commits:
+            changed_paths = tuple(str(path) for path in commit.stats.files)
+            if component_name in map_paths(component_map, changed_paths):
+                matched.append(commit)
+        return matched
+
+    return _filter
+
+
 def build_summary(
     components: Sequence[BsrComponent],
     *,
@@ -159,6 +200,7 @@ def build_summary(
     prerelease: bool,
     major_on_zero: bool,
     allow_zero_version: bool,
+    component_path_map: ComponentPathMap | None = None,
 ) -> tuple[ComponentPlan, ...]:
     """Build the full per-component release plan, one row per `components` entry."""
     return tuple(
@@ -170,6 +212,11 @@ def build_summary(
             prerelease=prerelease,
             major_on_zero=major_on_zero,
             allow_zero_version=allow_zero_version,
+            path_filter=(
+                _component_map_filter(component.name, component_path_map)
+                if component_path_map is not None
+                else None
+            ),
         )
         for component in components
     )

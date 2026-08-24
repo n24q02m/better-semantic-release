@@ -1,0 +1,888 @@
+# Frozen ownership inventory for the fork against the tracked upstream baseline.
+# Generated from the complete baseline difference at Task 2 source freeze.
+schema_version = 1
+baseline = "c74aa3b99de6d9c721f8bd6d2abfa142298b94c9"
+marker = "BSR-PATCH"
+
+[policy]
+ignored_paths = [".superpowers/"]
+
+[[ownership]]
+path = ".github/CODEOWNERS"
+status = "A"
+kind = "other"
+owner = "repo-maintainers"
+reason = "Current fork difference is intentionally retained and declared for ownership accounting."
+gates = ["other"]
+
+[[ownership]]
+path = ".github/ISSUE_TEMPLATE/bug_report.md"
+status = "A"
+kind = "other"
+owner = "repo-maintainers"
+reason = "Current fork difference is intentionally retained and declared for ownership accounting."
+gates = ["other"]
+
+[[ownership]]
+path = ".github/dependabot.yaml"
+status = "D"
+kind = "other"
+owner = "repo-maintainers"
+reason = "Current fork difference is intentionally retained and declared for ownership accounting."
+gates = ["other"]
+
+[[ownership]]
+path = ".github/rulesets/main.json"
+status = "A"
+kind = "other"
+owner = "repo-maintainers"
+reason = "Current fork difference is intentionally retained and declared for ownership accounting."
+gates = ["other"]
+
+[[ownership]]
+path = ".github/workflows/bot-governance.yml"
+status = "A"
+kind = "workflows"
+owner = "ci-governance"
+reason = "Current CI workflow difference is intentionally retained and covered by the ownership gate."
+gates = ["workflows"]
+
+[[ownership]]
+path = ".github/workflows/cd.yml"
+status = "A"
+kind = "workflows"
+owner = "ci-governance"
+reason = "Current CI workflow difference is intentionally retained and covered by the ownership gate."
+gates = ["workflows"]
+
+[[ownership]]
+path = ".github/workflows/ci.yml"
+status = "M"
+kind = "workflows"
+owner = "ci-governance"
+reason = "Current CI workflow difference is intentionally retained and covered by the ownership gate."
+gates = ["workflows"]
+
+[[ownership]]
+path = ".github/workflows/cicd.yml"
+status = "D"
+kind = "workflows"
+owner = "ci-governance"
+reason = "Current CI workflow difference is intentionally retained and covered by the ownership gate."
+gates = ["workflows"]
+
+[[ownership]]
+path = ".github/workflows/manual.yml"
+status = "D"
+kind = "workflows"
+owner = "ci-governance"
+reason = "Current CI workflow difference is intentionally retained and covered by the ownership gate."
+gates = ["workflows"]
+
+[[ownership]]
+path = ".github/workflows/stale.yml"
+status = "D"
+kind = "workflows"
+owner = "ci-governance"
+reason = "Current CI workflow difference is intentionally retained and covered by the ownership gate."
+gates = ["workflows"]
+
+[[ownership]]
+path = ".github/workflows/validate.yml"
+status = "D"
+kind = "workflows"
+owner = "ci-governance"
+reason = "Current CI workflow difference is intentionally retained and covered by the ownership gate."
+gates = ["workflows"]
+
+[[ownership]]
+path = ".gitignore"
+status = "M"
+kind = "other"
+owner = "repo-maintainers"
+reason = "Current fork difference is intentionally retained and declared for ownership accounting."
+gates = ["other"]
+
+[[ownership]]
+path = ".jules/bolt.md"
+status = "A"
+kind = "other"
+owner = "repo-maintainers"
+reason = "Current fork difference is intentionally retained and declared for ownership accounting."
+gates = ["other"]
+
+[[ownership]]
+path = ".jules/palette.md"
+status = "A"
+kind = "other"
+owner = "repo-maintainers"
+reason = "Current fork difference is intentionally retained and declared for ownership accounting."
+gates = ["other"]
+
+[[ownership]]
+path = ".jules/sentinel.md"
+status = "A"
+kind = "other"
+owner = "repo-maintainers"
+reason = "Current fork difference is intentionally retained and declared for ownership accounting."
+gates = ["other"]
+
+[[ownership]]
+path = ".mise.toml"
+status = "A"
+kind = "other"
+owner = "repo-maintainers"
+reason = "Current fork difference is intentionally retained and declared for ownership accounting."
+gates = ["other"]
+
+[[ownership]]
+path = ".pre-commit-config.yaml"
+status = "M"
+kind = "other"
+owner = "repo-maintainers"
+reason = "Current fork difference is intentionally retained and declared for ownership accounting."
+gates = ["other"]
+
+[[ownership]]
+path = ".repo-bootstrap.toml"
+status = "A"
+kind = "other"
+owner = "repo-maintainers"
+reason = "Current fork difference is intentionally retained and declared for ownership accounting."
+gates = ["other"]
+
+[[ownership]]
+path = ".skret.yaml"
+status = "A"
+kind = "other"
+owner = "repo-maintainers"
+reason = "Current fork difference is intentionally retained and declared for ownership accounting."
+gates = ["other"]
+
+[[ownership]]
+path = "AGENTS.md"
+status = "A"
+kind = "other"
+owner = "repo-maintainers"
+reason = "Current fork difference is intentionally retained and declared for ownership accounting."
+gates = ["other"]
+
+[[ownership]]
+path = "CHANGELOG.rst"
+status = "M"
+kind = "docs"
+owner = "repo-maintainers"
+reason = "Current fork documentation difference is intentionally retained and covered by the docs gate."
+gates = ["docs"]
+
+[[ownership]]
+path = "CODE_OF_CONDUCT.md"
+status = "A"
+kind = "docs"
+owner = "repo-maintainers"
+reason = "Current fork documentation difference is intentionally retained and covered by the docs gate."
+gates = ["docs"]
+
+[[ownership]]
+path = "LICENSE"
+status = "M"
+kind = "other"
+owner = "repo-maintainers"
+reason = "Current fork difference is intentionally retained and declared for ownership accounting."
+gates = ["other"]
+
+[[ownership]]
+path = "LICENSE-MIT"
+status = "A"
+kind = "other"
+owner = "repo-maintainers"
+reason = "Current fork difference is intentionally retained and declared for ownership accounting."
+gates = ["other"]
+
+[[ownership]]
+path = "NOTICE"
+status = "A"
+kind = "other"
+owner = "repo-maintainers"
+reason = "Current fork difference is intentionally retained and declared for ownership accounting."
+gates = ["other"]
+
+[[ownership]]
+path = "README.rst"
+status = "M"
+kind = "docs"
+owner = "repo-maintainers"
+reason = "Current fork documentation difference is intentionally retained and covered by the docs gate."
+gates = ["docs"]
+
+[[ownership]]
+path = "SECURITY.md"
+status = "A"
+kind = "docs"
+owner = "repo-maintainers"
+reason = "Current fork documentation difference is intentionally retained and covered by the docs gate."
+gates = ["docs"]
+
+[[ownership]]
+path = "action.yml"
+status = "M"
+kind = "other"
+owner = "repo-maintainers"
+reason = "Current fork difference is intentionally retained and declared for ownership accounting."
+gates = ["other"]
+
+[[ownership]]
+path = "codecov.yml"
+status = "A"
+kind = "other"
+owner = "repo-maintainers"
+reason = "Current fork difference is intentionally retained and declared for ownership accounting."
+gates = ["other"]
+
+[[ownership]]
+path = "docs/api/commands.rst"
+status = "M"
+kind = "docs"
+owner = "repo-maintainers"
+reason = "Current fork documentation difference is intentionally retained and covered by the docs gate."
+gates = ["docs"]
+
+[[ownership]]
+path = "docs/index.rst"
+status = "M"
+kind = "docs"
+owner = "repo-maintainers"
+reason = "Current fork documentation difference is intentionally retained and covered by the docs gate."
+gates = ["docs"]
+
+[[ownership]]
+path = "pyproject.toml"
+status = "M"
+kind = "other"
+owner = "repo-maintainers"
+reason = "Current fork difference is intentionally retained and declared for ownership accounting."
+gates = ["other"]
+
+[[ownership]]
+path = "renovate.json"
+status = "A"
+kind = "other"
+owner = "repo-maintainers"
+reason = "Current fork difference is intentionally retained and declared for ownership accounting."
+gates = ["other"]
+
+[[ownership]]
+path = "scripts/repo-bootstrap/_lib.py"
+status = "A"
+kind = "other"
+owner = "repo-maintainers"
+reason = "Current fork difference is intentionally retained and declared for ownership accounting."
+gates = ["other"]
+
+[[ownership]]
+path = "scripts/repo-bootstrap/verify_readme_sync.py"
+status = "A"
+kind = "other"
+owner = "repo-maintainers"
+reason = "Current fork difference is intentionally retained and declared for ownership accounting."
+gates = ["other"]
+
+[[ownership]]
+path = "src/gh_action/.dockerignore"
+status = "D"
+kind = "other"
+owner = "repo-maintainers"
+reason = "Current fork difference is intentionally retained and declared for ownership accounting."
+gates = ["other"]
+
+[[ownership]]
+path = "src/gh_action/Dockerfile"
+status = "D"
+kind = "other"
+owner = "repo-maintainers"
+reason = "Current fork difference is intentionally retained and declared for ownership accounting."
+gates = ["other"]
+
+[[ownership]]
+path = "src/gh_action/action.sh"
+status = "M"
+kind = "other"
+owner = "repo-maintainers"
+reason = "Current fork difference is intentionally retained and declared for ownership accounting."
+gates = ["other"]
+
+[[ownership]]
+path = "src/gh_action/requirements.txt"
+status = "D"
+kind = "other"
+owner = "repo-maintainers"
+reason = "Current fork difference is intentionally retained and declared for ownership accounting."
+gates = ["other"]
+
+[[ownership]]
+path = "src/semantic_release/__init__.py"
+status = "M"
+kind = "python-source"
+owner = "bsr-stock-patch"
+reason = "The package root must resolve this distribution metadata name; the behavior cannot live in semantic_release.bsr."
+gates = ["python-lint", "python-format", "python-type"]
+
+[[ownership]]
+path = "src/semantic_release/bsr/__init__.py"
+status = "A"
+kind = "python-source"
+owner = "bsr-core"
+reason = "Fork-owned implementation in semantic_release.bsr; covered as a first-class BSR addition."
+gates = ["python-lint", "python-format", "python-type"]
+
+[[ownership]]
+path = "src/semantic_release/bsr/config.py"
+status = "A"
+kind = "python-source"
+owner = "bsr-core"
+reason = "Fork-owned implementation in semantic_release.bsr; covered as a first-class BSR addition."
+gates = ["python-lint", "python-format", "python-type"]
+
+[[ownership]]
+path = "src/semantic_release/bsr/errors.py"
+status = "A"
+kind = "python-source"
+owner = "bsr-core"
+reason = "Fork-owned implementation in semantic_release.bsr; covered as a first-class BSR addition."
+gates = ["python-lint", "python-format", "python-type"]
+
+[[ownership]]
+path = "src/semantic_release/bsr/explain.py"
+status = "A"
+kind = "python-source"
+owner = "bsr-core"
+reason = "Fork-owned implementation in semantic_release.bsr; covered as a first-class BSR addition."
+gates = ["python-lint", "python-format", "python-type"]
+
+[[ownership]]
+path = "src/semantic_release/bsr/guards.py"
+status = "A"
+kind = "python-source"
+owner = "bsr-core"
+reason = "Fork-owned implementation in semantic_release.bsr; covered as a first-class BSR addition."
+gates = ["python-lint", "python-format", "python-type"]
+
+[[ownership]]
+path = "src/semantic_release/bsr/jsonout.py"
+status = "A"
+kind = "python-source"
+owner = "bsr-core"
+reason = "Fork-owned implementation in semantic_release.bsr; covered as a first-class BSR addition."
+gates = ["python-lint", "python-format", "python-type"]
+
+[[ownership]]
+path = "src/semantic_release/bsr/messages.py"
+status = "A"
+kind = "python-source"
+owner = "bsr-core"
+reason = "Fork-owned implementation in semantic_release.bsr; covered as a first-class BSR addition."
+gates = ["python-lint", "python-format", "python-type"]
+
+[[ownership]]
+path = "src/semantic_release/bsr/path_filter.py"
+status = "A"
+kind = "python-source"
+owner = "bsr-core"
+reason = "Fork-owned implementation in semantic_release.bsr; covered as a first-class BSR addition."
+gates = ["python-lint", "python-format", "python-type"]
+
+[[ownership]]
+path = "src/semantic_release/bsr/registry.py"
+status = "A"
+kind = "python-source"
+owner = "bsr-core"
+reason = "Fork-owned implementation in semantic_release.bsr; covered as a first-class BSR addition."
+gates = ["python-lint", "python-format", "python-type"]
+
+[[ownership]]
+path = "src/semantic_release/bsr/stable_notes.py"
+status = "A"
+kind = "python-source"
+owner = "bsr-core"
+reason = "Fork-owned implementation in semantic_release.bsr; covered as a first-class BSR addition."
+gates = ["python-lint", "python-format", "python-type"]
+
+[[ownership]]
+path = "src/semantic_release/bsr/summary.py"
+status = "A"
+kind = "python-source"
+owner = "bsr-core"
+reason = "Fork-owned implementation in semantic_release.bsr; covered as a first-class BSR addition."
+gates = ["python-lint", "python-format", "python-type"]
+
+[[ownership]]
+path = "src/semantic_release/changelog/release_history.py"
+status = "M"
+kind = "python-source"
+owner = "bsr-stock-patch"
+reason = "The optional path filter must be passed into the stock release-history builder."
+gates = ["python-lint", "python-format", "python-type"]
+
+[[ownership]]
+path = "src/semantic_release/cli/cli_context.py"
+status = "M"
+kind = "python-source"
+owner = "bsr-stock-patch"
+reason = "Actionable CLI errors must be formatted at the stock exception boundary."
+gates = ["python-lint", "python-format", "python-type"]
+
+[[ownership]]
+path = "src/semantic_release/cli/commands/publish.py"
+status = "M"
+kind = "python-source"
+owner = "bsr-stock-patch"
+reason = "The JSON output option must decorate the stock publish command and its stdout exits."
+gates = ["python-lint", "python-format", "python-type"]
+
+[[ownership]]
+path = "src/semantic_release/cli/commands/version.py"
+status = "M"
+kind = "python-source"
+owner = "bsr-stock-patch"
+reason = "All BSR version features share the stock command seam to preserve CLI stdout and exit behavior."
+gates = ["python-lint", "python-format", "python-type"]
+
+[[ownership]]
+path = "src/semantic_release/cli/github_actions_output.py"
+status = "M"
+kind = "python-source"
+owner = "bsr-stock-patch"
+reason = "A guard-blocked release must suppress output at the stock writer boundary."
+gates = ["python-lint", "python-format", "python-type"]
+
+[[ownership]]
+path = "src/semantic_release/cli/masking_filter.py"
+status = "M"
+kind = "python-source"
+owner = "bsr-stock-patch"
+reason = "Exception traceback masking belongs at the stock logging-filter boundary used by every CLI path."
+gates = ["python-lint", "python-format", "python-type"]
+
+[[ownership]]
+path = "src/semantic_release/commit_parser/angular.py"
+status = "M"
+kind = "python-source"
+owner = "bsr-stock-patch"
+reason = "The stock parser owns squashed-commit flattening, so the linear implementation must remain at this call site."
+gates = ["python-lint", "python-format", "python-type"]
+
+[[ownership]]
+path = "src/semantic_release/commit_parser/conventional/parser.py"
+status = "M"
+kind = "python-source"
+owner = "bsr-stock-patch"
+reason = "The stock parser owns squashed-commit flattening, so the linear implementation must remain at this call site."
+gates = ["python-lint", "python-format", "python-type"]
+
+[[ownership]]
+path = "src/semantic_release/commit_parser/emoji.py"
+status = "M"
+kind = "python-source"
+owner = "bsr-stock-patch"
+reason = "The stock parser owns squashed-commit flattening, so the linear implementation must remain at this call site."
+gates = ["python-lint", "python-format", "python-type"]
+
+[[ownership]]
+path = "src/semantic_release/commit_parser/scipy.py"
+status = "M"
+kind = "python-source"
+owner = "bsr-stock-patch"
+reason = "The stock parser owns squashed-commit flattening, so the linear implementation must remain at this call site."
+gates = ["python-lint", "python-format", "python-type"]
+
+[[ownership]]
+path = "src/semantic_release/gitproject.py"
+status = "M"
+kind = "python-source"
+owner = "bsr-stock-patch"
+reason = "Credential-safe logging must wrap the stock GitProject catch sites before errors are emitted."
+gates = ["python-lint", "python-format", "python-type"]
+
+[[ownership]]
+path = "src/semantic_release/helpers.py"
+status = "M"
+kind = "python-source"
+owner = "bsr-stock-patch"
+reason = "The stock sorting helper owns this hot path, so the linear implementation cannot be isolated in semantic_release.bsr."
+gates = ["python-lint", "python-format", "python-type"]
+
+[[ownership]]
+path = "src/semantic_release/version/algorithm.py"
+status = "M"
+kind = "python-source"
+owner = "bsr-stock-patch"
+reason = "Path filtering and explanation stats must be injected into the stock version algorithm seam."
+gates = ["python-lint", "python-format", "python-type"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/__init__.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-tests"
+reason = "Regression or parity coverage for the fork behavior and its stock seams."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/test_config.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-tests"
+reason = "Regression or parity coverage for the fork behavior and its stock seams."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/test_explain.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-tests"
+reason = "Regression or parity coverage for the fork behavior and its stock seams."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/test_explain_algorithm.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-tests"
+reason = "Regression or parity coverage for the fork behavior and its stock seams."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/test_explain_cli.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-tests"
+reason = "Regression or parity coverage for the fork behavior and its stock seams."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/test_explain_parity.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-tests"
+reason = "Regression or parity coverage for the fork behavior and its stock seams."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/test_gate_coverage.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-tests"
+reason = "Regression or parity coverage for the fork behavior and its stock seams."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/test_guards.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-tests"
+reason = "Regression or parity coverage for the fork behavior and its stock seams."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/test_jsonout.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-tests"
+reason = "Regression or parity coverage for the fork behavior and its stock seams."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/test_jsonout_cli.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-tests"
+reason = "Regression or parity coverage for the fork behavior and its stock seams."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/test_jsonout_publish_cli.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-tests"
+reason = "Regression or parity coverage for the fork behavior and its stock seams."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/test_messages.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-tests"
+reason = "Regression or parity coverage for the fork behavior and its stock seams."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/test_messages_cli.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-tests"
+reason = "Regression or parity coverage for the fork behavior and its stock seams."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/test_path_filter.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-tests"
+reason = "Regression or parity coverage for the fork behavior and its stock seams."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/test_path_filter_algorithm.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-tests"
+reason = "Regression or parity coverage for the fork behavior and its stock seams."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/test_path_filter_changelog.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-tests"
+reason = "Regression or parity coverage for the fork behavior and its stock seams."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/test_path_filter_cli.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-tests"
+reason = "Regression or parity coverage for the fork behavior and its stock seams."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/test_path_filter_parity.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-tests"
+reason = "Regression or parity coverage for the fork behavior and its stock seams."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/test_registry.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-tests"
+reason = "Regression or parity coverage for the fork behavior and its stock seams."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/test_stable_notes.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-tests"
+reason = "Regression or parity coverage for the fork behavior and its stock seams."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/test_stable_notes_changelog.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-tests"
+reason = "Regression or parity coverage for the fork behavior and its stock seams."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/test_stable_notes_cli.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-tests"
+reason = "Regression or parity coverage for the fork behavior and its stock seams."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/test_stable_notes_parity.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-tests"
+reason = "Regression or parity coverage for the fork behavior and its stock seams."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/test_summary.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-tests"
+reason = "Regression or parity coverage for the fork behavior and its stock seams."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/test_summary_cli.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-tests"
+reason = "Regression or parity coverage for the fork behavior and its stock seams."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/test_summary_parity.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-tests"
+reason = "Regression or parity coverage for the fork behavior and its stock seams."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/test_version_hook.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-tests"
+reason = "Regression or parity coverage for the fork behavior and its stock seams."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/changelog/test_release_notes.py"
+status = "M"
+kind = "python-test"
+owner = "bsr-tests"
+reason = "Regression or parity coverage for the fork behavior and its stock seams."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/cli/test_config.py"
+status = "M"
+kind = "python-test"
+owner = "bsr-tests"
+reason = "Regression or parity coverage for the fork behavior and its stock seams."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/cli/test_github_actions_output.py"
+status = "M"
+kind = "python-test"
+owner = "bsr-tests"
+reason = "Regression or parity coverage for the fork behavior and its stock seams."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/cli/test_masking_filter.py"
+status = "M"
+kind = "python-test"
+owner = "bsr-tests"
+reason = "Regression or parity coverage for the fork behavior and its stock seams."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/version/declarations/test_file_declaration.py"
+status = "M"
+kind = "python-test"
+owner = "bsr-tests"
+reason = "Regression or parity coverage for the fork behavior and its stock seams."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/version/declarations/test_pattern_declaration.py"
+status = "M"
+kind = "python-test"
+owner = "bsr-tests"
+reason = "Regression or parity coverage for the fork behavior and its stock seams."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/version/declarations/test_toml_declaration.py"
+status = "M"
+kind = "python-test"
+owner = "bsr-tests"
+reason = "Regression or parity coverage for the fork behavior and its stock seams."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/util.py"
+status = "M"
+kind = "python-test"
+owner = "bsr-tests"
+reason = "Regression or parity coverage for the fork behavior and its stock seams."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/test_release_workflow.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-tests"
+reason = "Release workflow regression coverage verifies the existing BSR lifecycle."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/test_gitproject.py"
+status = "M"
+kind = "python-test"
+owner = "bsr-tests"
+reason = "Regression coverage verifies BSR-owned Git project hardening."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/test_helpers.py"
+status = "M"
+kind = "python-test"
+owner = "bsr-tests"
+reason = "Regression coverage verifies BSR-owned helper hardening."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "docs/configuration/automatic-releases/github-actions.rst"
+status = "M"
+kind = "docs"
+owner = "repo-maintainers"
+reason = "BSR documentation distinguishes execution directory selection from opt-in commit filtering."
+gates = ["docs"]
+
+[[ownership]]
+path = "docs/configuration/configuration-guides/monorepos.rst"
+status = "M"
+kind = "docs"
+owner = "repo-maintainers"
+reason = "BSR documentation defines validated monorepo path and component contracts."
+gates = ["docs"]
+
+[[ownership]]
+path = "src/semantic_release/bsr/component_map.py"
+status = "A"
+kind = "python-source"
+owner = "bsr-core"
+reason = "Fork-owned deterministic component path mapping implementation."
+gates = ["python-lint", "python-format", "python-type"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/test_component_map.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-tests"
+reason = "Behavior coverage for component map normalization and ambiguity rejection."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/test_action_ssh_key_permissions.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-tests"
+reason = "Behavior coverage observes private-key creation mode and multiline input handling."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "config/bsr-upstream-ownership.toml"
+status = "A"
+kind = "other"
+owner = "bsr-estate-task2"
+reason = "Task 2 policy is the source of truth for every tracked-upstream difference."
+gates = ["other"]
+
+[[ownership]]
+path = "scripts/check_upstream_ownership.py"
+status = "A"
+kind = "python-tool"
+owner = "bsr-estate-task2"
+reason = "Task 2 checker validates ownership and executes manifest-derived Python gates."
+gates = ["python-lint", "python-format"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/test_upstream_ownership.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-tests"
+reason = "Task 2 regression coverage proves unowned stock changes fail closed and gate counts stay separate."
+gates = ["python-lint", "python-format", "python-test"]

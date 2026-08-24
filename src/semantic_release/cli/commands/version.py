@@ -713,6 +713,7 @@ def version(  # noqa: C901
                 prerelease=prerelease,
                 major_on_zero=major_on_zero,
                 allow_zero_version=runtime.allow_zero_version,
+                component_path_map=_bsr_cfg.component_path_map,
             )
         click.echo(render_summary_table(_plans), err=True)
         # BSR-PATCH: machine-readable output (better-semantic-release)

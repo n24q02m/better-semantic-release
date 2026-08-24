@@ -185,20 +185,24 @@ commands =
 
 
 [tool.mypy]
-# The single source of truth for what this fork type-checks. The rest of the
-# tree is stock python-semantic-release, kept close to upstream on purpose and
-# not type-clean, so checking it would fail on code this fork does not own.
-# ci.yml and the pre-commit hook both invoke bare `mypy` so they cannot drift
-# from this list. What they can drift from is the code: this names patched files
-# one at a time, so a new patch is only checked if someone remembers to add it.
-# tests/unit/semantic_release/bsr/test_gate_coverage.py removes the remembering.
+# The ownership manifest is the source of truth for the source files this fork
+# type-checks. This list mirrors its ``python-type`` scope for the bare mypy
+# pre-commit hook; CI invokes the manifest checker directly.
 files = [
   "src/semantic_release/bsr",
+  "src/semantic_release/__init__.py",
   "src/semantic_release/changelog/release_history.py",
   "src/semantic_release/cli/cli_context.py",
   "src/semantic_release/cli/commands/publish.py",
   "src/semantic_release/cli/commands/version.py",
   "src/semantic_release/cli/github_actions_output.py",
+  "src/semantic_release/cli/masking_filter.py",
+  "src/semantic_release/commit_parser/angular.py",
+  "src/semantic_release/commit_parser/conventional/parser.py",
+  "src/semantic_release/commit_parser/emoji.py",
+  "src/semantic_release/commit_parser/scipy.py",
+  "src/semantic_release/gitproject.py",
+  "src/semantic_release/helpers.py",
   "src/semantic_release/version/algorithm.py",
 ]
 show_column_numbers = true
@@ -497,4 +501,5 @@ token = { env = "GH_TOKEN" }
 upload_to_vcs_release = true
 
 [tool.semantic_release.bsr]
+schema_version = 1
 registry = "pypi"

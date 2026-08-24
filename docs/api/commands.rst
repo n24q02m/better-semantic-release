@@ -130,6 +130,16 @@ By default (in order):
   This verification only occurs when committing changes (``--commit``). If you are
   running with ``--no-commit``, the verification will not be performed.
 
+.. note::
+
+  better-semantic-release's ``[tool.semantic_release.bsr]`` ``path_filter``
+  option is independent of the GitHub Action ``directory`` input. ``directory``
+  selects where configuration and execution occur; ``path_filter = true`` is
+  the explicit opt-in that filters commits. Configure repository-root-relative
+  ``paths`` for deterministic prefixes, or leave them empty to derive the
+  execution-directory default. With ``path_filter = false`` or no BSR table,
+  upstream commit selection is preserved.
+
 All of these steps can be toggled on or off using the command line options
 described below. Some of the steps rely on others, so some options may implicitly
 disable others.

@@ -40,73 +40,43 @@ jobs:
       - name: Install project + test + mypy + dev (ruff) deps
         run: uv pip install -e ".[test,mypy,dev]"
 
-      # The path list is this fork's additions plus every stock file it patches.
-      # tests/unit/semantic_release/bsr/test_gate_coverage.py holds it to that:
-      # a file carrying a `# BSR-PATCH:` marker but missing here fails the suite,
-      # which is how the omissions this list already had were found.
-      - name: Ruff (repo config, select=ALL) on bsr additions
-        run: >-
-          uv run --no-sync ruff check --config pyproject.toml
-          src/semantic_release/bsr
-          src/semantic_release/changelog/release_history.py
-          src/semantic_release/cli/cli_context.py
-          src/semantic_release/cli/commands/publish.py
-          src/semantic_release/cli/commands/version.py
-          src/semantic_release/cli/github_actions_output.py
-          src/semantic_release/version/algorithm.py
-          tests/unit/semantic_release/bsr
+      - name: Verify upstream ownership manifest
+        run: uv run --no-sync python scripts/check_upstream_ownership.py --check
 
-      # Separate from `ruff check`: linting and formatting are different gates and
-      # passing one says nothing about the other. pre-commit runs ruff-format as a
-      # fixer, so a commit that lands without the hooks -- a web edit, a bot, a
-      # `git commit` from an environment that never installed them -- is exactly
-      # the case CI has to catch, and the case it was not catching.
-      - name: Ruff format check on bsr additions
-        run: >-
-          uv run --no-sync ruff format --check --config pyproject.toml
-          src/semantic_release/bsr
-          src/semantic_release/changelog/release_history.py
-          src/semantic_release/cli/cli_context.py
-          src/semantic_release/cli/commands/publish.py
-          src/semantic_release/cli/commands/version.py
-          src/semantic_release/cli/github_actions_output.py
-          src/semantic_release/version/algorithm.py
-          tests/unit/semantic_release/bsr
+      # The manifest is the source of truth for every Python file this fork owns.
+      # The checker validates it before each executable gate and derives the scope
+      # passed to that gate, so CI cannot silently drift from the ownership list.
+      - name: Ruff (repo config, select=ALL) on owned Python files
+        run: uv run --no-sync python scripts/check_upstream_ownership.py --run-gate python-lint
 
-      # Targets live in [tool.mypy] files in pyproject.toml so this job and the
-      # pre-commit hook check the same set without either drifting.
-      - name: Mypy on bsr additions + patched version command
-        run: uv run --no-sync mypy
+      - name: Ruff format check on owned Python files
+        run: uv run --no-sync python scripts/check_upstream_ownership.py --run-gate python-format
 
-      # Coverage is measured on semantic_release.bsr only. The rest of the tree is
-      # stock python-semantic-release, kept close to upstream on purpose, so its
-      # number would report on upstream's testing rather than on this fork's.
-      - name: Pytest (full default suite on Linux)
-        run: uv run --no-sync pytest -q --cov=semantic_release.bsr --cov-report=xml
+      - name: Mypy on owned source files
+        run: uv run --no-sync python scripts/check_upstream_ownership.py --run-gate python-type
+
+      - name: Pytest (manifest-scoped tests on Linux)
+        run: uv run --no-sync python scripts/check_upstream_ownership.py --run-gate python-test
 
       - uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
         with:
           files: ./coverage.xml
           fail_ci_if_error: false
 
-  # Tests only. Lint, types and coverage are platform-independent and stay in the
-  # Linux job -- running them twice would double the noise without doubling the
-  # information.
+  # Lint, types and manifest-scoped test coverage stay in the Linux job.
+  # Windows retains the full default suite so platform-specific behavior is
+  # still exercised independently.
   #
-  # This exists because a suite that only ever runs on one platform stops being
-  # able to disagree with that platform. Twenty-one tests here had written Linux
-  # details into their own expectations -- os.linesep through text-mode files, an
-  # absolute path assumed to contain no colon, an emptied environment assumed to
-  # still find git on PATH -- and every one of them was wrong about the code while
-  # passing on every release for thirteen releases. Windows found all twenty-one
-  # the first time it ran them.
+  # Windows runs the full suite because platform-specific expectations are
+  # intentionally exercised there; this caught twenty-one Linux-only
+  # assumptions in the test suite.
   test-windows:
     name: test (windows)
     if: github.event_name != 'schedule'
     runs-on: windows-latest
-    # The Linux job runs this suite in about ninety seconds. Windows is far
-    # slower here because the tests spawn git constantly and process creation is
-    # expensive on it, so this is a stop-a-hang bound, not an expectation.
+    # The Linux job runs manifest-scoped tests. Windows is far
+    # slower here because the full suite spawns git constantly and process
+    # creation is expensive on it, so this is a stop-a-hang bound.
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

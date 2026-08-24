@@ -32,15 +32,20 @@ def _write(path: Path, content: str) -> None:
 
 
 def _pyproject_toml(extra_bsr: str) -> str:
+    extra_bsr = extra_bsr.replace(
+        "\n[tool.semantic_release.bsr]\n",
+        "\n[tool.semantic_release.bsr]\nschema_version = 1\n",
+        1,
+    )
     return (
         '[project]\nname = "demo-pkg"\nversion = "0.1.0"\n\n'
         "[tool.semantic_release]\n"
         'version_toml = ["pyproject.toml:project.version"]\n'
         'tag_format = "v{version}"\n'
-        # NOTE: same reasoning as test_path_filter_cli.py / test_summary_cli.py
-        # -- PSR forces a MAJOR bump out of 0.x.x whenever allow_zero_version is
-        # False, which would derail the exact v0.1.0 -> v0.2.0-beta.N -> v0.2.0
-        # sequence this fixture relies on.
+        # NOTE: PSR forces a MAJOR bump out of 0.x.x version whenever
+        # `allow_zero_version` is False (the PSR default) -- regardless of
+        # whether there were any releasable commits at all. Setting it True
+        # here keeps the "no commits matched" path from becoming a major bump.
         "allow_zero_version = true\n" + extra_bsr
     )
 

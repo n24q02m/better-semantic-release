@@ -13,6 +13,57 @@ Previously, PSR offered limited compatibility with monorepos. As of v10.4.0, PSR
 Configuring PSR
 ---------------
 
+Better Semantic Release path filtering
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The ``directory`` input selects the configuration and execution directory. It
+does not filter which commits are analyzed. better-semantic-release keeps
+commit filtering opt-in under ``[tool.semantic_release.bsr]``:
+
+.. code-block:: toml
+
+    [tool.semantic_release.bsr]
+    schema_version = 1
+    path_filter = true
+    paths = ["packages/pkg1", "libs/shared"]
+
+``paths`` are repository-root-relative prefixes and use exact path boundaries.
+When ``path_filter`` is ``true`` and ``paths`` is empty, the filter derives its
+default from the execution directory. Set ``path_filter = false`` (or omit the
+table) to preserve upstream behavior and count every commit.
+
+Validated component path map
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+For multi-component dry-runs, use the versioned
+``[tool.semantic_release.bsr.component_path_map]`` table. It is validated
+before release planning or any release write:
+
+.. code-block:: toml
+
+    [tool.semantic_release.bsr]
+    schema_version = 1
+    [tool.semantic_release.bsr.component_path_map]
+    schema_version = 1
+    shared_policy = "none"
+    root_policy = "none"
+
+    [[tool.semantic_release.bsr.component_path_map.components]]
+    id = "api"
+    roots = ["apps/api"]
+    release_paths = ["apps/api/pyproject.toml"]
+    config_path = "apps/api/pyproject.toml"
+
+    [[tool.semantic_release.bsr.component_path_map.rules]]
+    kind = "component"
+    path = "apps/api"
+    components = ["api"]
+
+Component IDs and roots must be unique and non-overlapping. Rules are ordered
+by explicit precedence: component, shared, then root. Deletes and renames use
+the union of old and new paths. An unmapped path fails closed unless the
+declared shared/root policy explicitly emits all or no components.
+
 .. _monorepos-config-example_simple:
 
 Example: Simple

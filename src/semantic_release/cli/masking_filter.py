@@ -59,9 +59,12 @@ class MaskingFilter(LoggingFilter):
                 for arg in record.args
             )
 
+        # BSR-PATCH: mask exception tracebacks before logging (better-semantic-release)
+
         # 🛡️ Sentinel: Prevent sensitive data from leaking in exception tracebacks
         if record.exc_info and not record.exc_text:
             import logging
+
             record.exc_text = logging.Formatter().formatException(record.exc_info)
 
         if record.exc_text:

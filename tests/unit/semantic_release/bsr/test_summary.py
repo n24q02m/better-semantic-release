@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 
 from git import Actor, Repo
 
+from semantic_release.bsr.component_map import parse_component_path_map
 from semantic_release.bsr.config import BsrComponent, BsrConfig
 from semantic_release.bsr.summary import (
     ComponentPlan,
@@ -27,6 +28,7 @@ from semantic_release.version.version import Version
 if TYPE_CHECKING:
     from git.objects.commit import Commit
 
+    from semantic_release.bsr.component_map import ComponentPathMap
 _AUTHOR = Actor("t", "t@t")
 
 
@@ -35,6 +37,13 @@ def _commit(repo: Repo, relpath: str, content: str, message: str) -> Commit:
     file_path.parent.mkdir(parents=True, exist_ok=True)
     file_path.write_text(content, encoding="utf-8")
     repo.index.add([relpath])
+    return repo.index.commit(message, author=_AUTHOR, committer=_AUTHOR)
+
+
+def _rename(repo: Repo, old_path: str, new_path: str, message: str) -> Commit:
+    destination = Path(str(repo.working_tree_dir)) / new_path
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    repo.git.mv(old_path, new_path)
     return repo.index.commit(message, author=_AUTHOR, committer=_AUTHOR)
 
 
@@ -48,6 +57,80 @@ def test_resolve_components_uses_configured_components_when_present() -> None:
     )
     cfg = BsrConfig(components=configured)
     assert resolve_components(cfg, default_name="ignored") == configured
+
+
+def test_resolve_components_prefers_validated_component_path_map() -> None:
+    component_map = parse_component_path_map(
+        {
+            "schema_version": 1,
+            "shared_policy": "none",
+            "root_policy": "none",
+            "components": [
+                {
+                    "id": "api",
+                    "roots": ["apps/api"],
+                    "release_paths": ["apps/api/pyproject.toml"],
+                    "config_path": "apps/api/pyproject.toml",
+                }
+            ],
+            "rules": [
+                {
+                    "kind": "component",
+                    "path": "apps/api",
+                    "components": ["api"],
+                }
+            ],
+        }
+    )
+
+    cfg = BsrConfig(
+        component_path_map=component_map,
+        components=(BsrComponent(name="fallback", paths=()),),
+    )
+
+    assert resolve_components(cfg, default_name="ignored") == (
+        BsrComponent(name="api", paths=("apps/api",)),
+    )
+
+
+def test_resolve_components_includes_shared_and_root_rule_paths() -> None:
+    component_map = parse_component_path_map(
+        {
+            "schema_version": 1,
+            "shared_policy": "none",
+            "root_policy": "none",
+            "components": [
+                {
+                    "id": "api",
+                    "roots": ["apps/api"],
+                    "release_paths": ["apps/api/pyproject.toml"],
+                    "config_path": "apps/api/pyproject.toml",
+                },
+                {
+                    "id": "web",
+                    "roots": ["apps/web"],
+                    "release_paths": ["apps/web/package.json"],
+                    "config_path": "apps/web/package.json",
+                },
+            ],
+            "rules": [
+                {"kind": "component", "path": "apps/api", "components": ["api"]},
+                {"kind": "component", "path": "apps/web", "components": ["web"]},
+                {
+                    "kind": "shared",
+                    "path": "libs/shared",
+                    "components": ["api", "web"],
+                },
+                {"kind": "root", "path": "README.md", "components": ["api", "web"]},
+            ],
+        }
+    )
+    resolved = resolve_components(
+        BsrConfig(component_path_map=component_map), default_name="ignored"
+    )
+
+    assert resolved[0].paths == ("apps/api", "libs/shared", "README.md")
+    assert resolved[1].paths == ("apps/web", "libs/shared", "README.md")
 
 
 def test_resolve_components_falls_back_to_single_component_from_paths() -> None:
@@ -81,7 +164,9 @@ def _build_two_component_repo(tmp_path: Path) -> Repo:
 
 
 def _build_summary(
-    repo: Repo, components: tuple[BsrComponent, ...]
+    repo: Repo,
+    components: tuple[BsrComponent, ...],
+    component_path_map: ComponentPathMap | None = None,
 ) -> tuple[ComponentPlan, ...]:
     return build_summary(
         components,
@@ -91,6 +176,7 @@ def _build_summary(
         prerelease=False,
         major_on_zero=True,
         allow_zero_version=True,
+        component_path_map=component_path_map,
     )
 
 
@@ -145,6 +231,102 @@ def test_build_summary_returns_one_plan_per_component(tmp_path: Path) -> None:
     plans = _build_summary(repo, components)
     assert [p.name for p in plans] == ["api", "web"]
     assert [p.would_release for p in plans] == [False, True]
+
+
+def test_build_summary_applies_shared_component_map_rules(tmp_path: Path) -> None:
+    repo = Repo.init(tmp_path)
+    _commit(repo, "apps/api/x.py", "x", "feat: initial api")
+    repo.create_tag("v0.1.0")
+    _commit(repo, "libs/shared/common.py", "shared", "feat: shared change")
+    component_map = parse_component_path_map(
+        {
+            "schema_version": 1,
+            "shared_policy": "none",
+            "root_policy": "none",
+            "components": [
+                {
+                    "id": "api",
+                    "roots": ["apps/api"],
+                    "release_paths": ["apps/api/pyproject.toml"],
+                    "config_path": "apps/api/pyproject.toml",
+                },
+                {
+                    "id": "web",
+                    "roots": ["apps/web"],
+                    "release_paths": ["apps/web/package.json"],
+                    "config_path": "apps/web/package.json",
+                },
+            ],
+            "rules": [
+                {"kind": "component", "path": "apps/api", "components": ["api"]},
+                {"kind": "component", "path": "apps/web", "components": ["web"]},
+                {
+                    "kind": "shared",
+                    "path": "libs/shared",
+                    "components": ["api", "web"],
+                },
+            ],
+        }
+    )
+    plans = _build_summary(
+        repo,
+        (
+            BsrComponent(name="api", paths=("apps/api",)),
+            BsrComponent(name="web", paths=("apps/web",)),
+        ),
+        component_map,
+    )
+
+    assert [plan.commit_count for plan in plans] == [1, 1]
+    assert [plan.would_release for plan in plans] == [True, True]
+
+
+def test_build_summary_maps_both_sides_of_component_rename(tmp_path: Path) -> None:
+    repo = Repo.init(tmp_path)
+    _commit(repo, "apps/api/x.py", "x", "feat: initial api")
+    repo.create_tag("v0.1.0")
+    _rename(
+        repo,
+        "apps/api/x.py",
+        "apps/web/x.py",
+        "feat: move API module to web",
+    )
+    component_map = parse_component_path_map(
+        {
+            "schema_version": 1,
+            "shared_policy": "none",
+            "root_policy": "none",
+            "components": [
+                {
+                    "id": "api",
+                    "roots": ["apps/api"],
+                    "release_paths": ["apps/api/pyproject.toml"],
+                    "config_path": "apps/api/pyproject.toml",
+                },
+                {
+                    "id": "web",
+                    "roots": ["apps/web"],
+                    "release_paths": ["apps/web/package.json"],
+                    "config_path": "apps/web/package.json",
+                },
+            ],
+            "rules": [
+                {"kind": "component", "path": "apps/api", "components": ["api"]},
+                {"kind": "component", "path": "apps/web", "components": ["web"]},
+            ],
+        }
+    )
+
+    plans = _build_summary(
+        repo,
+        (
+            BsrComponent(name="api", paths=("apps/api",)),
+            BsrComponent(name="web", paths=("apps/web",)),
+        ),
+        component_map,
+    )
+
+    assert [plan.commit_count for plan in plans] == [1, 1]
 
 
 def test_build_component_plan_empty_paths_is_whole_repo_passthrough(
