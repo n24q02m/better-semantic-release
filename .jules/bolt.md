@@ -16,3 +16,7 @@
 None of the twelve carried a timing. Several also re-wrapped unrelated lines, including the `BSR-PATCH` call sites, which is churn the pull request did not claim to make.
 
 **Action:** Before proposing a performance change, measure it and put the numbers in the pull request body: the benchmark or timing command, the before and after, and the input size used. Restrict proposals to code that a measurement shows is hot, and confine the diff to the lines the measurement covers. Prefer changes inside `src/semantic_release/bsr/`, which this fork owns; stock python-semantic-release files are kept close to upstream so rebases stay cheap, so a change there needs a correspondingly larger measured gain.
+
+## 2024-08-18 - Micro-optimization rejected due to lack of reproducibility
+**Learning:** Upstream maintainers prioritize code ownership and measured, reproducible optimizations over simple micro-optimizations. A PR replacing `all([cond])` with `cond and cond` without formal benchmarking was rejected as it conflicted with a low-churn policy.
+**Action:** When working in forks with upstream parity policies, avoid unmeasured micro-optimizations that create merge conflicts with upstream. Only submit optimizations that resolve a proven bottleneck or fall under fork-owned features (e.g., path filtering), and always accompany them with concrete benchmarks.
