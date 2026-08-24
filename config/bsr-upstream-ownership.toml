@@ -103,29 +103,8 @@ owner = "repo-maintainers"
 reason = "Current fork difference is intentionally retained and declared for ownership accounting."
 gates = ["other"]
 
-[[ownership]]
-path = ".jules/bolt.md"
-status = "A"
-kind = "other"
-owner = "repo-maintainers"
-reason = "Current fork difference is intentionally retained and declared for ownership accounting."
-gates = ["other"]
 
-[[ownership]]
-path = ".jules/palette.md"
-status = "A"
-kind = "other"
-owner = "repo-maintainers"
-reason = "Current fork difference is intentionally retained and declared for ownership accounting."
-gates = ["other"]
 
-[[ownership]]
-path = ".jules/sentinel.md"
-status = "A"
-kind = "other"
-owner = "repo-maintainers"
-reason = "Current fork difference is intentionally retained and declared for ownership accounting."
-gates = ["other"]
 
 [[ownership]]
 path = ".mise.toml"
