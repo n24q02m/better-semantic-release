@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "tier": 1,
+  "description": "Drop-in python-semantic-release fork with built-in release-safety guards (orphan-tag + registry-collision).",
+  "homepage": "https://pypi.org/project/better-semantic-release/",
+  "topics": [
+    "changelog",
+    "ci-cd",
+    "monorepo",
+    "python",
+    "release-automation",
+    "semantic-release",
+    "versioning"
+  ]
+}
