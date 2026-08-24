@@ -19,11 +19,6 @@ on:
         options:
           - beta
           - stable
-      maintenance_pr:
-        description: One-shot maintenance PR number; leave empty for a release
-        type: string
-        required: false
-        default: ""
 
 concurrency:
   group: release
@@ -32,11 +27,9 @@ concurrency:
 permissions:
   contents: write
   id-token: write
-  pull-requests: write
 
 jobs:
   release:
-    if: inputs.maintenance_pr == ''
     name: Release
     runs-on: ubuntu-latest
     # The environment must be provisioned with reviewers and branch policy before dispatch.
@@ -95,65 +88,6 @@ jobs:
       - name: Publish to PyPI (trusted publishing, OIDC)
         if: steps.release.outputs.released == 'true'
         uses: pypa/gh-action-pypi-publish@ba38be9e461d3875417946c167d0b5f3d385a247 # v1.14.1
-
-  maintenance:
-    if: inputs.maintenance_pr != ''
-    name: Merge approved maintenance PR
-    runs-on: ubuntu-latest
-    steps:
-      - name: Mint a token from the CI GitHub App
-        id: app-token
-        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
-        with:
-          app-id: ${{ vars.CI_APP_ID }}
-          private-key: ${{ secrets.CI_APP_KEY }}
-
-      - name: Approve and merge the maintenance PR
-        id: merge
-        env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
-          PR_NUMBER: ${{ inputs.maintenance_pr }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          base_sha="$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}" --jq '.base.sha')"
-          printf 'base_sha=%s\n' "$base_sha" >> "$GITHUB_OUTPUT"
-          if ! gh api \
-            --method POST \
-            "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/reviews" \
-            -f event=APPROVE \
-            -f body='Approved by the repository-scoped CI App after required checks passed.'
-          then
-            echo '::warning::The App could not submit a review; attempting its configured branch-protection bypass.'
-          fi
-          gh api \
-            --method PUT \
-            "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/merge" \
-            -f merge_method=squash \
-            --jq '{merged, message, sha}'
-
-      - name: Checkout merged main
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-          ref: main
-          token: ${{ steps.app-token.outputs.token }}
-
-      - name: Remove this one-shot maintenance route
-        env:
-          BASE_SHA: ${{ steps.merge.outputs.base_sha }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          git show "${BASE_SHA}:.github/workflows/cd.yml" > .github/workflows/cd.yml
-          if git diff --quiet -- .github/workflows/cd.yml; then
-            exit 0
-          fi
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add .github/workflows/cd.yml
-          git commit -m 'chore: remove one-shot maintenance route'
-          git push origin HEAD:main
 
 # No downstream notification is dispatched from here, and that is a decision
 # rather than an omission -- worth writing down, because a shared library cutting
