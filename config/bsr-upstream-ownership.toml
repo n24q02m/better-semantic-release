@@ -32,6 +32,14 @@ reason = "Current fork difference is intentionally retained and declared for own
 gates = ["other"]
 
 [[ownership]]
+path = ".github/repo-settings.json"
+status = "A"
+kind = "other"
+owner = "repo-maintainers"
+reason = "Current fork difference is intentionally retained and declared for ownership accounting."
+gates = ["other"]
+
+[[ownership]]
 path = ".github/rulesets/main.json"
 status = "A"
 kind = "other"
