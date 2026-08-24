@@ -64,6 +64,8 @@ def sort_numerically(
         prefixes[prefix].append(item)
 
     # Sort prefixes and items by number mixing in unmatched items as alphabetized with other prefixes
+    # BSR-PATCH: flatten prefix groups in linear time (better-semantic-release)
+
     result: list[str] = []
     for prefix in sorted([*prefixes.keys(), *unmatched_items]):
         if prefix in prefixes:

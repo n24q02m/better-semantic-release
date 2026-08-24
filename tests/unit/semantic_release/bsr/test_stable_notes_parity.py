@@ -23,6 +23,8 @@ from typing import TYPE_CHECKING
 from click.testing import CliRunner
 from git import Actor, Repo
 
+from semantic_release.bsr import guards
+from semantic_release.bsr.registry import ProbeResult
 from semantic_release.cli.commands.main import main
 
 if TYPE_CHECKING:
@@ -45,6 +47,11 @@ def _write(path: Path, content: str) -> None:
 
 
 def _pyproject_toml(extra_bsr: str) -> str:
+    extra_bsr = extra_bsr.replace(
+        "\n[tool.semantic_release.bsr]\n",
+        "\n[tool.semantic_release.bsr]\nschema_version = 1\n",
+        1,
+    )
     return (
         '[project]\nname = "demo-pkg"\nversion = "0.1.0"\n\n'
         "[tool.semantic_release]\n"
@@ -62,6 +69,9 @@ def _build_project(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     repo.index.commit("feat: initial", author=_AUTHOR, committer=_AUTHOR)
     repo.create_remote("origin", "https://github.com/example-owner/example-repo.git")
     monkeypatch.chdir(proj)
+    monkeypatch.setattr(
+        guards, "probe_registry", lambda *_args, **_kwargs: ProbeResult.FREE
+    )
     return proj
 
 
@@ -102,6 +112,11 @@ def _build_beta_then_stable_fixture(
 
 
 def _append_bsr_table(proj: Path, extra_bsr: str) -> None:
+    extra_bsr = extra_bsr.replace(
+        "\n[tool.semantic_release.bsr]\n",
+        "\n[tool.semantic_release.bsr]\nschema_version = 1\n",
+        1,
+    )
     pyproject = proj / "pyproject.toml"
     pyproject.write_text(
         pyproject.read_text(encoding="utf-8") + extra_bsr, encoding="utf-8"

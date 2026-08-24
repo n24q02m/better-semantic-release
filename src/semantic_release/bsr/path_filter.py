@@ -15,13 +15,23 @@ if TYPE_CHECKING:
 
 
 def _normalize_prefix(prefix: str) -> str:
-    return prefix.replace("\\", "/").strip("/")
+    """Normalize and validate one repository-relative path prefix."""
+    normalized = prefix.replace("\\", "/")
+    if normalized.startswith("/") or (len(normalized) >= 2 and normalized[1] == ":"):
+        raise ValueError(f"path prefix must be repository-relative: {prefix!r}")
 
+    segments = normalized.split("/")
+    parts: list[str] = []
+    for segment in segments:
+        if segment in ("", "."):
+            continue
+        if segment == "..":
+            raise ValueError(f"path prefix must be repository-relative: {prefix!r}")
+        parts.append(segment)
 
-def _path_under_prefix(changed_path: str, prefix: str) -> bool:
-    if not prefix:
-        return True
-    return changed_path == prefix or changed_path.startswith(f"{prefix}/")
+    if not parts and not all(segment in ("", ".") for segment in segments):
+        raise ValueError(f"path prefix must be repository-relative: {prefix!r}")
+    return "/".join(parts)
 
 
 def commit_touches_paths(commit: Commit, paths: tuple[str, ...]) -> bool:
@@ -52,10 +62,17 @@ def commit_touches_paths(commit: Commit, paths: tuple[str, ...]) -> bool:
     }
 
     normalized_paths = tuple(_normalize_prefix(path) for path in paths)
+    normalized_changed_paths = tuple(_normalize_prefix(path) for path in changed_paths)
+    if not normalized_changed_paths:
+        return False
+    if "" in normalized_paths:
+        return True
+
+    exact_paths = frozenset(normalized_paths)
+    descendant_prefixes = tuple(f"{prefix}/" for prefix in normalized_paths)
     return any(
-        _path_under_prefix(changed_path, prefix)
-        for changed_path in changed_paths
-        for prefix in normalized_paths
+        changed_path in exact_paths or changed_path.startswith(descendant_prefixes)
+        for changed_path in normalized_changed_paths
     )
 
 
@@ -108,5 +125,6 @@ def make_path_filter(
         return None
 
     paths = bsr_config.paths or _default_paths_from_repo_dir(repo_dir)
+    normalized_paths = tuple(_normalize_prefix(path) for path in paths)
 
-    return lambda commits: filter_commits_by_paths(commits, paths)
+    return lambda commits: filter_commits_by_paths(commits, normalized_paths)

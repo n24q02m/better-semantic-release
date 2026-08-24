@@ -33,6 +33,18 @@ if TYPE_CHECKING:  # pragma: no cover
         obj: CliContextObj
 
 
+def _actionable_errors_enabled(
+    config_path: str, *, raise_on_invalid: bool = False
+) -> bool:
+    """Read the BSR error-display flag without masking the original failure."""
+    try:
+        return load_bsr_config(config_path).actionable_errors
+    except InvalidConfiguration:
+        if raise_on_invalid:
+            raise
+        return False
+
+
 class CliContextObj:
     def __init__(
         self,
@@ -98,8 +110,8 @@ class CliContextObj:
             InvalidGitRepositoryError,
         ) as exc:
             # BSR-PATCH: actionable error messages (better-semantic-release)
-            bsr_cfg = load_bsr_config(self.global_opts.config_file)
-            msg = format_actionable(exc) if bsr_cfg.actionable_errors else None
+            actionable_errors = _actionable_errors_enabled(self.global_opts.config_file)
+            msg = format_actionable(exc) if actionable_errors else None
             click.echo(msg or str(exc), err=True)
             self.ctx.exit(1)
 
@@ -132,12 +144,15 @@ class CliContextObj:
             ParserLoadError,
             ValidationError,
         ) as exc:
-            bsr_cfg = load_bsr_config(self.global_opts.config_file)
-            if not bsr_cfg.actionable_errors and isinstance(
+            actionable_errors = _actionable_errors_enabled(
+                self.global_opts.config_file,
+                raise_on_invalid=isinstance(exc, InvalidConfiguration),
+            )
+            if not actionable_errors and isinstance(
                 exc, (MissingGitRemote, ParserLoadError)
             ):
                 raise
-            msg = format_actionable(exc) if bsr_cfg.actionable_errors else None
+            msg = format_actionable(exc) if actionable_errors else None
             click.echo(msg or str(exc), err=True)
             self.ctx.exit(1)
 

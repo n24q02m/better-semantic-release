@@ -19,7 +19,10 @@ inputs:
   directory:
     default: "."
     required: false
-    description: Sub-directory to cd into before running semantic-release
+    description: |
+      Sub-directory to cd into before running semantic-release. This selects the
+      configuration and execution directory; it does not enable commit path
+      filtering. Use [tool.semantic_release.bsr] path_filter for that opt-in.
 
   github_token:
     required: true

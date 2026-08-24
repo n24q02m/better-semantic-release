@@ -73,6 +73,11 @@ def _build_monorepo(tmp_path: Path) -> Repo:
 
 
 def _pyproject_toml(extra_bsr: str) -> str:
+    extra_bsr = extra_bsr.replace(
+        "\n[tool.semantic_release.bsr]\n",
+        "\n[tool.semantic_release.bsr]\nschema_version = 1\n",
+        1,
+    )
     return (
         '[project]\nname = "demo"\nversion = "0.1.0"\n\n'
         "[tool.semantic_release]\n"

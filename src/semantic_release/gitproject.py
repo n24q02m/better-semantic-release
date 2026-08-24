@@ -124,6 +124,8 @@ class GitProject:
                 if "does not make sense" in stderr or "complete repository" in stderr:
                     self.logger.debug("Repository is already a full clone")
                 else:
+                    # BSR-PATCH: mask Git errors before they reach logs
+
                     self.logger.error(self._cred_masker.mask(str(err)))  # noqa: TRY400
                     raise
 

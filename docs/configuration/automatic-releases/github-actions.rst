@@ -197,6 +197,9 @@ This is the same as passing the ``-c`` or ``--config`` parameter to semantic-rel
 
 If the project is not at the root of the repository (like in monorepos), you
 can specify a sub-directory to change into before running semantic-release.
+This selects the configuration and execution directory; it does not enable
+commit path filtering. For better-semantic-release, opt into filtering with
+``[tool.semantic_release.bsr] path_filter = true``.
 
 **Required:** ``false``
 
@@ -435,7 +438,7 @@ The private key used to sign a commit and tag.
 ``strict``
 """"""""""
 
-If set to true, the github action will pass the `--strict` parameter to
+If set to true, the github action will pass the ``--strict`` parameter to
 ``semantic-release``.
 
 .. seealso::
@@ -695,6 +698,9 @@ This is the same as passing the ``-c`` or ``--config`` parameter to semantic-rel
 
 If the project is not at the root of the repository (like in monorepos), you
 can specify a sub-directory to change into before running semantic-release.
+This selects the configuration and execution directory; it does not enable
+commit path filtering. For better-semantic-release, opt into filtering with
+``[tool.semantic_release.bsr] path_filter = true``.
 
 **Required:** ``false``
 

@@ -24,6 +24,21 @@ def _write(path: Path, content: str) -> None:
 
 
 def _api_pyproject_toml(extra_bsr: str) -> str:
+    extra_bsr = extra_bsr.replace(
+        "\n[tool.semantic_release.bsr]\n",
+        "\n[tool.semantic_release.bsr]\nschema_version = 1\n",
+        1,
+    )
+    if (
+        "\n[[tool.semantic_release.bsr.components]]\n" in extra_bsr
+        and "schema_version" not in extra_bsr
+    ):
+        extra_bsr = extra_bsr.replace(
+            "\n[[tool.semantic_release.bsr.components]]\n",
+            "\n[tool.semantic_release.bsr]\nschema_version = 1\n"
+            "[[tool.semantic_release.bsr.components]]\n",
+            1,
+        )
     return (
         '[project]\nname = "demo-api"\nversion = "0.1.0"\n\n'
         "[tool.semantic_release]\n"
@@ -108,6 +123,26 @@ def test_path_filter_excludes_web_only_commit_from_api_version(
         ),
     )
     assert _print_version() == "0.1.0"
+
+
+def test_invalid_component_path_map_blocks_version_before_release(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _build_monorepo(
+        tmp_path,
+        monkeypatch,
+        extra_bsr=(
+            "\n[tool.semantic_release.bsr]\n"
+            "schema_version = 1\n"
+            "[tool.semantic_release.bsr.component_path_map]\n"
+            "schema_version = 2\n"
+        ),
+    )
+
+    result = CliRunner(mix_stderr=True).invoke(main, ["--noop", "version", "--print"])
+
+    assert result.exit_code != 0
+    assert "schema_version" in result.output
 
 
 def test_without_path_filter_web_only_commit_still_bumps_api(

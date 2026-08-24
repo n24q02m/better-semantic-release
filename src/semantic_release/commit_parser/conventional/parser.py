@@ -404,6 +404,8 @@ class ConventionalCommitParser(
             normalized_message
         )
 
+        # BSR-PATCH: flatten squashed commits without quadratic list concatenation
+
         # Performance optimization: Use list comprehension instead of reduce with list concatenation to avoid O(N^2) complexity
         separate_commit_msgs: list[str] = [
             msg

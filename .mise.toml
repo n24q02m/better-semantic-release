@@ -25,14 +25,15 @@ run = [
   "uv run --no-sync pre-commit install",
 ]
 
-# Ruff runs with select=ALL from the repo config, which stock python-semantic-release
-# does not satisfy. Both linters are therefore scoped to the fork's own additions and
-# the stock files it patches, exactly as CI scopes them.
+# The ownership manifest is the source of truth for every Python gate. The
+# checker validates the inventory and derives the exact scope before invoking
+# the same commands CI runs.
 [tasks.lint]
-description = "Ruff + mypy over the fork's additions and patched files"
+description = "Ruff + mypy over manifest-owned files"
 run = [
-  "uv run --no-sync ruff check --config pyproject.toml src/semantic_release/bsr src/semantic_release/cli/commands/version.py src/semantic_release/cli/cli_context.py src/semantic_release/version/algorithm.py tests/unit/semantic_release/bsr",
-  "uv run --no-sync mypy src/semantic_release/bsr src/semantic_release/cli/commands/version.py src/semantic_release/cli/cli_context.py src/semantic_release/version/algorithm.py",
+  "uv run --no-sync python scripts/check_upstream_ownership.py --run-gate python-lint",
+  "uv run --no-sync python scripts/check_upstream_ownership.py --run-gate python-format",
+  "uv run --no-sync python scripts/check_upstream_ownership.py --run-gate python-type",
 ]
 
 [tasks.fix]

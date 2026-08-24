@@ -249,7 +249,8 @@ def test_masking_filter_masks_exception_traceback(default_masking_filter):
     default_masking_filter.add_mask_for(secret, "token")
 
     try:
-        raise ValueError(f"Failed to authenticate with https://{secret}@example.com")
+        raise ValueError(f"Failed to authenticate with https://{secret}@example.com")  # noqa: TRY301
+
     except ValueError:
         logger.exception("An error occurred")
 

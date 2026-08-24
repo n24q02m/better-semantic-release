@@ -28,14 +28,28 @@ def _write(path: Path, content: str) -> None:
 
 
 def _pyproject_toml(extra_bsr: str) -> str:
+    extra_bsr = extra_bsr.replace(
+        "\n[tool.semantic_release.bsr]\n",
+        "\n[tool.semantic_release.bsr]\nschema_version = 1\n",
+        1,
+    )
+    if (
+        "\n[[tool.semantic_release.bsr.components]]\n" in extra_bsr
+        and "schema_version" not in extra_bsr
+    ):
+        extra_bsr = extra_bsr.replace(
+            "\n[[tool.semantic_release.bsr.components]]\n",
+            "\n[tool.semantic_release.bsr]\nschema_version = 1\n"
+            "[[tool.semantic_release.bsr.components]]\n",
+            1,
+        )
     return (
         '[project]\nname = "demo"\nversion = "0.1.0"\n\n'
         "[tool.semantic_release]\n"
-        'tag_format = "v{version}"\n'
-        # NOTE: same reasoning as test_path_filter_cli.py -- PSR forces a
-        # MAJOR bump out of 0.x.x whenever allow_zero_version is False,
-        # regardless of which commits matched, which would make the "api"
-        # component's no-release assertion below false.
+        # NOTE: PSR forces a MAJOR bump out of 0.x.x.x version whenever
+        # `allow_zero_version` is False (the PSR default), regardless of
+        # which commits matched, which would make the "api" component's
+        # no-release assertion below false.
         "allow_zero_version = true\n" + extra_bsr
     )
 

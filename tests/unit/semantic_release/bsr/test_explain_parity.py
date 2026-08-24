@@ -41,6 +41,11 @@ def _build_project(
 ) -> Path:
     proj = tmp_path / "proj"
     proj.mkdir()
+    extra_pyproject = extra_pyproject.replace(
+        "\n[tool.semantic_release.bsr]\n",
+        "\n[tool.semantic_release.bsr]\nschema_version = 1\n",
+        1,
+    )
     (proj / "pyproject.toml").write_text(
         '[project]\nname = "demo-pkg"\nversion = "0.1.0"\n\n'
         "[tool.semantic_release]\n"

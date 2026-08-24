@@ -108,15 +108,16 @@ fi
 if [[ -n "$INPUT_SSH_PUBLIC_SIGNING_KEY" && -n "$INPUT_SSH_PRIVATE_SIGNING_KEY" ]]; then
 	echo "SSH Key pair found, configuring signing..."
 
-	# Write keys to disk
+	# Create the private key with restrictive permissions from the first byte.
 	mkdir -vp ~/.ssh
-	echo -e "$INPUT_SSH_PUBLIC_SIGNING_KEY" >>~/.ssh/signing_key.pub
+	printf '%b\n' "$INPUT_SSH_PUBLIC_SIGNING_KEY" >>~/.ssh/signing_key.pub
 	cat ~/.ssh/signing_key.pub
-	echo -e "$INPUT_SSH_PRIVATE_SIGNING_KEY" >>~/.ssh/signing_key
+	(
+		umask 077
+		printf '%b\n' "$INPUT_SSH_PRIVATE_SIGNING_KEY" >~/.ssh/signing_key
+	)
 	# DO NOT CAT private key for security reasons
 	sha256sum ~/.ssh/signing_key
-	# Ensure read only private key
-	chmod 400 ~/.ssh/signing_key
 
 	# Enable ssh-agent & add signing key
 	eval "$(ssh-agent -s)"
