@@ -1,0 +1,11 @@
+--- src/semantic_release/cli/config.py
++++ src/semantic_release/cli/config.py
+@@ -84,7 +84,7 @@
+ # Constants
+ #
+
+-ACTOR_REGEX = re.compile(r"^(?P<name>[^<]+)?\s*<(?P<email>[^>]+)>$")
++ACTOR_REGEX = re.compile(r"^(?P<name>[^<]+?)\s*<(?P<email>[^>]+)>$")
+
+ _known_commit_parsers = {
+     "angular": angular_parser,

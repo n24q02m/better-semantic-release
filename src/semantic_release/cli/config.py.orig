@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging
 import os
-import re
 from collections.abc import Mapping
 from dataclasses import dataclass, is_dataclass
 from enum import Enum
@@ -26,6 +25,7 @@ from typing import (
     Union,
     cast,
 )
+import re
 
 # typing_extensions is for Python 3.8, 3.9, 3.10 compatibility
 import tomlkit
@@ -77,7 +77,7 @@ from semantic_release.version.translator import VersionTranslator
 
 NonEmptyString = Annotated[str, Field(..., min_length=1)]
 
-ACTOR_REGEX = re.compile(r"^(?P<name>[^<]+?)\s*<(?P<email>[^>]+)>$")
+ACTOR_REGEX = re.compile(r"^(?P<name>[^<]+)?\s*<(?P<email>[^>]+)>$")
 
 
 class HvcsClient(str, Enum):
