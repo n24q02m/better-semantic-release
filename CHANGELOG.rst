@@ -4,6 +4,30 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.4.0:
+
+v1.4.0 (2026-08-25)
+===================
+
+🪲 Bug Fixes
+------------
+
+* Align repository governance contract (`PR#103`_, `efd9ec6`_)
+
+* Align ruleset policy with live branch rules (`PR#100`_, `095bc0f`_)
+
+* Declare repository settings ownership (`PR#103`_, `efd9ec6`_)
+
+* Remove deleted traces from ownership manifest (`PR#101`_, `01b62d3`_)
+
+.. _01b62d3: https://github.com/n24q02m/better-semantic-release/commit/01b62d31ecb2eceabe27786ca5f70633d3dfc9b6
+.. _095bc0f: https://github.com/n24q02m/better-semantic-release/commit/095bc0fcfaf2ecf7a5f8df6774f38f6a95fe3101
+.. _efd9ec6: https://github.com/n24q02m/better-semantic-release/commit/efd9ec649c98148f68786bf37215dd697d2a3d5e
+.. _PR#100: https://github.com/n24q02m/better-semantic-release/pull/100
+.. _PR#101: https://github.com/n24q02m/better-semantic-release/pull/101
+.. _PR#103: https://github.com/n24q02m/better-semantic-release/pull/103
+
+
 .. _changelog-v1.4.0-beta.2:
 
 v1.4.0-beta.2 (2026-08-24)
