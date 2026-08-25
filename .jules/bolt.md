@@ -1,0 +1,3 @@
+## 2024-05-24 - Avoid `all([...])` with list literals
+**Learning:** Using `all([...])` or `any([...])` with a hardcoded list literal forces Python to evaluate every item in the list eagerly before passing it to `all()`, completely defeating the purpose of short-circuiting. For example, `all([A, B, C])` evaluates A, B, and C even if A is False.
+**Action:** Use explicit boolean operators like `A and B and C` instead of `all([...])` for a small set of conditions. This enables true short-circuiting and prevents both the eager evaluation of expensive conditions and the memory allocation of the temporary list.
