@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import logging
-import re
 import os
+import re
 from collections.abc import Mapping
 from dataclasses import dataclass, is_dataclass
 from enum import Enum
@@ -30,11 +30,6 @@ from typing import (
 # typing_extensions is for Python 3.8, 3.9, 3.10 compatibility
 import tomlkit
 from git import Actor, InvalidGitRepositoryError
-
-# GitPython >= 3.1.45 removed Actor.name_email_regex; keep the original
-# semantics locally so commit-author validation does not depend on the
-# installed GitPython version (upstream regex was `(.*) <(.*?)>`).
-_COMMIT_AUTHOR_REGEX = re.compile(r"(.*) <(.*?)>")
 from git.repo.base import Repo
 from jinja2 import Environment
 from pydantic import (
@@ -748,11 +743,15 @@ class RuntimeContext:
         )
 
         _commit_author_str = cls.resolve_from_env(raw.commit_author) or ""
-        _commit_author_valid = _COMMIT_AUTHOR_REGEX.match(_commit_author_str)
+        # GitPython >= 3.1.45 removed Actor.name_email_regex; keep the original
+        # semantics locally so commit-author validation does not depend on the
+        # installed GitPython version (upstream regex was `(.*) <(.*?)>`).
+        _commit_author_regex = re.compile(r"(.*) <(.*?)>")
+        _commit_author_valid = _commit_author_regex.match(_commit_author_str)
         if not _commit_author_valid:
             raise ValueError(
                 f"Invalid git author: {_commit_author_str} "
-                f"should match {_COMMIT_AUTHOR_REGEX}"
+                f"should match {_commit_author_regex.pattern}"
             )
 
         commit_author = Actor(*_commit_author_valid.groups())

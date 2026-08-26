@@ -755,6 +755,14 @@ reason = "Regression or parity coverage for the fork behavior and its stock seam
 gates = ["python-lint", "python-format", "python-test"]
 
 [[ownership]]
+path = "src/semantic_release/cli/config.py"
+status = "M"
+kind = "python-source"
+owner = "bsr-core"
+reason = "Fix compatibility with GitPython 3.1.45+ by defining _COMMIT_AUTHOR_REGEX locally."
+gates = ["python-lint", "python-format", "python-type"]
+
+[[ownership]]
 path = "tests/unit/semantic_release/version/declarations/test_file_declaration.py"
 status = "M"
 kind = "python-test"
