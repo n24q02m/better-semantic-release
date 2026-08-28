@@ -873,3 +873,43 @@ kind = "python-test"
 owner = "bsr-tests"
 reason = "Task 2 regression coverage proves unowned stock changes fail closed and gate counts stay separate."
 gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "src/semantic_release/bsr/release_publisher.py"
+status = "A"
+kind = "python-source"
+owner = "bsr-g1-publisher"
+reason = "Phase A strict manifest staging and no-overwrite GitHub release reconciliation runtime."
+gates = ["python-lint", "python-format", "python-type"]
+
+[[ownership]]
+path = "publish-action/main.py"
+status = "A"
+kind = "python-tool"
+owner = "bsr-g1-publisher"
+reason = "Phase A standalone Docker action adapter for the stdlib publisher runtime."
+gates = ["python-lint", "python-format"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/test_release_publisher.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-g1-publisher"
+reason = "Phase A strict manifest, staging, reconciliation, tag, pagination, and policy contract coverage."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/test_publisher_workflow.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-g1-publisher"
+reason = "Phase A candidate image workflow exclusivity and immutable image policy coverage."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "publish-action/Dockerfile"
+status = "A"
+kind = "other"
+owner = "bsr-g1-publisher"
+reason = "Phase A digest-pinned non-root publisher runtime image."
+gates = ["other"]

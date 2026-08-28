@@ -11,6 +11,14 @@ name: cd
 on:
   workflow_dispatch:
     inputs:
+      operation:
+        description: Select the existing release route or the candidate publisher image bootstrap
+        type: choice
+        required: true
+        default: release
+        options:
+          - release
+          - publisher-image
       release_type:
         description: Release type (beta-first -- pick stable only when ready to publish for real)
         type: choice
@@ -25,13 +33,16 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  contents: write
-  id-token: write
+  contents: read
 
 jobs:
   release:
     name: Release
+    if: inputs.operation == 'release'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
     # The environment must be provisioned with reviewers and branch policy before dispatch.
     # Without that external settings gate, GitHub must not be used for publication.
     environment:
@@ -89,6 +100,60 @@ jobs:
         if: steps.release.outputs.released == 'true'
         uses: pypa/gh-action-pypi-publish@ba38be9e461d3875417946c167d0b5f3d385a247 # v1.14.1
 
+
+  # Candidate-only bootstrap. This route is deliberately mutually exclusive
+  # with the release job and can only be dispatched from the protected main
+  # branch. The existing beta-publish environment retains its branch/reviewer
+  # policy; no new environment policy is hidden in this workflow.
+  publisher-image:
+    name: Build candidate publisher image
+    if: inputs.operation == 'publisher-image' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment:
+      name: beta-publish
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Log in to GHCR
+        env:
+          GHCR_TOKEN: ${{ github.token }}
+        run: |
+          printf '%s\n' "$GHCR_TOKEN" | docker login ghcr.io \
+            --username "$GITHUB_ACTOR" --password-stdin
+
+      - name: Build and push candidate image
+        id: image
+        env:
+          IMAGE: ghcr.io/${{ github.repository }}-publisher:candidate-${{ github.sha }}
+        run: |
+          docker build \
+            --file publish-action/Dockerfile \
+            --tag "$IMAGE" \
+            .
+          docker push "$IMAGE"
+          DIGEST="$(docker buildx imagetools inspect "$IMAGE" \
+            --format '{{.Manifest.Digest}}')"
+          case "$DIGEST" in
+            sha256:[0-9a-f]*) ;;
+            *) echo "registry did not return an immutable digest"; exit 1 ;;
+          esac
+          printf 'digest=%s\n' "$DIGEST" >> "$GITHUB_OUTPUT"
+
+      - name: Attest candidate image provenance
+        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2.2.0
+        with:
+          subject-name: ghcr.io/${{ github.repository }}-publisher
+          subject-digest: ${{ steps.image.outputs.digest }}
+          push-to-registry: true
 # No downstream notification is dispatched from here, and that is a decision
 # rather than an omission -- worth writing down, because a shared library cutting
 # a stable release is exactly the case where you would expect one.
