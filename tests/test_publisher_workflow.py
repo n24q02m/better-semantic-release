@@ -4,13 +4,17 @@ from pathlib import Path
 
 import yaml
 
-
 ROOT = Path(__file__).parents[1]
 WORKFLOW = ROOT / ".github" / "workflows" / "cd.yml"
 DOCKERFILE = ROOT / "publish-action" / "Dockerfile"
 
+
 def _load_workflow() -> dict[str, object]:
-    return yaml.load(WORKFLOW.read_text(encoding="utf-8"), Loader=yaml.BaseLoader)
+    # BaseLoader intentionally preserves string-only workflow semantics.
+    return yaml.load(
+        WORKFLOW.read_text(encoding="utf-8"),
+        Loader=yaml.BaseLoader,  # noqa: S506
+    )
 
 
 def test_manual_cd_has_mutually_exclusive_release_and_image_operations() -> None:
@@ -23,8 +27,7 @@ def test_manual_cd_has_mutually_exclusive_release_and_image_operations() -> None
     assert document["jobs"]["release"]["if"] == "inputs.operation == 'release'"
     image = document["jobs"]["publisher-image"]
     assert image["if"] == (
-        "inputs.operation == 'publisher-image' && "
-        "github.ref == 'refs/heads/main'"
+        "inputs.operation == 'publisher-image' && " "github.ref == 'refs/heads/main'"
     )
     assert image["permissions"] == {
         "contents": "read",
@@ -94,6 +97,9 @@ def test_pinned_non_root_image_runtime() -> None:
     assert "ARG PUBLISHER_UID=" in content
     assert "ARG PUBLISHER_GID=" in content
     assert "USER publisher" in content
-    assert 'ENTRYPOINT ["/usr/local/bin/python", "-I", "-S", "-B", "-u", "/opt/publisher/main.py"]' in content
+    assert (
+        'ENTRYPOINT ["/usr/local/bin/python", "-I", "-S", "-B", "-u", "/opt/publisher/main.py"]'
+        in content
+    )
     assert "PYTHONPATH" not in content
     assert "pip install" not in content

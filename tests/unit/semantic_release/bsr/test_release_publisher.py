@@ -3,10 +3,14 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-from pathlib import Path
-from typing import Any
+from contextlib import closing
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 import pytest
+
 from semantic_release.bsr import release_publisher as publisher
 from semantic_release.bsr.release_publisher import (
     AmbiguousProviderError,
@@ -17,7 +21,6 @@ from semantic_release.bsr.release_publisher import (
     prepare_manifest,
     publish_manifest,
 )
-
 
 REPOSITORY = "n24q02m/better-semantic-release"
 TARGET_SHA = "a" * 40
@@ -38,22 +41,20 @@ class FakeProvider:
         self.latest: dict[str, Any] | None = None
         self.page_size = 100
 
-    def get_tag_ref(self, repository: str, tag: str) -> dict[str, Any]:
+    def get_tag_ref(self, _repository: str, tag: str) -> dict[str, Any]:
         self.calls.append(("get_tag_ref", tag))
         return self.tag_refs[tag]
 
-    def get_tag_object(self, repository: str, sha: str) -> dict[str, Any]:
+    def get_tag_object(self, _repository: str, sha: str) -> dict[str, Any]:
         self.calls.append(("get_tag_object", sha))
         return self.tag_objects[sha]
 
-    def get_release_by_tag(
-        self, repository: str, tag: str
-    ) -> dict[str, Any] | None:
+    def get_release_by_tag(self, _repository: str, tag: str) -> dict[str, Any] | None:
         self.calls.append(("get_release_by_tag", tag))
         return self.releases.get(tag)
 
     def create_release(
-        self, repository: str, payload: dict[str, Any]
+        self, _repository: str, payload: dict[str, Any]
     ) -> dict[str, Any]:
         self.calls.append(("create_release", payload))
         if self.create_error is not None:
@@ -66,18 +67,23 @@ class FakeProvider:
         return release
 
     def list_release_assets(
-        self, repository: str, release_id: int, *, page: int, per_page: int
+        self, _repository: str, release_id: int, *, page: int, per_page: int
     ) -> list[dict[str, Any]]:
+        del per_page
         self.calls.append(("list_release_assets", page))
-        all_assets = self.assets[next(
-            tag for tag, release in self.releases.items() if release["id"] == release_id
-        )]
+        all_assets = self.assets[
+            next(
+                tag
+                for tag, release in self.releases.items()
+                if release["id"] == release_id
+            )
+        ]
         start = (page - 1) * self.page_size
         return all_assets[start : start + self.page_size]
 
     def upload_asset(
         self,
-        repository: str,
+        _repository: str,
         release_id: int,
         name: str,
         content_type: str,
@@ -91,13 +97,16 @@ class FakeProvider:
             tag for tag, release in self.releases.items() if release["id"] == release_id
         )
         digest = "sha256:" + hashlib.sha256(data).hexdigest()
-        item = {"name": name, "size": len(data), "digest": digest}
+        item = {
+            "name": name,
+            "size": len(data),
+            "digest": digest,
+            "content_type": content_type,
+        }
         self.assets[tag].append(item)
         return item
 
-    def get_latest_release(
-        self, repository: str
-    ) -> dict[str, Any] | None:
+    def get_latest_release(self, _repository: str) -> dict[str, Any] | None:
         self.calls.append(("get_latest_release", None))
         return self.latest
 
@@ -167,7 +176,8 @@ def _write_manifest(
     }
     manifest_path = tmp_path / "manifest.json"
     manifest_path.write_text(
-        json.dumps(manifest, separators=(",", ":"), ensure_ascii=False), encoding="utf-8"
+        json.dumps(manifest, separators=(",", ":"), ensure_ascii=False),
+        encoding="utf-8",
     )
     return manifest_path
 
@@ -224,12 +234,13 @@ def test_path_escape_is_rejected_before_any_provider_call(tmp_path: Path) -> Non
     provider = FakeProvider()
 
     with pytest.raises(ManifestError, match="path"):
-        publish_manifest(manifest, workspace=tmp_path, provider=provider, repository=REPOSITORY)
+        publish_manifest(
+            manifest, workspace=tmp_path, provider=provider, repository=REPOSITORY
+        )
     assert provider.calls == []
 
 
 def test_symlink_input_is_rejected(tmp_path: Path) -> None:
-
     outside = tmp_path / "outside.md"
     outside.write_bytes(BODY)
     link = tmp_path / "notes.md"
@@ -257,7 +268,9 @@ def test_absent_release_is_created_and_missing_asset_uploaded(tmp_path: Path) ->
     manifest = _write_manifest(tmp_path)
     provider = FakeProvider()
 
-    result = publish_manifest(manifest, workspace=tmp_path, provider=provider, repository=REPOSITORY)
+    result = publish_manifest(
+        manifest, workspace=tmp_path, provider=provider, repository=REPOSITORY
+    )
 
     assert result["created"] is True
     assert result["uploaded_count"] == 1
@@ -266,6 +279,7 @@ def test_absent_release_is_created_and_missing_asset_uploaded(tmp_path: Path) ->
         "get_tag_ref",
         "get_release_by_tag",
         "create_release",
+        "get_latest_release",
         "list_release_assets",
         "upload_asset",
         "get_tag_ref",
@@ -276,7 +290,7 @@ def test_absent_release_is_created_and_missing_asset_uploaded(tmp_path: Path) ->
 
 
 @pytest.mark.parametrize(
-    ("requested", "wire_value"),
+    "requested,wire_value",
     ((False, "false"), (True, "true")),
 )
 def test_create_release_wires_make_latest_as_string(
@@ -287,7 +301,9 @@ def test_create_release_wires_make_latest_as_string(
     if requested:
         provider.latest = {"tag_name": "v1.0.0"}
 
-    publish_manifest(manifest, workspace=tmp_path, provider=provider, repository=REPOSITORY)
+    publish_manifest(
+        manifest, workspace=tmp_path, provider=provider, repository=REPOSITORY
+    )
 
     payload = next(call[1] for call in provider.calls if call[0] == "create_release")
     assert payload["make_latest"] == wire_value
@@ -300,11 +316,20 @@ def test_existing_partial_release_resumes_exactly_and_complete_rerun_reuses_asse
     provider = FakeProvider()
     _seed_release(provider, manifest)
     provider.assets["v1.0.0"] = [
-        {"name": "a.bin", "size": 1, "digest": "sha256:" + _sha(b"a")}
+        {
+            "name": "a.bin",
+            "size": 1,
+            "digest": "sha256:" + _sha(b"a"),
+            "content_type": "application/octet-stream",
+        }
     ]
 
-    first = publish_manifest(manifest, workspace=tmp_path, provider=provider, repository=REPOSITORY)
-    second = publish_manifest(manifest, workspace=tmp_path, provider=provider, repository=REPOSITORY)
+    first = publish_manifest(
+        manifest, workspace=tmp_path, provider=provider, repository=REPOSITORY
+    )
+    second = publish_manifest(
+        manifest, workspace=tmp_path, provider=provider, repository=REPOSITORY
+    )
 
     assert first["created"] is False
     assert first["uploaded_count"] == 1
@@ -323,8 +348,12 @@ def test_existing_release_metadata_mismatch_has_no_write_path(tmp_path: Path) ->
     provider.releases["v1.0.0"]["name"] = "wrong"
 
     with pytest.raises(ProviderError, match="metadata"):
-        publish_manifest(manifest, workspace=tmp_path, provider=provider, repository=REPOSITORY)
-    assert all(call[0] not in {"create_release", "upload_asset"} for call in provider.calls)
+        publish_manifest(
+            manifest, workspace=tmp_path, provider=provider, repository=REPOSITORY
+        )
+    assert all(
+        call[0] not in {"create_release", "upload_asset"} for call in provider.calls
+    )
 
 
 def test_foreign_duplicate_and_mismatched_assets_are_rejected(tmp_path: Path) -> None:
@@ -332,17 +361,78 @@ def test_foreign_duplicate_and_mismatched_assets_are_rejected(tmp_path: Path) ->
     for existing in (
         [{"name": "foreign.bin", "size": 1, "digest": "sha256:" + _sha(b"x")}],
         [
-            {"name": "dist.tar.gz", "size": 12, "digest": "sha256:" + _sha(b"package bytes")},
-            {"name": "dist.tar.gz", "size": 12, "digest": "sha256:" + _sha(b"package bytes")},
+            {
+                "name": "dist.tar.gz",
+                "size": 12,
+                "digest": "sha256:" + _sha(b"package bytes"),
+                "content_type": "application/octet-stream",
+            },
+            {
+                "name": "dist.tar.gz",
+                "size": 12,
+                "digest": "sha256:" + _sha(b"package bytes"),
+                "content_type": "application/octet-stream",
+            },
         ],
-        [{"name": "dist.tar.gz", "size": 99, "digest": "sha256:" + _sha(b"package bytes")}],
+        [
+            {
+                "name": "dist.tar.gz",
+                "size": 99,
+                "digest": "sha256:" + _sha(b"package bytes"),
+                "content_type": "application/octet-stream",
+            }
+        ],
         [{"name": "dist.tar.gz", "size": 12}],
     ):
         provider = FakeProvider()
         _seed_release(provider, manifest)
         provider.assets["v1.0.0"] = existing
         with pytest.raises(ProviderError):
-            publish_manifest(manifest, workspace=tmp_path, provider=provider, repository=REPOSITORY)
+            publish_manifest(
+                manifest, workspace=tmp_path, provider=provider, repository=REPOSITORY
+            )
+
+
+@pytest.mark.parametrize(
+    "content_type",
+    (
+        pytest.param(None, id="missing"),
+        pytest.param("", id="invalid"),
+        pytest.param("text/plain", id="mismatched"),
+    ),
+)
+def test_existing_asset_content_type_must_be_exact(
+    tmp_path: Path, content_type: str | None
+) -> None:
+    manifest = _write_manifest(tmp_path)
+    provider = FakeProvider()
+    _seed_release(provider, manifest)
+    asset: dict[str, Any] = {
+        "name": "dist.tar.gz",
+        "size": 12,
+        "digest": "sha256:" + _sha(b"package bytes"),
+    }
+    if content_type is not None:
+        asset["content_type"] = content_type
+    provider.assets["v1.0.0"] = [asset]
+
+    with pytest.raises(ProviderError, match="asset"):
+        publish_manifest(
+            manifest, workspace=tmp_path, provider=provider, repository=REPOSITORY
+        )
+
+
+def test_incompatible_latest_state_blocks_asset_upload(tmp_path: Path) -> None:
+    manifest = _write_manifest(tmp_path)
+    provider = FakeProvider()
+    _seed_release(provider, manifest)
+    provider.latest = {"tag_name": "v1.0.0"}
+
+    with pytest.raises(ProviderError, match="latest"):
+        publish_manifest(
+            manifest, workspace=tmp_path, provider=provider, repository=REPOSITORY
+        )
+    assert all(call[0] != "upload_asset" for call in provider.calls)
 
 
 def test_ambiguous_create_is_resolved_by_one_readback(tmp_path: Path) -> None:
@@ -359,14 +449,80 @@ def test_ambiguous_create_is_resolved_by_one_readback(tmp_path: Path) -> None:
         raise TimeoutAfterCreate()
 
     provider.create_release = create_then_timeout  # type: ignore[method-assign]
-    result = publish_manifest(manifest, workspace=tmp_path, provider=provider, repository=REPOSITORY)
+    result = publish_manifest(
+        manifest, workspace=tmp_path, provider=provider, repository=REPOSITORY
+    )
 
     assert result["created"] is True
     assert [call[0] for call in provider.calls].count("create_release") == 1
     assert [call[0] for call in provider.calls].count("get_release_by_tag") == 3
 
 
-@pytest.mark.parametrize("failure", ("http-error", "unexpected-status", "rejected-redirect"))
+class _TrackedResponse:
+    status = 302
+
+    def __init__(self) -> None:
+        self.closed = False
+
+    def read(self, _size: int = -1) -> bytes:
+        return b"redirect"
+
+    def close(self) -> None:
+        self.closed = True
+
+
+class _TrackedErrorBody:
+    def __init__(self) -> None:
+        self.closed = False
+
+    def read(self, _size: int = -1) -> bytes:
+        return b'{"error":"server"}'
+
+    def close(self) -> None:
+        self.closed = True
+
+
+class _FailureOpener:
+    def __init__(
+        self,
+        failure: str,
+        error: BaseException,
+        response: _TrackedResponse,
+    ) -> None:
+        self.failure = failure
+        self.error = error
+        self.response = response
+        self.redirect_handler: Any | None = None
+
+    def build(self, *handlers: Any) -> _FailureOpener:
+        self.redirect_handler = next(
+            handler
+            for handler in handlers
+            if isinstance(handler, publisher._SafeRedirectHandler)
+        )
+        return self
+
+    def open(self, _request: Any, *, timeout: float) -> Any:
+        del timeout
+        if self.failure == "http-error":
+            raise self.error
+        if self.failure == "unexpected-status":
+            return self.response
+        assert self.redirect_handler is not None
+        self.redirect_handler.redirect_request(
+            _request,
+            self.response,
+            302,
+            "Found",
+            {},
+            "https://attacker.example/releases",
+        )
+        raise AssertionError("redirect handler did not reject the target")
+
+
+@pytest.mark.parametrize(
+    "failure", ("http-error", "unexpected-status", "rejected-redirect")
+)
 def test_mutating_http_failure_is_ambiguous_and_read_back_once(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, failure: str
 ) -> None:
@@ -382,34 +538,13 @@ def test_mutating_http_failure_is_ambiguous_and_read_back_once(
         "make_latest": manifest_payload["release"]["make_latest"],
     }
     provider = FakeProvider()
-    provider.releases[manifest_payload["tag"]] = _release(release_payload, release_id=41)
+    provider.releases[manifest_payload["tag"]] = _release(
+        release_payload, release_id=41
+    )
     provider.assets[manifest_payload["tag"]] = []
     http_provider = HttpGithubProvider("ghs_secret_value")
-
-    class Response:
-        status = 302
-
-        def __init__(self) -> None:
-            self.closed = False
-
-        def read(self, _size: int = -1) -> bytes:
-            return b"redirect"
-
-        def close(self) -> None:
-            self.closed = True
-
-    class ErrorBody:
-        def __init__(self) -> None:
-            self.closed = False
-
-        def read(self, _size: int = -1) -> bytes:
-            return b'{"error":"server"}'
-
-        def close(self) -> None:
-            self.closed = True
-
-    response = Response()
-    error_body = ErrorBody()
+    response = _TrackedResponse()
+    error_body = _TrackedErrorBody()
     error = publisher.urllib.error.HTTPError(
         "https://api.github.com/repos/x/y/releases",
         500,
@@ -417,51 +552,28 @@ def test_mutating_http_failure_is_ambiguous_and_read_back_once(
         None,
         error_body,
     )
-    redirect_handler: Any | None = None
+    opener = _FailureOpener(failure, error, response)
 
-    class Opener:
-        def open(self, request: Any, *, timeout: float) -> Any:
-            if failure == "http-error":
-                raise error
-            if failure == "unexpected-status":
-                return response
-            assert redirect_handler is not None
-            redirect_handler.redirect_request(
-                request,
-                None,
-                302,
-                "Found",
-                {},
-                "https://attacker.example/releases",
-            )
-            raise AssertionError("redirect handler did not reject the target")
-
-    def build_opener(*handlers: Any) -> Opener:
-        nonlocal redirect_handler
-        redirect_handler = next(
-            handler for handler in handlers if isinstance(handler, publisher._SafeRedirectHandler)
-        )
-        return Opener()
-
-    monkeypatch.setattr(publisher, "_github_ssl_context", publisher.ssl.create_default_context)
-    monkeypatch.setattr(publisher.urllib.request, "build_opener", build_opener)
+    monkeypatch.setattr(
+        publisher, "_github_ssl_context", publisher.ssl.create_default_context
+    )
+    monkeypatch.setattr(publisher.urllib.request, "build_opener", opener.build)
 
     def create_release(repository: str, value: dict[str, Any]) -> dict[str, Any]:
         provider.calls.append(("create_release", value))
         return http_provider.create_release(repository, value)
 
     provider.create_release = create_release  # type: ignore[method-assign]
-    with prepare_manifest(manifest_path, tmp_path) as prepared:
-        result, created = publisher._create_release(provider, REPOSITORY, prepared.manifest, body)
+    with closing(prepare_manifest(manifest_path, tmp_path)) as prepared:
+        result, created = publisher._create_release(
+            provider, REPOSITORY, prepared.manifest, body
+        )
 
     assert created is True
     assert result["id"] == 41
     assert [call[0] for call in provider.calls].count("create_release") == 1
     assert [call[0] for call in provider.calls].count("get_release_by_tag") == 1
-    if failure == "http-error":
-        assert error_body.closed is True
-    elif failure == "unexpected-status":
-        assert response.closed is True
+    assert (error_body if failure == "http-error" else response).closed is True
 
 
 def test_release_readback_does_not_require_unreturned_make_latest_field(
@@ -492,12 +604,40 @@ def test_ambiguous_upload_same_bytes_converges_without_replay(tmp_path: Path) ->
         raise TimeoutError()
 
     provider.upload_asset = upload_then_timeout  # type: ignore[method-assign]
-    result = publish_manifest(manifest, workspace=tmp_path, provider=provider, repository=REPOSITORY)
+    result = publish_manifest(
+        manifest, workspace=tmp_path, provider=provider, repository=REPOSITORY
+    )
 
     assert result["uploaded_count"] == 1
     assert [call for call in provider.calls if call[0] == "upload_asset"] == [
         ("upload_asset", "dist.tar.gz")
     ]
+
+
+def test_upload_response_content_type_mismatch_requires_readback(
+    tmp_path: Path,
+) -> None:
+    manifest = _write_manifest(tmp_path)
+    provider = FakeProvider()
+    _seed_release(provider, manifest)
+    original_upload = provider.upload_asset
+
+    def upload_with_mismatched_response(
+        repository: str, release_id: int, name: str, content_type: str, data: bytes
+    ) -> dict[str, Any]:
+        response = dict(
+            original_upload(repository, release_id, name, content_type, data)
+        )
+        response["content_type"] = "text/plain"
+        return response
+
+    provider.upload_asset = upload_with_mismatched_response  # type: ignore[method-assign]
+    result = publish_manifest(
+        manifest, workspace=tmp_path, provider=provider, repository=REPOSITORY
+    )
+
+    assert result["uploaded_count"] == 1
+    assert [call[0] for call in provider.calls].count("list_release_assets") == 3
 
 
 def test_ambiguous_upload_different_bytes_fails(tmp_path: Path) -> None:
@@ -510,14 +650,21 @@ def test_ambiguous_upload_different_bytes_fails(tmp_path: Path) -> None:
     ) -> dict[str, Any]:
         provider.calls.append(("upload_asset", name))
         provider.assets["v1.0.0"] = [
-            {"name": name, "size": 1, "digest": "sha256:" + _sha(b"x")}
+            {
+                "name": name,
+                "size": 1,
+                "digest": "sha256:" + _sha(b"x"),
+                "content_type": "application/octet-stream",
+            }
         ]
         raise TimeoutError()
 
     provider.upload_asset = conflicting_upload  # type: ignore[method-assign]
 
     with pytest.raises(ProviderError, match="digest|size"):
-        publish_manifest(manifest, workspace=tmp_path, provider=provider, repository=REPOSITORY)
+        publish_manifest(
+            manifest, workspace=tmp_path, provider=provider, repository=REPOSITORY
+        )
     assert [call for call in provider.calls if call[0] == "upload_asset"] == [
         ("upload_asset", "dist.tar.gz")
     ]
@@ -527,14 +674,12 @@ def test_annotated_tags_are_peeled_recursively(tmp_path: Path) -> None:
     manifest = _write_manifest(tmp_path)
     provider = FakeProvider()
     provider.tag_refs["v1.0.0"] = {"object": {"type": "tag", "sha": "b" * 40}}
-    provider.tag_objects["b" * 40] = {
-        "object": {"type": "tag", "sha": "c" * 40}
-    }
-    provider.tag_objects["c" * 40] = {
-        "object": {"type": "commit", "sha": TARGET_SHA}
-    }
+    provider.tag_objects["b" * 40] = {"object": {"type": "tag", "sha": "c" * 40}}
+    provider.tag_objects["c" * 40] = {"object": {"type": "commit", "sha": TARGET_SHA}}
 
-    result = publish_manifest(manifest, workspace=tmp_path, provider=provider, repository=REPOSITORY)
+    result = publish_manifest(
+        manifest, workspace=tmp_path, provider=provider, repository=REPOSITORY
+    )
 
     assert result["release_id"] == 41
     assert [call for call in provider.calls if call[0] == "get_tag_object"] == [
@@ -547,7 +692,7 @@ def test_annotated_tags_are_peeled_recursively(tmp_path: Path) -> None:
 
 def test_annotated_tag_cycle_and_wrong_target_are_rejected(tmp_path: Path) -> None:
     manifest = _write_manifest(tmp_path)
-    for tag_objects, target in (
+    for tag_objects, _ in (
         (
             {"b" * 40: {"object": {"type": "tag", "sha": "b" * 40}}},
             TARGET_SHA,
@@ -594,14 +739,25 @@ def test_descriptor_staging_rejects_ancestor_swap_before_open(
         prepare_manifest(manifest, tmp_path, expected_repository=REPOSITORY)
     assert swapped is True
 
+
 def test_asset_pagination_rejects_duplicate_page_entries(tmp_path: Path) -> None:
     manifest = _write_manifest(tmp_path, assets=[("a.bin", b"a"), ("b.bin", b"b")])
     provider = FakeProvider()
     provider.page_size = 1
     _seed_release(provider, manifest)
     provider.assets["v1.0.0"] = [
-        {"name": "a.bin", "size": 1, "digest": "sha256:" + _sha(b"a")},
-        {"name": "a.bin", "size": 1, "digest": "sha256:" + _sha(b"a")},
+        {
+            "name": "a.bin",
+            "size": 1,
+            "digest": "sha256:" + _sha(b"a"),
+            "content_type": "application/octet-stream",
+        },
+        {
+            "name": "a.bin",
+            "size": 1,
+            "digest": "sha256:" + _sha(b"a"),
+            "content_type": "application/octet-stream",
+        },
     ]
 
     with pytest.raises(ProviderError, match="duplicate"):
@@ -650,7 +806,10 @@ def test_latest_policy_rejects_candidate_that_is_latest(tmp_path: Path) -> None:
     provider.latest = {"tag_name": "v1.0.0"}
 
     with pytest.raises(ProviderError, match="latest"):
-        publish_manifest(manifest, workspace=tmp_path, provider=provider, repository=REPOSITORY)
+        publish_manifest(
+            manifest, workspace=tmp_path, provider=provider, repository=REPOSITORY
+        )
+    assert all(call[0] != "upload_asset" for call in provider.calls)
 
 
 def test_latest_policy_requires_stable_release_to_be_latest(tmp_path: Path) -> None:
@@ -659,9 +818,9 @@ def test_latest_policy_requires_stable_release_to_be_latest(tmp_path: Path) -> N
     provider.latest = {"tag_name": "v0.9.0"}
 
     with pytest.raises(ProviderError, match="latest"):
-        publish_manifest(manifest, workspace=tmp_path, provider=provider, repository=REPOSITORY)
-
-
+        publish_manifest(
+            manifest, workspace=tmp_path, provider=provider, repository=REPOSITORY
+        )
 
 
 def test_output_preflight_fails_before_provider_construction(
@@ -687,7 +846,11 @@ def test_output_preflight_fails_before_provider_construction(
             repository=REPOSITORY,
         )
     assert constructed is False
-@pytest.mark.skipif(os.name == "nt", reason="Windows locks open output files against replacement")
+
+
+@pytest.mark.skipif(
+    os.name == "nt", reason="Windows locks open output files against replacement"
+)
 def test_output_channel_retains_inode_across_path_swap(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -775,10 +938,13 @@ def test_http_create_release_wires_make_latest_enum(
 
     class Opener:
         def open(self, request: Any, *, timeout: float) -> Response:
+            del timeout
             captured["request"] = request
             return response
 
-    monkeypatch.setattr(publisher, "_github_ssl_context", publisher.ssl.create_default_context)
+    monkeypatch.setattr(
+        publisher, "_github_ssl_context", publisher.ssl.create_default_context
+    )
     monkeypatch.setattr(
         publisher.urllib.request, "build_opener", lambda *_handlers: Opener()
     )
@@ -836,7 +1002,6 @@ def test_github_provider_uses_pinned_api_version_and_bounded_json(
         "ghs_secret_value", limits=PublishLimits(timeout_seconds=3)
     )
 
-
     assert provider.get_latest_release(REPOSITORY) == {"tag_name": "v1.0.0"}
     request = captured["request"]
     assert request.full_url == (
@@ -860,9 +1025,59 @@ def test_github_provider_uses_pinned_api_version_and_bounded_json(
     assert len(https_handlers) == 1
     assert https_handlers[0]._context is tls_context
     assert response.closed is True
-    assert https_handlers[0]._context.minimum_version >= publisher.ssl.TLSVersion.TLSv1_2
+    assert (
+        https_handlers[0]._context.minimum_version >= publisher.ssl.TLSVersion.TLSv1_2
+    )
     assert https_handlers[0]._context.verify_mode == publisher.ssl.CERT_REQUIRED
     assert https_handlers[0]._context.check_hostname is True
+
+
+def test_github_provider_upload_targets_upload_host(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, Any] = {}
+
+    class Response:
+        status = 201
+
+        def __init__(self) -> None:
+            self.done = False
+
+        def read(self, _size: int = -1) -> bytes:
+            if self.done:
+                return b""
+            self.done = True
+            return b"{}"
+
+        def close(self) -> None:
+            pass
+
+    class Opener:
+        def open(self, request: Any, *, timeout: float) -> Response:
+            del timeout
+            captured["request"] = request
+            return Response()
+
+    monkeypatch.setattr(
+        publisher, "_github_ssl_context", publisher.ssl.create_default_context
+    )
+    monkeypatch.setattr(
+        publisher.urllib.request, "build_opener", lambda *_handlers: Opener()
+    )
+    provider = HttpGithubProvider("ghs_secret_value")
+
+    provider.upload_asset(
+        REPOSITORY,
+        41,
+        "dist.tar.gz",
+        "application/octet-stream",
+        b"asset",
+    )
+
+    assert captured["request"].full_url == (
+        "https://uploads.github.com/repos/"
+        "n24q02m/better-semantic-release/releases/41/assets?name=dist.tar.gz"
+    )
 
 
 def test_github_provider_rejects_oversized_response_without_body_disclosure(
@@ -883,7 +1098,8 @@ def test_github_provider_rejects_oversized_response_without_body_disclosure(
             return secret_body
 
     class Opener:
-        def open(self, request: Any, *, timeout: float) -> Response:
+        def open(self, _request: Any, *, timeout: float) -> Response:
+            del timeout
             return Response()
 
     monkeypatch.setattr(
@@ -899,7 +1115,7 @@ def test_github_provider_rejects_oversized_response_without_body_disclosure(
 
 
 @pytest.mark.parametrize(
-    ("operation", "response_body", "response_limit", "response_status"),
+    "operation,response_body,response_limit,response_status",
     (
         ("create", b"not-json", 64, 201),
         ("upload", b"not-json", 64, 201),
@@ -935,7 +1151,8 @@ def test_successful_write_response_failure_is_ambiguous_and_closes_stream(
     response = Response()
 
     class Opener:
-        def open(self, request: Any, *, timeout: float) -> Response:
+        def open(self, _request: Any, *, timeout: float) -> Response:
+            del timeout
             return response
 
     monkeypatch.setattr(
@@ -982,7 +1199,8 @@ def test_github_provider_closes_http_error_stream(
     )
 
     class Opener:
-        def open(self, request: Any, *, timeout: float) -> Any:
+        def open(self, _request: Any, *, timeout: float) -> Any:
+            del timeout
             raise error
 
     monkeypatch.setattr(
@@ -998,13 +1216,15 @@ def test_github_provider_closes_http_error_stream(
 def test_redirect_handler_allows_only_github_upload_host() -> None:
     handler = publisher._SafeRedirectHandler(max_redirects=1)
     request = publisher.urllib.request.Request("https://api.github.com/repos/x/y")
+    fp = _TrackedResponse()
 
     with pytest.raises(ProviderError, match="url"):
         handler.redirect_request(
             request,
-            None,
+            fp,
             302,
             "Found",
             {},
             "https://attacker.example/upload",
         )
+    assert fp.closed is True

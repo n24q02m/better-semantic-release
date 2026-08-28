@@ -1,4 +1,5 @@
-"""Strict, resumable GitHub release publisher for the BSR G1 action.
+"""
+Strict, resumable GitHub release publisher for the BSR G1 action.
 
 The module deliberately has no project dependencies. ``reconcile`` consumes a
 small provider protocol so manifest validation and reconciliation can be tested
@@ -12,7 +13,6 @@ import argparse
 import hashlib
 import json
 import os
-
 import re
 import socket
 import ssl
@@ -22,10 +22,14 @@ import tempfile
 import urllib.error
 import urllib.parse
 import urllib.request
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Mapping, Sequence
+from contextlib import closing, suppress
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Protocol, cast
+from typing import TYPE_CHECKING, Any, Protocol, cast
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 MANIFEST_SCHEMA = "bsr-release-manifest/v1"
@@ -50,6 +54,8 @@ def _before_workspace_component_open(
 ) -> None:
     """Test seam invoked immediately before each descriptor-anchored open."""
     del workspace, parts, scope
+
+
 _TOP_KEYS = (
     "schema_version",
     "repository",
@@ -211,12 +217,6 @@ class PreparedManifest:
     def close(self) -> None:
         self._temporary_directory.cleanup()
 
-    def __enter__(self) -> PreparedManifest:
-        return self
-
-    def __exit__(self, *_exc: object) -> None:
-        self.close()
-
 
 class GithubProvider(Protocol):
     """Minimal injected boundary used by the reconciliation state machine."""
@@ -302,7 +302,9 @@ def _parse_manifest(raw: bytes) -> Mapping[str, Any]:
     return value
 
 
-def _require_exact_keys(value: Mapping[str, Any], expected: tuple[str, ...], scope: str) -> None:
+def _require_exact_keys(
+    value: Mapping[str, Any], expected: tuple[str, ...], scope: str
+) -> None:
     actual = tuple(value.keys())
     if set(actual) != set(expected):
         raise ManifestError(f"manifest {scope} key")
@@ -338,12 +340,11 @@ def _validate_tag(value: Any) -> str:
     tag = _require_string(value, "tag", max_length=255)
     if (
         tag.startswith("/")
-        or tag.endswith("/")
-        or tag.endswith(".")
+        or tag.endswith(("/", "."))
         or ".." in tag
         or "@{" in tag
         or "\\" in tag
-        or any(char in tag for char in "~^:?*[\"")
+        or any(char in tag for char in '~^:?*["')
         or any(not part or part.startswith(".") for part in tag.split("/"))
     ):
         raise ManifestError("manifest tag")
@@ -396,7 +397,9 @@ def _validate_asset(value: Any) -> AssetSpec:
     digest = _require_string(value["sha256"], "asset sha256", max_length=71)
     if not digest.startswith("sha256:") or _SHA256_RE.fullmatch(digest[7:]) is None:
         raise ManifestError("manifest asset sha256")
-    content_type = _require_string(value["content_type"], "asset content_type", max_length=255)
+    content_type = _require_string(
+        value["content_type"], "asset content_type", max_length=255
+    )
     return AssetSpec(name, path, size, digest, content_type)
 
 
@@ -416,7 +419,9 @@ def _assert_workspace_file(path: Path, workspace: Path, scope: str) -> Path:
     root = Path(os.path.abspath(os.fspath(workspace)))
     candidate = Path(os.path.abspath(os.fspath(path)))
     try:
-        if os.path.commonpath((os.fspath(root), os.fspath(candidate))) != os.fspath(root):
+        if os.path.commonpath((os.fspath(root), os.fspath(candidate))) != os.fspath(
+            root
+        ):
             raise ManifestError(f"manifest {scope} path")
     except ValueError:
         raise ManifestError(f"manifest {scope} path") from None
@@ -447,7 +452,9 @@ def _workspace_relative_parts(
     root = Path(os.path.abspath(os.fspath(workspace)))
     candidate = Path(os.path.abspath(os.fspath(path)))
     try:
-        if os.path.commonpath((os.fspath(root), os.fspath(candidate))) != os.fspath(root):
+        if os.path.commonpath((os.fspath(root), os.fspath(candidate))) != os.fspath(
+            root
+        ):
             raise ManifestError(f"manifest {scope} path")
     except ValueError:
         raise ManifestError(f"manifest {scope} path") from None
@@ -458,6 +465,115 @@ def _workspace_relative_parts(
     if not parts or any(part in {"", ".", ".."} for part in parts):
         raise ManifestError(f"manifest {scope} path")
     return parts
+
+
+def _close_fd(file_descriptor: int) -> None:
+    with suppress(OSError):
+        os.close(file_descriptor)
+
+
+def _close_fds(file_descriptors: Sequence[int]) -> None:
+    for file_descriptor in reversed(file_descriptors):
+        _close_fd(file_descriptor)
+
+
+def _validate_file_metadata(
+    path: Path,
+    before: os.stat_result | None,
+    after: os.stat_result,
+    *,
+    max_size: int,
+    expected_size: int | None,
+    scope: str,
+) -> None:
+    if not stat.S_ISREG(after.st_mode):
+        raise ManifestError(f"manifest {scope} file")
+    if (before is not None and before.st_size > max_size) or after.st_size > max_size:
+        raise ManifestError(f"manifest {scope} size")
+    if expected_size is not None and (
+        (before is not None and before.st_size != expected_size)
+        or after.st_size != expected_size
+    ):
+        raise ManifestError(f"manifest {scope} size")
+    if before is None:
+        return
+    no_follow = getattr(os, "O_NOFOLLOW", 0)
+    if no_follow == 0 and os.path.realpath(path) != os.path.abspath(path):
+        raise ManifestError(f"manifest {scope} symlink")
+    if (
+        getattr(before, "st_ino", 0)
+        and getattr(after, "st_ino", 0)
+        and (before.st_ino != after.st_ino or before.st_dev != after.st_dev)
+    ):
+        raise ManifestError(f"manifest {scope} changed")
+
+
+def _read_limited(source: Any, *, limit: int, scope: str) -> bytes:
+    chunks: list[bytes] = []
+    total = 0
+    while True:
+        chunk = source.read(min(1024 * 1024, limit - total + 1))
+        if not chunk:
+            break
+        total += len(chunk)
+        if total > limit:
+            raise ManifestError(f"manifest {scope} size")
+        chunks.append(chunk)
+    return b"".join(chunks)
+
+
+def _copy_staged(
+    input_file: Any,
+    output_file: Any,
+    *,
+    limits: PublishLimits,
+    expected_size: int | None,
+    scope: str,
+) -> tuple[int, str]:
+    total = 0
+    digest = hashlib.sha256()
+    while True:
+        chunk = input_file.read(1024 * 1024)
+        if not chunk:
+            break
+        total += len(chunk)
+        if total > limits.max_file_bytes or (
+            expected_size is not None and total > expected_size
+        ):
+            raise ManifestError(f"manifest {scope} size")
+        digest.update(chunk)
+        output_file.write(chunk)
+    return total, digest.hexdigest()
+
+
+def _stage_manifest_files(
+    root: Path,
+    temporary_path: Path,
+    release_manifest: ReleaseManifest,
+    *,
+    limits: PublishLimits,
+) -> tuple[StagedFile, dict[str, StagedFile]]:
+    body = _stage_file(
+        root / Path(*release_manifest.release.body_path.split("/")),
+        temporary_path / "body",
+        workspace=root,
+        expected_size=None,
+        expected_sha256=release_manifest.release.body_sha256,
+        limits=limits,
+        scope="body",
+    )
+    staged_assets: dict[str, StagedFile] = {}
+    for index, asset in enumerate(release_manifest.assets):
+        staged_assets[asset.name] = _stage_file(
+            root / Path(*asset.path.split("/")),
+            temporary_path / f"asset-{index}",
+            workspace=root,
+            expected_size=asset.size,
+            expected_sha256=asset.sha256[7:],
+            limits=limits,
+            scope="asset",
+        )
+    return body, staged_assets
 
 
 def _open_descriptor_file(path: Path, workspace: Path, scope: str) -> int:
@@ -484,11 +600,7 @@ def _open_descriptor_file(path: Path, workspace: Path, scope: str) -> int:
     except OSError:
         raise ManifestError(f"manifest {scope} file") from None
     finally:
-        for directory_fd in reversed(directory_fds):
-            try:
-                os.close(directory_fd)
-            except OSError:
-                pass
+        _close_fds(directory_fds)
 
 
 def _open_workspace_file(
@@ -513,41 +625,20 @@ def _open_workspace_file(
         raise ManifestError(f"manifest {scope} file") from None
 
 
-def _read_regular_once(
-    path: Path, *, workspace: Path, limit: int, scope: str
-) -> bytes:
+def _read_regular_once(path: Path, *, workspace: Path, limit: int, scope: str) -> bytes:
     fd, before = _open_workspace_file(path, workspace, scope)
     try:
         with os.fdopen(fd, "rb") as source:
             after = os.fstat(source.fileno())
-            if not stat.S_ISREG(after.st_mode):
-                raise ManifestError(f"manifest {scope} file")
-            if (before is not None and before.st_size > limit) or after.st_size > limit:
-                raise ManifestError(f"manifest {scope} size")
-            if before is not None:
-                no_follow = getattr(os, "O_NOFOLLOW", 0)
-                if no_follow == 0 and os.path.realpath(path) != os.path.abspath(path):
-                    raise ManifestError(f"manifest {scope} symlink")
-                if (
-                    getattr(before, "st_ino", 0)
-                    and getattr(after, "st_ino", 0)
-                    and (
-                        before.st_ino != after.st_ino
-                        or before.st_dev != after.st_dev
-                    )
-                ):
-                    raise ManifestError(f"manifest {scope} changed")
-            chunks: list[bytes] = []
-            total = 0
-            while True:
-                chunk = source.read(min(1024 * 1024, limit - total + 1))
-                if not chunk:
-                    break
-                total += len(chunk)
-                if total > limit:
-                    raise ManifestError(f"manifest {scope} size")
-                chunks.append(chunk)
-            return b"".join(chunks)
+            _validate_file_metadata(
+                path,
+                before,
+                after,
+                max_size=limit,
+                expected_size=None,
+                scope=scope,
+            )
+            return _read_limited(source, limit=limit, scope=scope)
     except ManifestError:
         raise
     except OSError:
@@ -565,53 +656,28 @@ def _stage_file(
     scope: str,
 ) -> StagedFile:
     fd, before = _open_workspace_file(source_path, workspace, scope)
-    total = 0
-    digest = hashlib.sha256()
     try:
         with os.fdopen(fd, "rb") as input_file, destination.open("wb") as output_file:
             after = os.fstat(input_file.fileno())
-            if not stat.S_ISREG(after.st_mode):
-                raise ManifestError(f"manifest {scope} file")
-            if (before is not None and before.st_size > limits.max_file_bytes) or (
-                after.st_size > limits.max_file_bytes
-            ):
-                raise ManifestError(f"manifest {scope} size")
-            if expected_size is not None and (
-                (before is not None and before.st_size != expected_size)
-                or after.st_size != expected_size
-            ):
-                raise ManifestError(f"manifest {scope} size")
-            if before is not None:
-                no_follow = getattr(os, "O_NOFOLLOW", 0)
-                if no_follow == 0 and os.path.realpath(source_path) != os.path.abspath(
-                    source_path
-                ):
-                    raise ManifestError(f"manifest {scope} symlink")
-                if (
-                    getattr(before, "st_ino", 0)
-                    and getattr(after, "st_ino", 0)
-                    and (
-                        before.st_ino != after.st_ino
-                        or before.st_dev != after.st_dev
-                    )
-                ):
-                    raise ManifestError(f"manifest {scope} changed")
-            while True:
-                chunk = input_file.read(1024 * 1024)
-                if not chunk:
-                    break
-                total += len(chunk)
-                if total > limits.max_file_bytes or (
-                    expected_size is not None and total > expected_size
-                ):
-                    raise ManifestError(f"manifest {scope} size")
-                digest.update(chunk)
-                output_file.write(chunk)
+            _validate_file_metadata(
+                source_path,
+                before,
+                after,
+                max_size=limits.max_file_bytes,
+                expected_size=expected_size,
+                scope=scope,
+            )
+            total, actual_digest = _copy_staged(
+                input_file,
+                output_file,
+                limits=limits,
+                expected_size=expected_size,
+                scope=scope,
+            )
     except ManifestError:
         raise
     except OSError:
         raise ManifestError(f"manifest {scope} read") from None
-    actual_digest = digest.hexdigest()
     if expected_size is not None and total != expected_size:
         raise ManifestError(f"manifest {scope} size")
     if actual_digest != expected_sha256:
@@ -629,23 +695,26 @@ def _manifest_path(path: Path | str, workspace: Path) -> Path:
     return _assert_workspace_file(candidate, workspace, "manifest")
 
 
-def prepare_manifest(
-    manifest_path: Path | str,
-    workspace: Path | str,
-    *,
-    expected_repository: str | None = None,
-    limits: PublishLimits | None = None,
-) -> PreparedManifest:
-    """Validate and stage all caller-owned files before provider construction."""
-    bounds = limits or PublishLimits()
-    root = Path(os.path.abspath(os.fspath(workspace)))
-    manifest_file = _manifest_path(manifest_path, root)
-    raw = _read_regular_once(
-        manifest_file,
-        workspace=root,
-        limit=bounds.max_manifest_bytes,
-        scope="manifest",
-    )
+def _asset_set_sha256(assets: Sequence[AssetSpec]) -> str:
+    return hashlib.sha256(
+        _canonical_json(
+            [
+                {
+                    "name": asset.name,
+                    "path": asset.path,
+                    "size": asset.size,
+                    "sha256": asset.sha256,
+                    "content_type": asset.content_type,
+                }
+                for asset in assets
+            ]
+        )
+    ).hexdigest()
+
+
+def _build_release_manifest(
+    raw: bytes, expected_repository: str | None
+) -> ReleaseManifest:
     parsed = _parse_manifest(raw)
     _require_exact_keys(parsed, _TOP_KEYS, "top-level")
     if parsed["schema_version"] != MANIFEST_SCHEMA:
@@ -658,7 +727,9 @@ def prepare_manifest(
     if not isinstance(release_value, Mapping):
         raise ManifestError("manifest release object")
     _require_exact_keys(release_value, _RELEASE_KEYS, "release")
-    release_name = _require_string(release_value["name"], "release name", max_length=255)
+    release_name = _require_string(
+        release_value["name"], "release name", max_length=255
+    )
     body_path = _validate_relative_path(release_value["body_path"], "body")
     body_sha = _validate_body_sha(release_value["body_sha256"])
     draft = release_value["draft"]
@@ -682,7 +753,7 @@ def prepare_manifest(
     paths = [body_path, *(asset.path for asset in assets)]
     if len(set(paths)) != len(paths):
         raise ManifestError("manifest duplicate path")
-    release_manifest = ReleaseManifest(
+    return ReleaseManifest(
         MANIFEST_SCHEMA,
         repository,
         transaction_id,
@@ -691,44 +762,37 @@ def prepare_manifest(
         ReleaseSpec(release_name, body_path, body_sha, draft, prerelease, make_latest),
         assets,
         hashlib.sha256(raw).hexdigest(),
-        hashlib.sha256(
-            _canonical_json(
-                [
-                    {
-                        "name": asset.name,
-                        "path": asset.path,
-                        "size": asset.size,
-                        "sha256": asset.sha256,
-                        "content_type": asset.content_type,
-                    }
-                    for asset in assets
-                ]
-            )
-        ).hexdigest(),
+        _asset_set_sha256(assets),
     )
+
+
+def prepare_manifest(
+    manifest_path: Path | str,
+    workspace: Path | str,
+    *,
+    expected_repository: str | None = None,
+    limits: PublishLimits | None = None,
+) -> PreparedManifest:
+    """Validate and stage all caller-owned files before provider construction."""
+    bounds = limits or PublishLimits()
+    root = Path(os.path.abspath(os.fspath(workspace)))
+    manifest_file = _manifest_path(manifest_path, root)
+    raw = _read_regular_once(
+        manifest_file,
+        workspace=root,
+        limit=bounds.max_manifest_bytes,
+        scope="manifest",
+    )
+    release_manifest = _build_release_manifest(raw, expected_repository)
     temporary = tempfile.TemporaryDirectory(prefix="bsr-publisher-")
     temporary_path = Path(temporary.name)
     try:
-        body = _stage_file(
-            root / Path(*body_path.split("/")),
-            temporary_path / "body",
-            workspace=root,
-            expected_size=None,
-            expected_sha256=body_sha,
+        body, staged_assets = _stage_manifest_files(
+            root,
+            temporary_path,
+            release_manifest,
             limits=bounds,
-            scope="body",
         )
-        staged_assets: dict[str, StagedFile] = {}
-        for index, asset in enumerate(assets):
-            staged_assets[asset.name] = _stage_file(
-                root / Path(*asset.path.split("/")),
-                temporary_path / f"asset-{index}",
-                workspace=root,
-                expected_size=asset.size,
-                expected_sha256=asset.sha256[7:],
-                limits=bounds,
-                scope="asset",
-            )
     except Exception:
         temporary.cleanup()
         raise
@@ -758,7 +822,8 @@ def _invoke(
         if ambiguous_write:
             raise ProviderTransportError(operation) from None
         raise ProviderError(operation) from None
-    except Exception:
+    # Injected provider methods may raise arbitrary exceptions; keep them value-safe.
+    except Exception:  # noqa: BLE001
         if ambiguous_write:
             raise AmbiguousProviderError(operation) from None
         raise ProviderError(operation) from None
@@ -768,8 +833,12 @@ def _is_ambiguous(exc: BaseException) -> bool:
     if isinstance(exc, (AmbiguousProviderError, ProviderTransportError)):
         return True
     if isinstance(exc, ProviderHttpError):
-        return exc.status in {408, 409, 422} or exc.status >= 500
-    return isinstance(exc, (TimeoutError, socket.timeout, urllib.error.URLError, OSError))
+        return exc.status in {408, 409, 422} or (
+            exc.status is not None and exc.status >= 500
+        )
+    return isinstance(
+        exc, (TimeoutError, socket.timeout, urllib.error.URLError, OSError)
+    )
 
 
 def _object_info(value: Mapping[str, Any], operation: str) -> Mapping[str, Any]:
@@ -791,7 +860,9 @@ def peel_tag(
     """Peel lightweight or recursively annotated tags with cycle protection."""
     if max_depth <= 0:
         raise ProviderError("tag depth")
-    ref = _mapping(_invoke(provider, "tag ref", "get_tag_ref", repository, tag), "tag ref")
+    ref = _mapping(
+        _invoke(provider, "tag ref", "get_tag_ref", repository, tag), "tag ref"
+    )
     current = _object_info(ref, "tag ref")
     seen: set[str] = set()
     for _depth in range(max_depth):
@@ -808,7 +879,9 @@ def peel_tag(
             raise ProviderError("tag cycle")
         seen.add(normalized_sha)
         response = _mapping(
-            _invoke(provider, "tag object", "get_tag_object", repository, normalized_sha),
+            _invoke(
+                provider, "tag object", "get_tag_object", repository, normalized_sha
+            ),
             "tag object",
         )
         current = _object_info(response, "tag object")
@@ -839,7 +912,9 @@ def _release_url(value: Mapping[str, Any]) -> str:
     return url
 
 
-def _release_matches(value: Mapping[str, Any], manifest: ReleaseManifest, body: str) -> bool:
+def _release_matches(
+    value: Mapping[str, Any], manifest: ReleaseManifest, body: str
+) -> bool:
     release = manifest.release
     # GitHub accepts make_latest on create but does not return it in the
     # release object. The dedicated /releases/latest read below is the
@@ -855,18 +930,21 @@ def _release_matches(value: Mapping[str, Any], manifest: ReleaseManifest, body: 
     )
 
 
-def _assert_release(value: Any, manifest: ReleaseManifest, body: str) -> tuple[int, str]:
+def _assert_release(
+    value: Any, manifest: ReleaseManifest, body: str
+) -> tuple[int, str]:
     release = _mapping(value, "release response")
     if not _release_matches(release, manifest, body):
         raise ProviderError("release metadata")
     return _release_id(release), _release_url(release)
 
 
-def _asset_from_provider(value: Any) -> tuple[str, int, str]:
+def _asset_from_provider(value: Any) -> tuple[str, int, str, str]:
     asset = _mapping(value, "asset response")
     name = asset.get("name")
     size = asset.get("size")
     digest = asset.get("digest")
+    content_type = asset.get("content_type")
     if (
         not isinstance(name, str)
         or not name
@@ -876,9 +954,13 @@ def _asset_from_provider(value: Any) -> tuple[str, int, str]:
         or not isinstance(digest, str)
         or not digest.startswith("sha256:")
         or _SHA256_RE.fullmatch(digest[7:]) is None
+        or not isinstance(content_type, str)
+        or not content_type
+        or len(content_type) > 255
+        or any(ord(char) < 0x20 for char in content_type)
     ):
         raise ProviderError("asset response")
-    return name, size, digest
+    return name, size, digest, content_type
 
 
 def _read_assets(
@@ -886,8 +968,8 @@ def _read_assets(
     repository: str,
     release_id: int,
     limits: PublishLimits,
-) -> dict[str, tuple[int, str]]:
-    assets: dict[str, tuple[int, str]] = {}
+) -> dict[str, tuple[int, str, str]]:
+    assets: dict[str, tuple[int, str, str]] = {}
     for page in range(1, limits.max_pages + 1):
         page_value = _invoke(
             provider,
@@ -904,25 +986,27 @@ def _read_assets(
             raise ProviderError("asset page")
         page_items = list(page_value)
         for item in page_items:
-            name, size, digest = _asset_from_provider(item)
+            name, size, digest, content_type = _asset_from_provider(item)
             if name in assets:
                 raise ProviderError("duplicate asset")
-            assets[name] = (size, digest)
+            assets[name] = (size, digest, content_type)
         if len(page_items) < limits.asset_page_size:
             return assets
     raise ProviderError("asset pagination")
 
 
 def _assert_asset_set(
-    current: Mapping[str, tuple[int, str]], assets: Sequence[AssetSpec]
+    current: Mapping[str, tuple[int, str, str]], assets: Sequence[AssetSpec]
 ) -> None:
-    expected = {asset.name: (asset.size, asset.sha256) for asset in assets}
+    expected = {
+        asset.name: (asset.size, asset.sha256, asset.content_type) for asset in assets
+    }
     foreign = set(current) - set(expected)
     if foreign:
         raise ProviderError("foreign asset")
     for name, actual in current.items():
         if actual != expected[name]:
-            raise ProviderError("asset digest or size")
+            raise ProviderError("asset digest, size, or content_type")
 
 
 def _latest_policy(
@@ -930,9 +1014,7 @@ def _latest_policy(
     repository: str,
     manifest: ReleaseManifest,
 ) -> None:
-    latest_value = _invoke(
-        provider, "latest release", "get_latest_release", repository
-    )
+    latest_value = _invoke(provider, "latest release", "get_latest_release", repository)
     if latest_value is None:
         if manifest.release.make_latest:
             raise ProviderError("latest policy")
@@ -993,7 +1075,7 @@ def _upload_one(
     release_id: int,
     asset: AssetSpec,
     data: bytes,
-    current: dict[str, tuple[int, str]],
+    current: dict[str, tuple[int, str, str]],
     expected_assets: Sequence[AssetSpec],
     limits: PublishLimits,
 ) -> bool:
@@ -1010,21 +1092,27 @@ def _upload_one(
             ambiguous_write=True,
         )
         try:
-            name, size, digest = _asset_from_provider(response)
+            name, size, digest, content_type = _asset_from_provider(response)
         except ProviderError:
             raise AmbiguousProviderError("upload response") from None
-        if (name, size, digest) != (asset.name, asset.size, asset.sha256):
+        if (name, size, digest, content_type) != (
+            asset.name,
+            asset.size,
+            asset.sha256,
+            asset.content_type,
+        ):
             raise AmbiguousProviderError("upload response")
-        current[name] = (size, digest)
-        return True
+        current[name] = (size, digest, content_type)
     except PublisherError as exc:
         if not _is_ambiguous(exc):
             raise
+    else:
+        return True
     # Never replay an ambiguous write. Relisting is the only convergence path.
     reread = _read_assets(provider, repository, release_id, limits)
     _assert_asset_set(reread, expected_assets)
     exact = reread.get(asset.name)
-    if exact != (asset.size, asset.sha256):
+    if exact != (asset.size, asset.sha256, asset.content_type):
         raise AmbiguousProviderError("upload readback")
     current.clear()
     current.update(reread)
@@ -1054,29 +1142,34 @@ def _result_document(
     return result
 
 
-def reconcile(
-    prepared: PreparedManifest,
-    provider: GithubProvider,
-    *,
-    limits: PublishLimits | None = None,
-) -> dict[str, Any]:
-    """Execute the read-before-write, no-overwrite reconciliation machine."""
-    bounds = limits or PublishLimits()
-    manifest = prepared.manifest
+def _read_body(prepared: PreparedManifest) -> str:
     try:
         body = prepared.body.read_bytes().decode("utf-8")
     except UnicodeDecodeError:
         raise ManifestError("body encoding") from None
     if "\x00" in body:
         raise ManifestError("body control character")
+    return body
+
+
+def _verify_tag(
+    provider: GithubProvider, manifest: ReleaseManifest, limits: PublishLimits
+) -> None:
     peeled = peel_tag(
         provider,
         manifest.repository,
         manifest.tag,
-        max_depth=bounds.max_tag_depth,
+        max_depth=limits.max_tag_depth,
     )
     if peeled != manifest.target_sha:
         raise ProviderError("tag target")
+
+
+def _ensure_release(
+    provider: GithubProvider,
+    manifest: ReleaseManifest,
+    body: str,
+) -> tuple[Mapping[str, Any], bool]:
     existing = _invoke(
         provider,
         "release read",
@@ -1084,20 +1177,24 @@ def reconcile(
         manifest.repository,
         manifest.tag,
     )
-    created = False
-    if existing is None:
-        existing, created = _create_release(
-            provider, manifest.repository, manifest, body
-        )
-    release_id, release_url = _assert_release(existing, manifest, body)
-    current = _read_assets(provider, manifest.repository, release_id, bounds)
-    _assert_asset_set(current, manifest.assets)
-    reused_count = len(current)
+    if existing is not None:
+        return _mapping(existing, "release response"), False
+    return _create_release(provider, manifest.repository, manifest, body)
+
+
+def _upload_missing_assets(
+    prepared: PreparedManifest,
+    provider: GithubProvider,
+    manifest: ReleaseManifest,
+    release_id: int,
+    current: dict[str, tuple[int, str, str]],
+    limits: PublishLimits,
+) -> int:
     uploaded_count = 0
     for asset in manifest.assets:
         if asset.name in current:
             continue
-        uploaded = _upload_one(
+        if _upload_one(
             provider,
             manifest.repository,
             release_id,
@@ -1105,20 +1202,20 @@ def reconcile(
             prepared.assets[asset.name].read_bytes(),
             current,
             manifest.assets,
-            bounds,
-        )
-        if uploaded:
+            limits,
+        ):
             uploaded_count += 1
-    # Complete post-read: tag, exact release metadata/id, every paginated asset,
-    # and the explicit latest policy are all checked again after writes.
-    final_peeled = peel_tag(
-        provider,
-        manifest.repository,
-        manifest.tag,
-        max_depth=bounds.max_tag_depth,
-    )
-    if final_peeled != manifest.target_sha:
-        raise ProviderError("tag target")
+    return uploaded_count
+
+
+def _verify_final_state(
+    provider: GithubProvider,
+    manifest: ReleaseManifest,
+    body: str,
+    release_id: int,
+    limits: PublishLimits,
+) -> tuple[int, str]:
+    _verify_tag(provider, manifest, limits)
     final_release_value = _invoke(
         provider,
         "release post-read",
@@ -1132,11 +1229,48 @@ def reconcile(
     final_id, final_url = _assert_release(final_release, manifest, body)
     if final_id != release_id:
         raise ProviderError("release identity")
-    final_assets = _read_assets(provider, manifest.repository, final_id, bounds)
+    final_assets = _read_assets(provider, manifest.repository, final_id, limits)
     _assert_asset_set(final_assets, manifest.assets)
     if set(final_assets) != {asset.name for asset in manifest.assets}:
         raise ProviderError("asset set")
     _latest_policy(provider, manifest.repository, manifest)
+    return final_id, final_url
+
+
+def reconcile(
+    prepared: PreparedManifest,
+    provider: GithubProvider,
+    *,
+    limits: PublishLimits | None = None,
+) -> dict[str, Any]:
+    """Execute the read-before-write, no-overwrite reconciliation machine."""
+    bounds = limits or PublishLimits()
+    manifest = prepared.manifest
+    body = _read_body(prepared)
+    _verify_tag(provider, manifest, bounds)
+    existing, created = _ensure_release(provider, manifest, body)
+    release_id, release_url = _assert_release(existing, manifest, body)
+    _latest_policy(provider, manifest.repository, manifest)
+    current = _read_assets(provider, manifest.repository, release_id, bounds)
+    _assert_asset_set(current, manifest.assets)
+    reused_count = len(current)
+    uploaded_count = _upload_missing_assets(
+        prepared,
+        provider,
+        manifest,
+        release_id,
+        current,
+        bounds,
+    )
+    # Complete post-read: tag, exact release metadata/id, every paginated asset,
+    # and the explicit latest policy are all checked again after writes.
+    final_id, final_url = _verify_final_state(
+        provider,
+        manifest,
+        body,
+        release_id,
+        bounds,
+    )
     return _result_document(
         manifest,
         release_id=final_id,
@@ -1169,10 +1303,22 @@ class _OutputChannel:
         self._fd = None
         if fd is None:
             return
-        try:
-            os.close(fd)
-        except OSError:
-            pass
+        _close_fd(fd)
+
+
+def _validate_output_descriptor(value: os.stat_result) -> None:
+    if stat.S_ISLNK(value.st_mode) or not stat.S_ISREG(value.st_mode):
+        raise ProviderError("output preflight")
+
+
+def _validate_output_identity(before: os.stat_result, after: os.stat_result) -> None:
+    _validate_output_descriptor(after)
+    if (
+        getattr(before, "st_ino", 0)
+        and getattr(after, "st_ino", 0)
+        and (before.st_ino != after.st_ino or before.st_dev != after.st_dev)
+    ):
+        raise ProviderError("output preflight")
 
 
 def _open_output_channel() -> _OutputChannel | None:
@@ -1183,38 +1329,23 @@ def _open_output_channel() -> _OutputChannel | None:
     fd: int | None = None
     try:
         before = os.lstat(output_path)
-        if stat.S_ISLNK(before.st_mode) or not stat.S_ISREG(before.st_mode):
-            raise ProviderError("output preflight")
+        _validate_output_descriptor(before)
         flags = os.O_WRONLY | os.O_APPEND | getattr(os, "O_BINARY", 0)
         no_follow = getattr(os, "O_NOFOLLOW", 0)
         if no_follow:
             flags |= no_follow
         fd = os.open(os.fspath(output_path), flags)
         after = os.fstat(fd)
-        if not stat.S_ISREG(after.st_mode):
-            raise ProviderError("output preflight")
-        if (
-            getattr(before, "st_ino", 0)
-            and getattr(after, "st_ino", 0)
-            and (
-                before.st_ino != after.st_ino
-                or before.st_dev != after.st_dev
-            )
-        ):
-            raise ProviderError("output preflight")
+        _validate_output_identity(before, after)
+    except OSError:
+        raise ProviderError("output preflight") from None
+    else:
         channel = _OutputChannel(fd)
         fd = None
         return channel
-    except ProviderError:
-        raise
-    except OSError:
-        raise ProviderError("output preflight") from None
     finally:
         if fd is not None:
-            try:
-                os.close(fd)
-            except OSError:
-                pass
+            _close_fd(fd)
 
 
 def _preflight_output() -> None:
@@ -1237,25 +1368,29 @@ def publish_manifest(
     """Prepare local inputs first, then construct/use the provider exactly once."""
     bounds = limits or PublishLimits()
     owns_output_channel = output_channel is None
-    with prepare_manifest(
-        manifest_path,
-        workspace,
-        expected_repository=repository,
-        limits=bounds,
+    with closing(
+        prepare_manifest(
+            manifest_path,
+            workspace,
+            expected_repository=repository,
+            limits=bounds,
+        )
     ) as prepared:
         if owns_output_channel:
             output_channel = _open_output_channel()
         try:
             if provider is None:
-                if provider_factory is None:
-                    provider_factory = lambda value: HttpGithubProvider(value, limits=bounds)
                 if not isinstance(token, str) or not token:
                     raise ProviderError("token input")
                 try:
-                    provider = provider_factory(token)
+                    if provider_factory is None:
+                        provider = HttpGithubProvider(token, limits=bounds)
+                    else:
+                        provider = provider_factory(token)
                 except PublisherError:
                     raise
-                except Exception:
+                # A supplied factory may expose arbitrary exception values.
+                except Exception:  # noqa: BLE001
                     raise ProviderError("provider init") from None
             return reconcile(prepared, provider, limits=bounds)
         finally:
@@ -1279,10 +1414,16 @@ class _SafeRedirectHandler(urllib.request.HTTPRedirectHandler):
         newurl: str,
     ) -> urllib.request.Request | None:
         self.redirects += 1
-        if self.redirects > self.max_redirects:
-            raise ProviderError("redirect bound")
-        _validate_github_url(newurl, allow_upload=True)
-        return super().redirect_request(req, fp, code, msg, headers, newurl)
+        redirected = False
+        result: urllib.request.Request | None = None
+        try:
+            _validate_redirect(self.max_redirects, self.redirects, newurl)
+            result = super().redirect_request(req, fp, code, msg, headers, newurl)
+            redirected = True
+        finally:
+            if not redirected and fp is not None:
+                _close_response(fp)
+        return result
 
 
 def _validate_github_url(url: str, *, allow_upload: bool) -> None:
@@ -1296,7 +1437,23 @@ def _validate_github_url(url: str, *, allow_upload: bool) -> None:
         raise ProviderError("provider url")
 
 
+def _validate_redirect(max_redirects: int, redirects: int, newurl: str) -> None:
+    if redirects > max_redirects:
+        raise ProviderError("redirect bound")
+    _validate_github_url(newurl, allow_upload=True)
+
+
 _CA_BUNDLE_PATH = "/etc/ssl/certs/ca-certificates.crt"
+
+
+def _validate_ca_bundle(bundle: os.stat_result) -> None:
+    if (
+        stat.S_ISLNK(bundle.st_mode)
+        or not stat.S_ISREG(bundle.st_mode)
+        or getattr(bundle, "st_uid", -1) != 0
+        or bundle.st_mode & 0o022
+    ):
+        raise ProviderError("provider ca")
 
 
 def _github_ssl_context() -> ssl.SSLContext:
@@ -1305,22 +1462,16 @@ def _github_ssl_context() -> ssl.SSLContext:
             context = ssl.create_default_context()
         else:
             bundle = os.lstat(_CA_BUNDLE_PATH)
-            if (
-                stat.S_ISLNK(bundle.st_mode)
-                or not stat.S_ISREG(bundle.st_mode)
-                or getattr(bundle, "st_uid", -1) != 0
-                or bundle.st_mode & 0o022
-            ):
-                raise ProviderError("provider ca")
+            _validate_ca_bundle(bundle)
             context = ssl.create_default_context(cafile=_CA_BUNDLE_PATH)
         context.minimum_version = ssl.TLSVersion.TLSv1_2
         context.check_hostname = True
         context.verify_mode = ssl.CERT_REQUIRED
-        return context
     except ProviderError:
         raise
     except (OSError, ssl.SSLError, ValueError):
         raise ProviderError("provider ca") from None
+    return context
 
 
 def _read_bounded(response: Any, limit: int) -> bytes:
@@ -1339,12 +1490,16 @@ def _read_bounded(response: Any, limit: int) -> bytes:
 
 def _close_response(response: Any) -> None:
     close = getattr(response, "close", None)
-    if not callable(close):
+    if callable(close):
+        with suppress(OSError, ValueError):
+            close()
+    file_pointer = getattr(response, "fp", None)
+    if file_pointer is None or file_pointer is response:
         return
-    try:
-        close()
-    except (OSError, ValueError):
-        pass
+    close_file_pointer = getattr(file_pointer, "close", None)
+    if callable(close_file_pointer):
+        with suppress(OSError, ValueError):
+            close_file_pointer()
 
 
 def _parse_response(data: bytes) -> Any:
@@ -1354,8 +1509,85 @@ def _parse_response(data: bytes) -> Any:
             object_pairs_hook=_pairs_without_duplicates,
             parse_constant=_reject_constant,
         )
-    except (_DuplicateKey, UnicodeDecodeError, TypeError, ValueError, json.JSONDecodeError):
+    except (
+        _DuplicateKey,
+        UnicodeDecodeError,
+        TypeError,
+        ValueError,
+        json.JSONDecodeError,
+    ):
         raise ProviderError("response json") from None
+    return value
+
+
+def _read_response_body(
+    response: Any,
+    operation: str,
+    *,
+    max_response_bytes: int,
+    status: int,
+    ambiguous_write: bool,
+) -> bytes:
+    try:
+        data = _read_bounded(response, max_response_bytes)
+    except ProviderError:
+        if ambiguous_write:
+            raise AmbiguousProviderError(operation, status=status) from None
+        raise
+    return data
+
+
+def _handle_response_status(
+    response: Any,
+    operation: str,
+    *,
+    status: int,
+    expected_status: set[int],
+    max_response_bytes: int,
+    ambiguous_write: bool,
+) -> bytes:
+    data = _read_response_body(
+        response,
+        operation,
+        max_response_bytes=max_response_bytes,
+        status=status,
+        ambiguous_write=ambiguous_write,
+    )
+    if status not in expected_status:
+        if ambiguous_write:
+            raise AmbiguousProviderError(operation, status=status)
+        raise ProviderHttpError(operation, status=status)
+    return data
+
+
+def _handle_http_error(
+    exc: urllib.error.HTTPError,
+    operation: str,
+    *,
+    max_response_bytes: int,
+    not_found: bool,
+    ambiguous_write: bool,
+) -> None:
+    with suppress(ProviderError):
+        _read_bounded(exc, max_response_bytes)
+    if ambiguous_write:
+        raise AmbiguousProviderError(operation, status=exc.code) from None
+    if not_found and exc.code == 404:
+        return
+    if exc.code in {409, 422}:
+        raise AmbiguousProviderError(operation, status=exc.code) from None
+    raise ProviderHttpError(operation, status=exc.code) from None
+
+
+def _parse_request_response(
+    data: bytes, operation: str, *, ambiguous_write: bool
+) -> Any:
+    try:
+        value = _parse_response(data)
+    except ProviderError:
+        if ambiguous_write:
+            raise AmbiguousProviderError(operation) from None
+        raise
     return value
 
 
@@ -1401,7 +1633,10 @@ class HttpGithubProvider:
         }
         if content_type is not None:
             headers["Content-Type"] = content_type
-        request = urllib.request.Request(url, data=body, headers=headers, method=method)
+        request = urllib.request.Request(  # noqa: S310
+            url, data=body, headers=headers, method=method
+        )
+        # The validated URL and explicit handlers constrain this opener.
         opener = urllib.request.build_opener(
             urllib.request.ProxyHandler({}),
             urllib.request.HTTPSHandler(context=_github_ssl_context()),
@@ -1417,40 +1652,28 @@ class HttpGithubProvider:
             status = int(
                 status_value if status_value is not None else response.getcode()
             )
-            if status not in expected_status:
-                try:
-                    _read_bounded(response, self._limits.max_response_bytes)
-                except ProviderError:
-                    if ambiguous_write:
-                        raise AmbiguousProviderError(
-                            operation, status=status
-                        ) from None
-                    raise
-                if ambiguous_write:
-                    raise AmbiguousProviderError(operation, status=status)
-                raise ProviderHttpError(operation, status=status)
-            try:
-                data = _read_bounded(response, self._limits.max_response_bytes)
-            except ProviderError:
-                if ambiguous_write:
-                    raise AmbiguousProviderError(operation, status=status) from None
-                raise
+            data = _handle_response_status(
+                response,
+                operation,
+                status=status,
+                expected_status=expected_status,
+                max_response_bytes=self._limits.max_response_bytes,
+                ambiguous_write=ambiguous_write,
+            )
         except urllib.error.HTTPError as exc:
             response = exc
-            try:
-                _read_bounded(exc, self._limits.max_response_bytes)
-            except ProviderError:
-                pass
-            if ambiguous_write:
-                raise AmbiguousProviderError(operation, status=exc.code) from None
-            if not_found and exc.code == 404:
-                return None
-            if exc.code in {409, 422}:
-                raise AmbiguousProviderError(operation, status=exc.code) from None
-            raise ProviderHttpError(operation, status=exc.code) from None
+            return _handle_http_error(
+                exc,
+                operation,
+                max_response_bytes=self._limits.max_response_bytes,
+                not_found=not_found,
+                ambiguous_write=ambiguous_write,
+            )
         except ProviderError as exc:
-            if ambiguous_write and dispatch_started and not isinstance(
-                exc, AmbiguousProviderError
+            if (
+                ambiguous_write
+                and dispatch_started
+                and not isinstance(exc, AmbiguousProviderError)
             ):
                 raise AmbiguousProviderError(
                     operation, status=getattr(exc, "status", None)
@@ -1463,12 +1686,7 @@ class HttpGithubProvider:
                 _close_response(response)
         if data is None:
             raise ProviderError("response body")
-        try:
-            return _parse_response(data)
-        except ProviderError:
-            if ambiguous_write:
-                raise AmbiguousProviderError(operation) from None
-            raise
+        return _parse_request_response(data, operation, ambiguous_write=ambiguous_write)
 
     @staticmethod
     def _repo_path(repository: str) -> str:
@@ -1477,19 +1695,29 @@ class HttpGithubProvider:
         return "/repos/" + urllib.parse.quote(repository, safe="/")
 
     def get_tag_ref(self, repository: str, tag: str) -> Mapping[str, Any]:
-        path = self._repo_path(repository) + "/git/ref/tags/" + urllib.parse.quote(tag, safe="")
+        path = (
+            self._repo_path(repository)
+            + "/git/ref/tags/"
+            + urllib.parse.quote(tag, safe="")
+        )
         value = self._request("tag ref", "GET", path, expected_status={200})
         return cast(Mapping[str, Any], value)
 
     def get_tag_object(self, repository: str, sha: str) -> Mapping[str, Any]:
-        path = self._repo_path(repository) + "/git/tags/" + urllib.parse.quote(sha, safe="")
+        path = (
+            self._repo_path(repository)
+            + "/git/tags/"
+            + urllib.parse.quote(sha, safe="")
+        )
         value = self._request("tag object", "GET", path, expected_status={200})
         return cast(Mapping[str, Any], value)
 
-    def get_release_by_tag(
-        self, repository: str, tag: str
-    ) -> Mapping[str, Any] | None:
-        path = self._repo_path(repository) + "/releases/tags/" + urllib.parse.quote(tag, safe="")
+    def get_release_by_tag(self, repository: str, tag: str) -> Mapping[str, Any] | None:
+        path = (
+            self._repo_path(repository)
+            + "/releases/tags/"
+            + urllib.parse.quote(tag, safe="")
+        )
         value = self._request(
             "release read", "GET", path, expected_status={200}, not_found=True
         )
@@ -1520,7 +1748,9 @@ class HttpGithubProvider:
             + f"/releases/{release_id}/assets?page={page}&per_page={per_page}"
         )
         value = self._request("list assets", "GET", path, expected_status={200})
-        if isinstance(value, (str, bytes, bytearray)) or not isinstance(value, Sequence):
+        if isinstance(value, (str, bytes, bytearray)) or not isinstance(
+            value, Sequence
+        ):
             raise ProviderError("asset page")
         return cast(Sequence[Mapping[str, Any]], value)
 
@@ -1543,6 +1773,7 @@ class HttpGithubProvider:
             body=data,
             content_type=content_type,
             expected_status={201},
+            upload=True,
             ambiguous_write=True,
         )
         return cast(Mapping[str, Any], value)
@@ -1570,6 +1801,13 @@ def _write_outputs(
             output_channel.close()
 
 
+def _validate_cli_inputs(manifest: str, repository: str | None) -> None:
+    if not manifest:
+        raise ManifestError("manifest input")
+    if not repository:
+        raise ManifestError("repository input")
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """CLI entry used by the eventual Docker action."""
     parser = argparse.ArgumentParser(prog="bsr-publisher")
@@ -1580,10 +1818,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     token = os.environ.get("INPUT_TOKEN", "")
     output_channel: _OutputChannel | None = None
     try:
-        if not args.manifest:
-            raise ManifestError("manifest input")
-        if not repository:
-            raise ManifestError("repository input")
+        _validate_cli_inputs(args.manifest, repository)
         output_channel = _open_output_channel()
         result = publish_manifest(
             args.manifest,
@@ -1593,17 +1828,20 @@ def main(argv: Sequence[str] | None = None) -> int:
             output_channel=output_channel,
         )
         _write_outputs(result, output_channel)
-        print(json.dumps(result, ensure_ascii=False, separators=(",", ":")))
-        return 0
+        sys.stdout.write(
+            json.dumps(result, ensure_ascii=False, separators=(",", ":")) + "\n"
+        )
     except PublisherError as exc:
-        print(str(exc), file=sys.stderr)
+        sys.stderr.write(f"{exc}\n")
         return 1
-    except Exception:
-        print("publisher failed", file=sys.stderr)
+    # Keep the CLI boundary value-safe for unexpected implementation failures.
+    except Exception:  # noqa: BLE001
+        sys.stderr.write("publisher failed\n")
         return 1
     finally:
         if output_channel is not None:
             output_channel.close()
+    return 0
 
 
 if __name__ == "__main__":

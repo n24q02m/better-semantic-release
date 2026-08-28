@@ -875,6 +875,14 @@ reason = "Task 2 regression coverage proves unowned stock changes fail closed an
 gates = ["python-lint", "python-format", "python-test"]
 
 [[ownership]]
+path = "src/semantic_release/cli/config.py"
+status = "M"
+kind = "python-source"
+owner = "repo-maintainers"
+reason = "Current-main compatibility fix preserves commit-author validation after GitPython removed Actor.name_email_regex."
+gates = ["python-lint", "python-format", "python-type"]
+
+[[ownership]]
 path = "src/semantic_release/bsr/release_publisher.py"
 status = "A"
 kind = "python-source"
