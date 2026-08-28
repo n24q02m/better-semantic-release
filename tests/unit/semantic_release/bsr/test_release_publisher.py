@@ -9,6 +9,7 @@ from typing import Any
 import pytest
 from semantic_release.bsr import release_publisher as publisher
 from semantic_release.bsr.release_publisher import (
+    AmbiguousProviderError,
     HttpGithubProvider,
     ManifestError,
     ProviderError,
@@ -125,6 +126,8 @@ def _write_manifest(
     tag: str = "v1.0.0",
     target_sha: str = TARGET_SHA,
     make_latest: bool | str = False,
+    draft: bool = False,
+    prerelease: bool = False,
     body: bytes = BODY,
 ) -> Path:
     if assets is None:
@@ -156,8 +159,8 @@ def _write_manifest(
             "name": "v1.0.0",
             "body_path": "notes.md",
             "body_sha256": _sha(body),
-            "draft": False,
-            "prerelease": False,
+            "draft": draft,
+            "prerelease": prerelease,
             "make_latest": make_latest,
         },
         "assets": entries,
@@ -226,6 +229,7 @@ def test_path_escape_is_rejected_before_any_provider_call(tmp_path: Path) -> Non
 
 
 def test_symlink_input_is_rejected(tmp_path: Path) -> None:
+
     outside = tmp_path / "outside.md"
     outside.write_bytes(BODY)
     link = tmp_path / "notes.md"
@@ -269,6 +273,24 @@ def test_absent_release_is_created_and_missing_asset_uploaded(tmp_path: Path) ->
         "list_release_assets",
         "get_latest_release",
     ]
+
+
+@pytest.mark.parametrize(
+    ("requested", "wire_value"),
+    ((False, "false"), (True, "true")),
+)
+def test_create_release_wires_make_latest_as_string(
+    tmp_path: Path, requested: bool, wire_value: str
+) -> None:
+    manifest = _write_manifest(tmp_path, make_latest=requested)
+    provider = FakeProvider()
+    if requested:
+        provider.latest = {"tag_name": "v1.0.0"}
+
+    publish_manifest(manifest, workspace=tmp_path, provider=provider, repository=REPOSITORY)
+
+    payload = next(call[1] for call in provider.calls if call[0] == "create_release")
+    assert payload["make_latest"] == wire_value
 
 
 def test_existing_partial_release_resumes_exactly_and_complete_rerun_reuses_assets(
@@ -446,6 +468,34 @@ def test_annotated_tag_cycle_and_wrong_target_are_rejected(tmp_path: Path) -> No
             )
 
 
+@pytest.mark.skipif(
+    not getattr(publisher, "_DESCRIPTOR_STAGING", False),
+    reason="descriptor-anchored staging is unavailable on this platform",
+)
+def test_descriptor_staging_rejects_ancestor_swap_before_open(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    manifest = _write_manifest(tmp_path)
+    original_directory = tmp_path / "dist"
+    outside_directory = tmp_path / "outside"
+    moved_directory = tmp_path / "dist-original"
+    outside_directory.mkdir()
+    (outside_directory / "dist.tar.gz").write_bytes(b"outside bytes")
+
+    swapped = False
+
+    def swap_before_open(workspace: Path, parts: tuple[str, ...], scope: str) -> None:
+        nonlocal swapped
+        if scope == "asset" and parts == ("dist",):
+            original_directory.rename(moved_directory)
+            original_directory.symlink_to(outside_directory, target_is_directory=True)
+            swapped = True
+
+    monkeypatch.setattr(publisher, "_before_workspace_component_open", swap_before_open)
+    with pytest.raises(ManifestError, match="symlink|file"):
+        prepare_manifest(manifest, tmp_path, expected_repository=REPOSITORY)
+    assert swapped is True
+
 def test_asset_pagination_rejects_duplicate_page_entries(tmp_path: Path) -> None:
     manifest = _write_manifest(tmp_path, assets=[("a.bin", b"a"), ("b.bin", b"b")])
     provider = FakeProvider()
@@ -473,6 +523,29 @@ def test_computed_legacy_latest_policy_is_rejected(tmp_path: Path) -> None:
         prepare_manifest(manifest, tmp_path, expected_repository=REPOSITORY)
 
 
+@pytest.mark.parametrize("flag", ("draft", "prerelease"))
+def test_latest_release_flags_reject_before_provider_construction(
+    tmp_path: Path, flag: str
+) -> None:
+    manifest = _write_manifest(tmp_path, make_latest=True, **{flag: True})
+    constructed = False
+
+    def provider_factory(token: str) -> FakeProvider:
+        nonlocal constructed
+        constructed = True
+        return FakeProvider()
+
+    with pytest.raises(ManifestError, match="make_latest"):
+        publish_manifest(
+            manifest,
+            workspace=tmp_path,
+            provider_factory=provider_factory,
+            token="ghs_secret_value",
+            repository=REPOSITORY,
+        )
+    assert constructed is False
+
+
 def test_latest_policy_rejects_candidate_that_is_latest(tmp_path: Path) -> None:
     manifest = _write_manifest(tmp_path, make_latest=False)
     provider = FakeProvider()
@@ -491,6 +564,31 @@ def test_latest_policy_requires_stable_release_to_be_latest(tmp_path: Path) -> N
         publish_manifest(manifest, workspace=tmp_path, provider=provider, repository=REPOSITORY)
 
 
+
+
+def test_output_preflight_fails_before_provider_construction(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    manifest = _write_manifest(tmp_path)
+    output = tmp_path / "github-output"
+    output.mkdir()
+    monkeypatch.setenv("GITHUB_OUTPUT", str(output))
+    constructed = False
+
+    def provider_factory(token: str) -> FakeProvider:
+        nonlocal constructed
+        constructed = True
+        return FakeProvider()
+
+    with pytest.raises(ProviderError, match="output"):
+        publish_manifest(
+            manifest,
+            workspace=tmp_path,
+            provider_factory=provider_factory,
+            token="ghs_secret_value",
+            repository=REPOSITORY,
+        )
+    assert constructed is False
 def test_invalid_manifest_does_not_construct_provider_or_expose_values(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -518,6 +616,51 @@ def test_invalid_manifest_does_not_construct_provider_or_expose_values(
     assert secret not in capsys.readouterr().err
 
 
+@pytest.mark.parametrize("wire_value", ("false", "true"))
+def test_http_create_release_wires_make_latest_enum(
+    monkeypatch: pytest.MonkeyPatch, wire_value: str
+) -> None:
+    captured: dict[str, Any] = {}
+
+    class Response:
+        status = 201
+
+        def __init__(self) -> None:
+            self.done = False
+            self.closed = False
+
+        def read(self, _size: int = -1) -> bytes:
+            if self.done:
+                return b""
+            self.done = True
+            return b"{}"
+
+        def close(self) -> None:
+            self.closed = True
+
+    response = Response()
+
+    class Opener:
+        def open(self, request: Any, *, timeout: float) -> Response:
+            captured["request"] = request
+            return response
+
+    monkeypatch.setattr(publisher, "_github_ssl_context", publisher.ssl.create_default_context)
+    monkeypatch.setattr(
+        publisher.urllib.request, "build_opener", lambda *_handlers: Opener()
+    )
+    provider = HttpGithubProvider("ghs_secret_value")
+
+    provider.create_release(
+        REPOSITORY, {"tag_name": "v1.0.0", "make_latest": wire_value}
+    )
+
+    assert captured["request"].data == (
+        b'{"tag_name":"v1.0.0","make_latest":"' + wire_value.encode() + b'"}'
+    )
+    assert response.closed is True
+
+
 def test_github_provider_uses_pinned_api_version_and_bounded_json(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -528,6 +671,7 @@ def test_github_provider_uses_pinned_api_version_and_bounded_json(
 
         def __init__(self) -> None:
             self.done = False
+            self.closed = False
 
         def read(self, _size: int = -1) -> bytes:
             if self.done:
@@ -535,18 +679,30 @@ def test_github_provider_uses_pinned_api_version_and_bounded_json(
             self.done = True
             return b'{"tag_name":"v1.0.0"}'
 
+        def close(self) -> None:
+            self.closed = True
+
+    response = Response()
+    captured: dict[str, Any] = {"response": response}
+
     class Opener:
         def open(self, request: Any, *, timeout: float) -> Response:
             captured["request"] = request
             captured["timeout"] = timeout
-            return Response()
+            return response
 
-    monkeypatch.setattr(
-        publisher.urllib.request, "build_opener", lambda _handler: Opener()
-    )
+    tls_context = publisher.ssl.create_default_context()
+    monkeypatch.setattr(publisher, "_github_ssl_context", lambda: tls_context)
+
+    def build_opener(*handlers: Any) -> Opener:
+        captured["handlers"] = handlers
+        return Opener()
+
+    monkeypatch.setattr(publisher.urllib.request, "build_opener", build_opener)
     provider = HttpGithubProvider(
         "ghs_secret_value", limits=PublishLimits(timeout_seconds=3)
     )
+
 
     assert provider.get_latest_release(REPOSITORY) == {"tag_name": "v1.0.0"}
     request = captured["request"]
@@ -555,6 +711,25 @@ def test_github_provider_uses_pinned_api_version_and_bounded_json(
     )
     assert request.headers["X-github-api-version"] == "2022-11-28"
     assert captured["timeout"] == 3
+    handlers = captured["handlers"]
+    proxy_handlers = [
+        handler
+        for handler in handlers
+        if isinstance(handler, publisher.urllib.request.ProxyHandler)
+    ]
+    assert len(proxy_handlers) == 1
+    assert proxy_handlers[0].proxies == {}
+    https_handlers = [
+        handler
+        for handler in handlers
+        if isinstance(handler, publisher.urllib.request.HTTPSHandler)
+    ]
+    assert len(https_handlers) == 1
+    assert https_handlers[0]._context is tls_context
+    assert response.closed is True
+    assert https_handlers[0]._context.minimum_version >= publisher.ssl.TLSVersion.TLSv1_2
+    assert https_handlers[0]._context.verify_mode == publisher.ssl.CERT_REQUIRED
+    assert https_handlers[0]._context.check_hostname is True
 
 
 def test_github_provider_rejects_oversized_response_without_body_disclosure(
@@ -579,7 +754,7 @@ def test_github_provider_rejects_oversized_response_without_body_disclosure(
             return Response()
 
     monkeypatch.setattr(
-        publisher.urllib.request, "build_opener", lambda _handler: Opener()
+        publisher.urllib.request, "build_opener", lambda *_handlers: Opener()
     )
     provider = HttpGithubProvider(
         "ghs_secret_value", limits=PublishLimits(max_response_bytes=16)
@@ -588,6 +763,103 @@ def test_github_provider_rejects_oversized_response_without_body_disclosure(
     with pytest.raises(ProviderError) as error:
         provider.get_latest_release(REPOSITORY)
     assert secret_body.decode() not in str(error.value)
+
+
+@pytest.mark.parametrize(
+    ("operation", "response_body", "response_limit", "response_status"),
+    (
+        ("create", b"not-json", 64, 201),
+        ("upload", b"not-json", 64, 201),
+        ("create", b"x" * 32, 16, 201),
+        ("upload", b"x" * 32, 16, 201),
+        ("create", b"{}", 64, 202),
+        ("upload", b"{}", 64, 202),
+    ),
+)
+def test_successful_write_response_failure_is_ambiguous_and_closes_stream(
+    monkeypatch: pytest.MonkeyPatch,
+    operation: str,
+    response_body: bytes,
+    response_limit: int,
+    response_status: int,
+) -> None:
+    class Response:
+        status = response_status
+
+        def __init__(self) -> None:
+            self.done = False
+            self.closed = False
+
+        def read(self, _size: int = -1) -> bytes:
+            if self.done:
+                return b""
+            self.done = True
+            return response_body
+
+        def close(self) -> None:
+            self.closed = True
+
+    response = Response()
+
+    class Opener:
+        def open(self, request: Any, *, timeout: float) -> Response:
+            return response
+
+    monkeypatch.setattr(
+        publisher.urllib.request, "build_opener", lambda *_handlers: Opener()
+    )
+    provider = HttpGithubProvider(
+        "ghs_secret_value", limits=PublishLimits(max_response_bytes=response_limit)
+    )
+
+    with pytest.raises(AmbiguousProviderError):
+        if operation == "create":
+            provider.create_release(REPOSITORY, {})
+        else:
+            provider.upload_asset(
+                REPOSITORY,
+                41,
+                "dist.tar.gz",
+                "application/octet-stream",
+                b"asset",
+            )
+    assert response.closed is True
+
+
+def test_github_provider_closes_http_error_stream(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class Body:
+        def __init__(self) -> None:
+            self.closed = False
+
+        def read(self, _size: int = -1) -> bytes:
+            return b'{"error":"denied"}'
+
+        def close(self) -> None:
+            self.closed = True
+
+    body = Body()
+    error = publisher.urllib.error.HTTPError(
+        "https://api.github.com/repos/x/y/releases",
+        500,
+        "server error",
+        None,
+        body,
+    )
+
+    class Opener:
+        def open(self, request: Any, *, timeout: float) -> Any:
+            raise error
+
+    monkeypatch.setattr(
+        publisher.urllib.request, "build_opener", lambda *_handlers: Opener()
+    )
+    provider = HttpGithubProvider("ghs_secret_value")
+
+    with pytest.raises(ProviderError):
+        provider.get_latest_release(REPOSITORY)
+    assert body.closed is True
 
 
 def test_redirect_handler_allows_only_github_upload_host() -> None:

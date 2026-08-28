@@ -12,8 +12,10 @@ import argparse
 import hashlib
 import json
 import os
+
 import re
 import socket
+import ssl
 import stat
 import sys
 import tempfile
@@ -34,6 +36,20 @@ _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 _OBJECT_SHA_RE = re.compile(r"^[0-9a-fA-F]{40}$")
 _TRANSACTION_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
 _REPOSITORY_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
+_DESCRIPTOR_STAGING = bool(
+    os.name != "nt"
+    and getattr(os, "O_DIRECTORY", 0)
+    and getattr(os, "O_NOFOLLOW", 0)
+    and hasattr(os, "supports_dir_fd")
+    and os.open in os.supports_dir_fd
+)
+
+
+def _before_workspace_component_open(
+    workspace: Path, parts: tuple[str, ...], scope: str
+) -> None:
+    """Test seam invoked immediately before each descriptor-anchored open."""
+    del workspace, parts, scope
 _TOP_KEYS = (
     "schema_version",
     "repository",
@@ -425,39 +441,102 @@ def _assert_workspace_file(path: Path, workspace: Path, scope: str) -> Path:
     return candidate
 
 
-def _read_regular_once(path: Path, *, limit: int, scope: str) -> bytes:
+def _workspace_relative_parts(
+    path: Path, workspace: Path, scope: str
+) -> tuple[str, ...]:
+    root = Path(os.path.abspath(os.fspath(workspace)))
+    candidate = Path(os.path.abspath(os.fspath(path)))
     try:
-        before = os.lstat(path)
+        if os.path.commonpath((os.fspath(root), os.fspath(candidate))) != os.fspath(root):
+            raise ManifestError(f"manifest {scope} path")
+    except ValueError:
+        raise ManifestError(f"manifest {scope} path") from None
+    relative = os.path.relpath(candidate, root)
+    if relative == os.curdir or relative.startswith(os.pardir + os.sep):
+        raise ManifestError(f"manifest {scope} path")
+    parts = tuple(Path(relative).parts)
+    if not parts or any(part in {"", ".", ".."} for part in parts):
+        raise ManifestError(f"manifest {scope} path")
+    return parts
+
+
+def _open_descriptor_file(path: Path, workspace: Path, scope: str) -> int:
+    parts = _workspace_relative_parts(path, workspace, scope)
+    directory_fds: list[int] = []
+    directory_flags = (
+        os.O_RDONLY
+        | getattr(os, "O_BINARY", 0)
+        | getattr(os, "O_DIRECTORY", 0)
+        | getattr(os, "O_NOFOLLOW", 0)
+    )
+    file_flags = os.O_RDONLY | getattr(os, "O_BINARY", 0) | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        _before_workspace_component_open(workspace, (), scope)
+        root_fd = os.open(os.fspath(workspace), directory_flags)
+        directory_fds.append(root_fd)
+        for index, part in enumerate(parts[:-1]):
+            prefix = parts[: index + 1]
+            _before_workspace_component_open(workspace, prefix, scope)
+            child_fd = os.open(part, directory_flags, dir_fd=directory_fds[-1])
+            directory_fds.append(child_fd)
+        _before_workspace_component_open(workspace, parts, scope)
+        return os.open(parts[-1], file_flags, dir_fd=directory_fds[-1])
+    except OSError:
+        raise ManifestError(f"manifest {scope} file") from None
+    finally:
+        for directory_fd in reversed(directory_fds):
+            try:
+                os.close(directory_fd)
+            except OSError:
+                pass
+
+
+def _open_workspace_file(
+    path: Path, workspace: Path, scope: str
+) -> tuple[int, os.stat_result | None]:
+    if _DESCRIPTOR_STAGING:
+        return _open_descriptor_file(path, workspace, scope), None
+    source = _assert_workspace_file(path, workspace, scope)
+    try:
+        before = os.lstat(source)
     except OSError:
         raise ManifestError(f"manifest {scope} file") from None
     if stat.S_ISLNK(before.st_mode) or not stat.S_ISREG(before.st_mode):
         raise ManifestError(f"manifest {scope} file")
-    if before.st_size > limit:
-        raise ManifestError(f"manifest {scope} size")
     flags = os.O_RDONLY | getattr(os, "O_BINARY", 0)
     no_follow = getattr(os, "O_NOFOLLOW", 0)
     if no_follow:
         flags |= no_follow
     try:
-        fd = os.open(os.fspath(path), flags)
+        return os.open(os.fspath(source), flags), before
     except OSError:
         raise ManifestError(f"manifest {scope} file") from None
+
+
+def _read_regular_once(
+    path: Path, *, workspace: Path, limit: int, scope: str
+) -> bytes:
+    fd, before = _open_workspace_file(path, workspace, scope)
     try:
         with os.fdopen(fd, "rb") as source:
             after = os.fstat(source.fileno())
             if not stat.S_ISREG(after.st_mode):
                 raise ManifestError(f"manifest {scope} file")
-            if no_follow == 0 and os.path.realpath(path) != os.path.abspath(path):
-                raise ManifestError(f"manifest {scope} symlink")
-            if (
-                getattr(before, "st_ino", 0)
-                and getattr(after, "st_ino", 0)
-                and (
-                    before.st_ino != after.st_ino
-                    or before.st_dev != after.st_dev
-                )
-            ):
-                raise ManifestError(f"manifest {scope} changed")
+            if (before is not None and before.st_size > limit) or after.st_size > limit:
+                raise ManifestError(f"manifest {scope} size")
+            if before is not None:
+                no_follow = getattr(os, "O_NOFOLLOW", 0)
+                if no_follow == 0 and os.path.realpath(path) != os.path.abspath(path):
+                    raise ManifestError(f"manifest {scope} symlink")
+                if (
+                    getattr(before, "st_ino", 0)
+                    and getattr(after, "st_ino", 0)
+                    and (
+                        before.st_ino != after.st_ino
+                        or before.st_dev != after.st_dev
+                    )
+                ):
+                    raise ManifestError(f"manifest {scope} changed")
             chunks: list[bytes] = []
             total = 0
             while True:
@@ -485,25 +564,7 @@ def _stage_file(
     limits: PublishLimits,
     scope: str,
 ) -> StagedFile:
-    source = _assert_workspace_file(source_path, workspace, scope)
-    try:
-        before = os.lstat(source)
-    except OSError:
-        raise ManifestError(f"manifest {scope} file") from None
-    if stat.S_ISLNK(before.st_mode) or not stat.S_ISREG(before.st_mode):
-        raise ManifestError(f"manifest {scope} file")
-    if before.st_size > limits.max_file_bytes:
-        raise ManifestError(f"manifest {scope} size")
-    if expected_size is not None and before.st_size != expected_size:
-        raise ManifestError(f"manifest {scope} size")
-    flags = os.O_RDONLY | getattr(os, "O_BINARY", 0)
-    no_follow = getattr(os, "O_NOFOLLOW", 0)
-    if no_follow:
-        flags |= no_follow
-    try:
-        fd = os.open(os.fspath(source), flags)
-    except OSError:
-        raise ManifestError(f"manifest {scope} file") from None
+    fd, before = _open_workspace_file(source_path, workspace, scope)
     total = 0
     digest = hashlib.sha256()
     try:
@@ -511,17 +572,30 @@ def _stage_file(
             after = os.fstat(input_file.fileno())
             if not stat.S_ISREG(after.st_mode):
                 raise ManifestError(f"manifest {scope} file")
-            if no_follow == 0 and os.path.realpath(source) != os.path.abspath(source):
-                raise ManifestError(f"manifest {scope} symlink")
-            if (
-                getattr(before, "st_ino", 0)
-                and getattr(after, "st_ino", 0)
-                and (
-                    before.st_ino != after.st_ino
-                    or before.st_dev != after.st_dev
-                )
+            if (before is not None and before.st_size > limits.max_file_bytes) or (
+                after.st_size > limits.max_file_bytes
             ):
-                raise ManifestError(f"manifest {scope} changed")
+                raise ManifestError(f"manifest {scope} size")
+            if expected_size is not None and (
+                (before is not None and before.st_size != expected_size)
+                or after.st_size != expected_size
+            ):
+                raise ManifestError(f"manifest {scope} size")
+            if before is not None:
+                no_follow = getattr(os, "O_NOFOLLOW", 0)
+                if no_follow == 0 and os.path.realpath(source_path) != os.path.abspath(
+                    source_path
+                ):
+                    raise ManifestError(f"manifest {scope} symlink")
+                if (
+                    getattr(before, "st_ino", 0)
+                    and getattr(after, "st_ino", 0)
+                    and (
+                        before.st_ino != after.st_ino
+                        or before.st_dev != after.st_dev
+                    )
+                ):
+                    raise ManifestError(f"manifest {scope} changed")
             while True:
                 chunk = input_file.read(1024 * 1024)
                 if not chunk:
@@ -549,6 +623,9 @@ def _manifest_path(path: Path | str, workspace: Path) -> Path:
     candidate = Path(path)
     if not candidate.is_absolute():
         candidate = workspace / candidate
+    if _DESCRIPTOR_STAGING:
+        _workspace_relative_parts(candidate, workspace, "manifest")
+        return Path(os.path.abspath(os.fspath(candidate)))
     return _assert_workspace_file(candidate, workspace, "manifest")
 
 
@@ -563,7 +640,12 @@ def prepare_manifest(
     bounds = limits or PublishLimits()
     root = Path(os.path.abspath(os.fspath(workspace)))
     manifest_file = _manifest_path(manifest_path, root)
-    raw = _read_regular_once(manifest_file, limit=bounds.max_manifest_bytes, scope="manifest")
+    raw = _read_regular_once(
+        manifest_file,
+        workspace=root,
+        limit=bounds.max_manifest_bytes,
+        scope="manifest",
+    )
     parsed = _parse_manifest(raw)
     _require_exact_keys(parsed, _TOP_KEYS, "top-level")
     if parsed["schema_version"] != MANIFEST_SCHEMA:
@@ -587,6 +669,8 @@ def prepare_manifest(
     # GitHub's computed `legacy` policy has no stable exact readback. Only
     # explicit booleans are accepted so post-read can prove the policy.
     if type(make_latest) is not bool:
+        raise ManifestError("manifest make_latest")
+    if make_latest and (draft or prerelease):
         raise ManifestError("manifest make_latest")
     assets_value = parsed["assets"]
     if not isinstance(assets_value, list):
@@ -873,7 +957,7 @@ def _create_release(
         "body": body,
         "draft": manifest.release.draft,
         "prerelease": manifest.release.prerelease,
-        "make_latest": manifest.release.make_latest,
+        "make_latest": "true" if manifest.release.make_latest else "false",
     }
     try:
         created = _invoke(
@@ -1063,6 +1147,41 @@ def reconcile(
     )
 
 
+def _preflight_output() -> None:
+    output_path_value = os.environ.get("GITHUB_OUTPUT")
+    if not output_path_value:
+        return
+    output_path = Path(output_path_value)
+    try:
+        before = os.lstat(output_path)
+        if stat.S_ISLNK(before.st_mode) or not stat.S_ISREG(before.st_mode):
+            raise ProviderError("output preflight")
+        flags = os.O_WRONLY | os.O_APPEND | getattr(os, "O_BINARY", 0)
+        no_follow = getattr(os, "O_NOFOLLOW", 0)
+        if no_follow:
+            flags |= no_follow
+        fd = os.open(os.fspath(output_path), flags)
+        try:
+            after = os.fstat(fd)
+            if not stat.S_ISREG(after.st_mode):
+                raise ProviderError("output preflight")
+            if (
+                getattr(before, "st_ino", 0)
+                and getattr(after, "st_ino", 0)
+                and (
+                    before.st_ino != after.st_ino
+                    or before.st_dev != after.st_dev
+                )
+            ):
+                raise ProviderError("output preflight")
+        finally:
+            os.close(fd)
+    except ProviderError:
+        raise
+    except OSError:
+        raise ProviderError("output preflight") from None
+
+
 def publish_manifest(
     manifest_path: Path | str,
     *,
@@ -1081,6 +1200,7 @@ def publish_manifest(
         expected_repository=repository,
         limits=bounds,
     ) as prepared:
+        _preflight_output()
         if provider is None:
             if provider_factory is None:
                 provider_factory = lambda value: HttpGithubProvider(value, limits=bounds)
@@ -1128,6 +1248,33 @@ def _validate_github_url(url: str, *, allow_upload: bool) -> None:
         raise ProviderError("provider url")
 
 
+_CA_BUNDLE_PATH = "/etc/ssl/certs/ca-certificates.crt"
+
+
+def _github_ssl_context() -> ssl.SSLContext:
+    try:
+        if os.name == "nt":
+            context = ssl.create_default_context()
+        else:
+            bundle = os.lstat(_CA_BUNDLE_PATH)
+            if (
+                stat.S_ISLNK(bundle.st_mode)
+                or not stat.S_ISREG(bundle.st_mode)
+                or getattr(bundle, "st_uid", -1) != 0
+                or bundle.st_mode & 0o022
+            ):
+                raise ProviderError("provider ca")
+            context = ssl.create_default_context(cafile=_CA_BUNDLE_PATH)
+        context.minimum_version = ssl.TLSVersion.TLSv1_2
+        context.check_hostname = True
+        context.verify_mode = ssl.CERT_REQUIRED
+        return context
+    except ProviderError:
+        raise
+    except (OSError, ssl.SSLError, ValueError):
+        raise ProviderError("provider ca") from None
+
+
 def _read_bounded(response: Any, limit: int) -> bytes:
     chunks: list[bytes] = []
     total = 0
@@ -1140,6 +1287,16 @@ def _read_bounded(response: Any, limit: int) -> bytes:
             raise ProviderError("response size")
         chunks.append(chunk)
     return b"".join(chunks)
+
+
+def _close_response(response: Any) -> None:
+    close = getattr(response, "close", None)
+    if not callable(close):
+        return
+    try:
+        close()
+    except (OSError, ValueError):
+        pass
 
 
 def _parse_response(data: bytes) -> Any:
@@ -1183,6 +1340,7 @@ class HttpGithubProvider:
         expected_status: set[int],
         not_found: bool = False,
         upload: bool = False,
+        ambiguous_write: bool = False,
     ) -> Any:
         base = f"https://{_UPLOAD_HOST if upload else _API_HOST}"
         url = base + path
@@ -1197,8 +1355,12 @@ class HttpGithubProvider:
             headers["Content-Type"] = content_type
         request = urllib.request.Request(url, data=body, headers=headers, method=method)
         opener = urllib.request.build_opener(
-            _SafeRedirectHandler(self._limits.max_redirects)
+            urllib.request.ProxyHandler({}),
+            urllib.request.HTTPSHandler(context=_github_ssl_context()),
+            _SafeRedirectHandler(self._limits.max_redirects),
         )
+        response: Any | None = None
+        data: bytes | None = None
         try:
             response = opener.open(request, timeout=self._limits.timeout_seconds)
             status_value = getattr(response, "status", None)
@@ -1206,10 +1368,25 @@ class HttpGithubProvider:
                 status_value if status_value is not None else response.getcode()
             )
             if status not in expected_status:
-                _read_bounded(response, self._limits.max_response_bytes)
+                try:
+                    _read_bounded(response, self._limits.max_response_bytes)
+                except ProviderError:
+                    if ambiguous_write:
+                        raise AmbiguousProviderError(
+                            operation, status=status
+                        ) from None
+                    raise
+                if ambiguous_write and 200 <= status < 300:
+                    raise AmbiguousProviderError(operation, status=status)
                 raise ProviderHttpError(operation, status=status)
-            data = _read_bounded(response, self._limits.max_response_bytes)
+            try:
+                data = _read_bounded(response, self._limits.max_response_bytes)
+            except ProviderError:
+                if ambiguous_write:
+                    raise AmbiguousProviderError(operation, status=status) from None
+                raise
         except urllib.error.HTTPError as exc:
+            response = exc
             try:
                 _read_bounded(exc, self._limits.max_response_bytes)
             except ProviderError:
@@ -1223,8 +1400,17 @@ class HttpGithubProvider:
             raise
         except (TimeoutError, socket.timeout, urllib.error.URLError, OSError):
             raise ProviderTransportError(operation) from None
-        value = _parse_response(data)
-        return value
+        finally:
+            if response is not None:
+                _close_response(response)
+        if data is None:
+            raise ProviderError("response body")
+        try:
+            return _parse_response(data)
+        except ProviderError:
+            if ambiguous_write:
+                raise AmbiguousProviderError(operation) from None
+            raise
 
     @staticmethod
     def _repo_path(repository: str) -> str:
@@ -1262,6 +1448,7 @@ class HttpGithubProvider:
             body=_canonical_json(dict(payload)),
             content_type="application/json",
             expected_status={201},
+            ambiguous_write=True,
         )
         return cast(Mapping[str, Any], value)
 
@@ -1298,7 +1485,7 @@ class HttpGithubProvider:
             body=data,
             content_type=content_type,
             expected_status={201},
-            upload=True,
+            ambiguous_write=True,
         )
         return cast(Mapping[str, Any], value)
 
@@ -1311,6 +1498,7 @@ class HttpGithubProvider:
 
 
 def _write_outputs(values: Mapping[str, Any]) -> None:
+    _preflight_output()
     output_path = os.environ.get("GITHUB_OUTPUT")
     if not output_path:
         return

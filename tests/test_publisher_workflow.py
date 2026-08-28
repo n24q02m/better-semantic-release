@@ -64,11 +64,32 @@ def test_candidate_job_contains_only_image_bootstrap_mutations() -> None:
     assert "pypi" not in step_text
     assert "gh release" not in step_text
     assert "semantic-release publish" not in step_text
+    assert "id -u" in step_text
+    assert "id -g" in step_text
+    assert '--build-arg "publisher_uid=' in step_text
+    assert '--build-arg "publisher_gid=' in step_text
+    assert "github-output" in step_text
+    assert "preflight" in step_text
+    assert '[[ ! "$subject_digest" =~ ^sha256:[0-9a-f]{64}$ ]]' in step_text
+    assert 'imagetools inspect "$image"' not in step_text
+    assert 'docker image inspect "$image"' in step_text
+    assert "repo_digest" in step_text
+    assert "sitecustomize.py" in step_text
+    assert "pythonpath=/hostile" in step_text
+    assert "sitecustomize-ran" in step_text
+
+
+def test_workflow_validator_pin_supports_attestations() -> None:
+    content = (ROOT / ".pre-commit-config.yaml").read_text(encoding="utf-8")
+    assert 'rev: "0.30.0"' in content
 
 
 def test_pinned_non_root_image_runtime() -> None:
     content = DOCKERFILE.read_text(encoding="utf-8")
     assert "FROM python:3.13-slim-bookworm@sha256:" in content
+    assert "ARG PUBLISHER_UID=" in content
+    assert "ARG PUBLISHER_GID=" in content
     assert "USER publisher" in content
-    assert 'ENTRYPOINT ["python", "/opt/publisher/main.py"]' in content
+    assert 'ENTRYPOINT ["/usr/local/bin/python", "-I", "-S", "-B", "-u", "/opt/publisher/main.py"]' in content
+    assert "PYTHONPATH" not in content
     assert "pip install" not in content

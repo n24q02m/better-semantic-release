@@ -130,29 +130,99 @@ jobs:
           printf '%s\n' "$GHCR_TOKEN" | docker login ghcr.io \
             --username "$GITHUB_ACTOR" --password-stdin
 
-      - name: Build and push candidate image
+      - name: Build candidate image
+        env:
+          IMAGE: ghcr.io/${{ github.repository }}-publisher:candidate-${{ github.sha }}
+        run: |
+          set -eu
+          RUNNER_UID="$(id -u)"
+          RUNNER_GID="$(id -g)"
+          case "$RUNNER_UID" in ''|*[!0-9]*) echo "runner uid is not numeric"; exit 1;; esac
+          case "$RUNNER_GID" in ''|*[!0-9]*) echo "runner gid is not numeric"; exit 1;; esac
+          if [ "$RUNNER_UID" -lt 1 ] || [ "$RUNNER_UID" -gt 65534 ]; then
+            echo "runner uid is outside the image range"
+            exit 1
+          fi
+          if [ "$RUNNER_GID" -lt 1 ] || [ "$RUNNER_GID" -gt 65534 ]; then
+            echo "runner gid is outside the image range"
+            exit 1
+          fi
+          docker build \
+            --build-arg "PUBLISHER_UID=$RUNNER_UID" \
+            --build-arg "PUBLISHER_GID=$RUNNER_GID" \
+            --file publish-action/Dockerfile \
+            --tag "$IMAGE" \
+            .
+
+      - name: Smoke-test candidate runtime mounts
+        env:
+          IMAGE: ghcr.io/${{ github.repository }}-publisher:candidate-${{ github.sha }}
+        run: |
+          set -eu
+          SMOKE_DIR="$(mktemp -d)"
+          trap 'rm -rf "$SMOKE_DIR"' EXIT
+          mkdir -p "$SMOKE_DIR/workspace" "$SMOKE_DIR/hostile" "$SMOKE_DIR/marker"
+          printf 'smoke input\n' > "$SMOKE_DIR/workspace/input"
+          printf '%s\n' 'from pathlib import Path; Path("/marker/sitecustomize-ran").write_text("bad")' > "$SMOKE_DIR/hostile/sitecustomize.py"
+          : > "$SMOKE_DIR/github-output"
+          chmod 0644 "$SMOKE_DIR/github-output"
+          docker run --rm \
+            --mount "type=bind,src=$SMOKE_DIR/workspace,dst=/workspace,readonly" \
+            --mount "type=bind,src=$SMOKE_DIR/github-output,dst=/github-output" \
+            --env GITHUB_OUTPUT=/github-output \
+            --entrypoint /usr/local/bin/python \
+            "$IMAGE" \
+            -I -S -B -u \
+            -c 'import sys; sys.path.insert(0,"/opt/publisher"); from pathlib import Path; from release_publisher import _preflight_output, _read_regular_once, _write_outputs; _preflight_output(); assert _read_regular_once(Path("/workspace/input"), workspace=Path("/workspace"), limit=1024, scope="smoke") == b"smoke input\n"; _write_outputs({"transaction_id":"smoke","manifest_sha256":"0"*64,"release_id":1,"release_url":"https://example.test","created":False,"uploaded_count":0,"reused_count":0,"asset_set_sha256":"1"*64,"result_sha256":"2"*64})'
+          test "$(grep -Fc 'transaction_id=smoke' "$SMOKE_DIR/github-output")" -eq 1
+          set +e
+          docker run --rm \
+            --mount "type=bind,src=$SMOKE_DIR/workspace,dst=/workspace,readonly" \
+            --mount "type=bind,src=$SMOKE_DIR/github-output,dst=/github-output" \
+            --mount "type=bind,src=$SMOKE_DIR/hostile,dst=/hostile,readonly" \
+            --mount "type=bind,src=$SMOKE_DIR/marker,dst=/marker" \
+            --env GITHUB_OUTPUT=/github-output \
+            --env PYTHONPATH=/hostile \
+            "$IMAGE" > "$SMOKE_DIR/hostile.stdout" 2> "$SMOKE_DIR/hostile.stderr"
+          status=$?
+          set -e
+          test "$status" -eq 1
+          grep -Fqx 'publisher manifest input' "$SMOKE_DIR/hostile.stderr"
+          test ! -e "$SMOKE_DIR/marker/sitecustomize-ran"
+
+      - name: Push candidate image and resolve local digest
         id: image
         env:
           IMAGE: ghcr.io/${{ github.repository }}-publisher:candidate-${{ github.sha }}
         run: |
-          docker build \
-            --file publish-action/Dockerfile \
-            --tag "$IMAGE" \
-            .
+          set -eu
           docker push "$IMAGE"
-          DIGEST="$(docker buildx imagetools inspect "$IMAGE" \
-            --format '{{.Manifest.Digest}}')"
-          case "$DIGEST" in
-            sha256:[0-9a-f]*) ;;
-            *) echo "registry did not return an immutable digest"; exit 1 ;;
+          REPOSITORY="${IMAGE%%:*}"
+          REPO_DIGEST="$(docker image inspect "$IMAGE" \
+            --format '{{range .RepoDigests}}{{println .}}{{end}}' |
+            while IFS= read -r candidate; do
+              case "$candidate" in
+                "$REPOSITORY"@sha256:*) printf '%s\n' "$candidate"; break ;;
+              esac
+            done)"
+          case "$REPO_DIGEST" in
+            "$REPOSITORY"@sha256:*) ;;
+            *) echo "local image inspect did not return the pushed repository digest"; exit 1 ;;
           esac
-          printf 'digest=%s\n' "$DIGEST" >> "$GITHUB_OUTPUT"
+          SUBJECT_DIGEST="${REPO_DIGEST#"$REPOSITORY"@}"
+          if [[ ! "$SUBJECT_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "local image digest is not an exact sha256 digest"
+            exit 1
+          fi
+          printf 'subject_name=%s\n' "$REPOSITORY" >> "$GITHUB_OUTPUT"
+          printf 'subject_digest=%s\n' "$SUBJECT_DIGEST" >> "$GITHUB_OUTPUT"
+          printf 'repo_digest=%s\n' "$REPO_DIGEST" >> "$GITHUB_OUTPUT"
 
       - name: Attest candidate image provenance
         uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2.2.0
         with:
-          subject-name: ghcr.io/${{ github.repository }}-publisher
-          subject-digest: ${{ steps.image.outputs.digest }}
+          subject-name: ${{ steps.image.outputs.subject_name }}
+          subject-digest: ${{ steps.image.outputs.subject_digest }}
           push-to-registry: true
 # No downstream notification is dispatched from here, and that is a decision
 # rather than an omission -- worth writing down, because a shared library cutting
