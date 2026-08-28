@@ -1,3 +1,0 @@
-## 2024-08-28 - Avoid eager evaluation of all([...]) with list allocations
-**Learning:** Using `all([...])` or `any([...])` with explicit lists inside hot loops (like processing git commits or versions) causes unnecessary O(N) list memory allocations and completely prevents Python's native short-circuit evaluation. This creates significant latency spikes when processing large repository histories.
-**Action:** Always replace `all([cond1, cond2])` with explicit boolean operators `(cond1 and cond2)` to enable true short-circuiting without list allocations, yielding massive 5x performance improvements.
