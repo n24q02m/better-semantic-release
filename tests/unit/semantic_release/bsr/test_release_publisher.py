@@ -366,6 +366,104 @@ def test_ambiguous_create_is_resolved_by_one_readback(tmp_path: Path) -> None:
     assert [call[0] for call in provider.calls].count("get_release_by_tag") == 3
 
 
+@pytest.mark.parametrize("failure", ("http-error", "unexpected-status", "rejected-redirect"))
+def test_mutating_http_failure_is_ambiguous_and_read_back_once(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, failure: str
+) -> None:
+    manifest_path = _write_manifest(tmp_path)
+    manifest_payload = _payload_for_manifest(manifest_path)
+    body = (tmp_path / manifest_payload["release"]["body_path"]).read_text()
+    release_payload = {
+        "tag_name": manifest_payload["tag"],
+        "name": manifest_payload["release"]["name"],
+        "body": body,
+        "draft": manifest_payload["release"]["draft"],
+        "prerelease": manifest_payload["release"]["prerelease"],
+        "make_latest": manifest_payload["release"]["make_latest"],
+    }
+    provider = FakeProvider()
+    provider.releases[manifest_payload["tag"]] = _release(release_payload, release_id=41)
+    provider.assets[manifest_payload["tag"]] = []
+    http_provider = HttpGithubProvider("ghs_secret_value")
+
+    class Response:
+        status = 302
+
+        def __init__(self) -> None:
+            self.closed = False
+
+        def read(self, _size: int = -1) -> bytes:
+            return b"redirect"
+
+        def close(self) -> None:
+            self.closed = True
+
+    class ErrorBody:
+        def __init__(self) -> None:
+            self.closed = False
+
+        def read(self, _size: int = -1) -> bytes:
+            return b'{"error":"server"}'
+
+        def close(self) -> None:
+            self.closed = True
+
+    response = Response()
+    error_body = ErrorBody()
+    error = publisher.urllib.error.HTTPError(
+        "https://api.github.com/repos/x/y/releases",
+        500,
+        "server error",
+        None,
+        error_body,
+    )
+    redirect_handler: Any | None = None
+
+    class Opener:
+        def open(self, request: Any, *, timeout: float) -> Any:
+            if failure == "http-error":
+                raise error
+            if failure == "unexpected-status":
+                return response
+            assert redirect_handler is not None
+            redirect_handler.redirect_request(
+                request,
+                None,
+                302,
+                "Found",
+                {},
+                "https://attacker.example/releases",
+            )
+            raise AssertionError("redirect handler did not reject the target")
+
+    def build_opener(*handlers: Any) -> Opener:
+        nonlocal redirect_handler
+        redirect_handler = next(
+            handler for handler in handlers if isinstance(handler, publisher._SafeRedirectHandler)
+        )
+        return Opener()
+
+    monkeypatch.setattr(publisher, "_github_ssl_context", publisher.ssl.create_default_context)
+    monkeypatch.setattr(publisher.urllib.request, "build_opener", build_opener)
+
+    def create_release(repository: str, value: dict[str, Any]) -> dict[str, Any]:
+        provider.calls.append(("create_release", value))
+        return http_provider.create_release(repository, value)
+
+    provider.create_release = create_release  # type: ignore[method-assign]
+    with prepare_manifest(manifest_path, tmp_path) as prepared:
+        result, created = publisher._create_release(provider, REPOSITORY, prepared.manifest, body)
+
+    assert created is True
+    assert result["id"] == 41
+    assert [call[0] for call in provider.calls].count("create_release") == 1
+    assert [call[0] for call in provider.calls].count("get_release_by_tag") == 1
+    if failure == "http-error":
+        assert error_body.closed is True
+    elif failure == "unexpected-status":
+        assert response.closed is True
+
+
 def test_release_readback_does_not_require_unreturned_make_latest_field(
     tmp_path: Path,
 ) -> None:
@@ -589,6 +687,41 @@ def test_output_preflight_fails_before_provider_construction(
             repository=REPOSITORY,
         )
     assert constructed is False
+@pytest.mark.skipif(os.name == "nt", reason="Windows locks open output files against replacement")
+def test_output_channel_retains_inode_across_path_swap(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    manifest = _write_manifest(tmp_path)
+    output = tmp_path / "github-output"
+    output.write_text("", encoding="utf-8")
+    replaced = tmp_path / "github-output-replaced"
+    monkeypatch.setenv("GITHUB_OUTPUT", str(output))
+    channel = publisher._open_output_channel()
+    assert channel is not None
+    provider = FakeProvider()
+
+    def provider_factory(token: str) -> FakeProvider:
+        output.rename(replaced)
+        output.write_text("", encoding="utf-8")
+        return provider
+
+    try:
+        result = publish_manifest(
+            manifest,
+            workspace=tmp_path,
+            provider_factory=provider_factory,
+            token="ghs_secret_value",
+            repository=REPOSITORY,
+            output_channel=channel,
+        )
+        publisher._write_outputs(result, channel)
+    finally:
+        channel.close()
+
+    assert "transaction_id=" + result["transaction_id"] in replaced.read_text()
+    assert output.read_text() == ""
+
+
 def test_invalid_manifest_does_not_construct_provider_or_expose_values(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

@@ -154,7 +154,7 @@ jobs:
             --tag "$IMAGE" \
             .
 
-      - name: Smoke-test candidate runtime mounts
+      - name: Smoke-test candidate runtime mounts with output preflight
         env:
           IMAGE: ghcr.io/${{ github.repository }}-publisher:candidate-${{ github.sha }}
         run: |
@@ -173,7 +173,7 @@ jobs:
             --entrypoint /usr/local/bin/python \
             "$IMAGE" \
             -I -S -B -u \
-            -c 'import sys; sys.path.insert(0,"/opt/publisher"); from pathlib import Path; from release_publisher import _preflight_output, _read_regular_once, _write_outputs; _preflight_output(); assert _read_regular_once(Path("/workspace/input"), workspace=Path("/workspace"), limit=1024, scope="smoke") == b"smoke input\n"; _write_outputs({"transaction_id":"smoke","manifest_sha256":"0"*64,"release_id":1,"release_url":"https://example.test","created":False,"uploaded_count":0,"reused_count":0,"asset_set_sha256":"1"*64,"result_sha256":"2"*64})'
+            -c 'import sys; sys.path.insert(0,"/opt/publisher"); from pathlib import Path; from release_publisher import _open_output_channel, _read_regular_once, _write_outputs; channel=_open_output_channel(); assert channel is not None; assert _read_regular_once(Path("/workspace/input"), workspace=Path("/workspace"), limit=1024, scope="smoke") == b"smoke input\n"; _write_outputs({"transaction_id":"smoke","manifest_sha256":"0"*64,"release_id":1,"release_url":"https://example.test","created":False,"uploaded_count":0,"reused_count":0,"asset_set_sha256":"1"*64,"result_sha256":"2"*64}, channel); channel.close()'
           test "$(grep -Fc 'transaction_id=smoke' "$SMOKE_DIR/github-output")" -eq 1
           set +e
           docker run --rm \
@@ -212,6 +212,16 @@ jobs:
           SUBJECT_DIGEST="${REPO_DIGEST#"$REPOSITORY"@}"
           if [[ ! "$SUBJECT_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]; then
             echo "local image digest is not an exact sha256 digest"
+            exit 1
+          fi
+          REMOTE_DIGEST="$(docker buildx imagetools inspect "$IMAGE" \
+            --format '{{ .Manifest.Digest }}')"
+          if [[ ! "$REMOTE_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "remote image readback is not an exact sha256 digest"
+            exit 1
+          fi
+          if [ "$REMOTE_DIGEST" != "$SUBJECT_DIGEST" ]; then
+            echo "remote image digest does not match the local subject digest"
             exit 1
           fi
           printf 'subject_name=%s\n' "$REPOSITORY" >> "$GITHUB_OUTPUT"

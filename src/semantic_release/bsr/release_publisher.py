@@ -1147,11 +1147,40 @@ def reconcile(
     )
 
 
-def _preflight_output() -> None:
+class _OutputChannel:
+    """A verified GitHub output descriptor retained across provider writes."""
+
+    def __init__(self, fd: int) -> None:
+        self._fd: int | None = fd
+
+    def write(self, values: Mapping[str, Any]) -> None:
+        fd = self._fd
+        if fd is None:
+            raise ProviderError("output write")
+        try:
+            with os.fdopen(os.dup(fd), "a", encoding="utf-8", newline="\n") as output:
+                for key in _RESULT_KEYS:
+                    output.write(f"{key}={values[key]}\n")
+        except OSError:
+            raise ProviderError("output write") from None
+
+    def close(self) -> None:
+        fd = self._fd
+        self._fd = None
+        if fd is None:
+            return
+        try:
+            os.close(fd)
+        except OSError:
+            pass
+
+
+def _open_output_channel() -> _OutputChannel | None:
     output_path_value = os.environ.get("GITHUB_OUTPUT")
     if not output_path_value:
-        return
+        return None
     output_path = Path(output_path_value)
+    fd: int | None = None
     try:
         before = os.lstat(output_path)
         if stat.S_ISLNK(before.st_mode) or not stat.S_ISREG(before.st_mode):
@@ -1161,25 +1190,37 @@ def _preflight_output() -> None:
         if no_follow:
             flags |= no_follow
         fd = os.open(os.fspath(output_path), flags)
-        try:
-            after = os.fstat(fd)
-            if not stat.S_ISREG(after.st_mode):
-                raise ProviderError("output preflight")
-            if (
-                getattr(before, "st_ino", 0)
-                and getattr(after, "st_ino", 0)
-                and (
-                    before.st_ino != after.st_ino
-                    or before.st_dev != after.st_dev
-                )
-            ):
-                raise ProviderError("output preflight")
-        finally:
-            os.close(fd)
+        after = os.fstat(fd)
+        if not stat.S_ISREG(after.st_mode):
+            raise ProviderError("output preflight")
+        if (
+            getattr(before, "st_ino", 0)
+            and getattr(after, "st_ino", 0)
+            and (
+                before.st_ino != after.st_ino
+                or before.st_dev != after.st_dev
+            )
+        ):
+            raise ProviderError("output preflight")
+        channel = _OutputChannel(fd)
+        fd = None
+        return channel
     except ProviderError:
         raise
     except OSError:
         raise ProviderError("output preflight") from None
+    finally:
+        if fd is not None:
+            try:
+                os.close(fd)
+            except OSError:
+                pass
+
+
+def _preflight_output() -> None:
+    channel = _open_output_channel()
+    if channel is not None:
+        channel.close()
 
 
 def publish_manifest(
@@ -1191,28 +1232,35 @@ def publish_manifest(
     provider_factory: Callable[[str], GithubProvider] | None = None,
     token: str | None = None,
     limits: PublishLimits | None = None,
+    output_channel: _OutputChannel | None = None,
 ) -> dict[str, Any]:
     """Prepare local inputs first, then construct/use the provider exactly once."""
     bounds = limits or PublishLimits()
+    owns_output_channel = output_channel is None
     with prepare_manifest(
         manifest_path,
         workspace,
         expected_repository=repository,
         limits=bounds,
     ) as prepared:
-        _preflight_output()
-        if provider is None:
-            if provider_factory is None:
-                provider_factory = lambda value: HttpGithubProvider(value, limits=bounds)
-            if not isinstance(token, str) or not token:
-                raise ProviderError("token input")
-            try:
-                provider = provider_factory(token)
-            except PublisherError:
-                raise
-            except Exception:
-                raise ProviderError("provider init") from None
-        return reconcile(prepared, provider, limits=bounds)
+        if owns_output_channel:
+            output_channel = _open_output_channel()
+        try:
+            if provider is None:
+                if provider_factory is None:
+                    provider_factory = lambda value: HttpGithubProvider(value, limits=bounds)
+                if not isinstance(token, str) or not token:
+                    raise ProviderError("token input")
+                try:
+                    provider = provider_factory(token)
+                except PublisherError:
+                    raise
+                except Exception:
+                    raise ProviderError("provider init") from None
+            return reconcile(prepared, provider, limits=bounds)
+        finally:
+            if owns_output_channel and output_channel is not None:
+                output_channel.close()
 
 
 class _SafeRedirectHandler(urllib.request.HTTPRedirectHandler):
@@ -1361,7 +1409,9 @@ class HttpGithubProvider:
         )
         response: Any | None = None
         data: bytes | None = None
+        dispatch_started = False
         try:
+            dispatch_started = True
             response = opener.open(request, timeout=self._limits.timeout_seconds)
             status_value = getattr(response, "status", None)
             status = int(
@@ -1376,7 +1426,7 @@ class HttpGithubProvider:
                             operation, status=status
                         ) from None
                     raise
-                if ambiguous_write and 200 <= status < 300:
+                if ambiguous_write:
                     raise AmbiguousProviderError(operation, status=status)
                 raise ProviderHttpError(operation, status=status)
             try:
@@ -1391,12 +1441,20 @@ class HttpGithubProvider:
                 _read_bounded(exc, self._limits.max_response_bytes)
             except ProviderError:
                 pass
+            if ambiguous_write:
+                raise AmbiguousProviderError(operation, status=exc.code) from None
             if not_found and exc.code == 404:
                 return None
             if exc.code in {409, 422}:
                 raise AmbiguousProviderError(operation, status=exc.code) from None
             raise ProviderHttpError(operation, status=exc.code) from None
-        except ProviderError:
+        except ProviderError as exc:
+            if ambiguous_write and dispatch_started and not isinstance(
+                exc, AmbiguousProviderError
+            ):
+                raise AmbiguousProviderError(
+                    operation, status=getattr(exc, "status", None)
+                ) from None
             raise
         except (TimeoutError, socket.timeout, urllib.error.URLError, OSError):
             raise ProviderTransportError(operation) from None
@@ -1497,17 +1555,19 @@ class HttpGithubProvider:
         return cast(Mapping[str, Any] | None, value)
 
 
-def _write_outputs(values: Mapping[str, Any]) -> None:
-    _preflight_output()
-    output_path = os.environ.get("GITHUB_OUTPUT")
-    if not output_path:
+def _write_outputs(
+    values: Mapping[str, Any], output_channel: _OutputChannel | None = None
+) -> None:
+    owns_output_channel = output_channel is None
+    if owns_output_channel:
+        output_channel = _open_output_channel()
+    if output_channel is None:
         return
     try:
-        with Path(output_path).open("a", encoding="utf-8", newline="\n") as output:
-            for key in _RESULT_KEYS:
-                output.write(f"{key}={values[key]}\n")
-    except OSError:
-        raise ProviderError("output write") from None
+        output_channel.write(values)
+    finally:
+        if owns_output_channel:
+            output_channel.close()
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -1518,18 +1578,21 @@ def main(argv: Sequence[str] | None = None) -> int:
     workspace = os.environ.get("GITHUB_WORKSPACE", os.getcwd())
     repository = os.environ.get("GITHUB_REPOSITORY")
     token = os.environ.get("INPUT_TOKEN", "")
+    output_channel: _OutputChannel | None = None
     try:
         if not args.manifest:
             raise ManifestError("manifest input")
         if not repository:
             raise ManifestError("repository input")
+        output_channel = _open_output_channel()
         result = publish_manifest(
             args.manifest,
             workspace=workspace,
             repository=repository,
             token=token,
+            output_channel=output_channel,
         )
-        _write_outputs(result)
+        _write_outputs(result, output_channel)
         print(json.dumps(result, ensure_ascii=False, separators=(",", ":")))
         return 0
     except PublisherError as exc:
@@ -1538,6 +1601,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     except Exception:
         print("publisher failed", file=sys.stderr)
         return 1
+    finally:
+        if output_channel is not None:
+            output_channel.close()
 
 
 if __name__ == "__main__":

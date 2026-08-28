@@ -71,7 +71,11 @@ def test_candidate_job_contains_only_image_bootstrap_mutations() -> None:
     assert "github-output" in step_text
     assert "preflight" in step_text
     assert '[[ ! "$subject_digest" =~ ^sha256:[0-9a-f]{64}$ ]]' in step_text
-    assert 'imagetools inspect "$image"' not in step_text
+    assert 'remote_digest="$(docker buildx imagetools inspect "$image"' in step_text
+    assert '[[ ! "$remote_digest" =~ ^sha256:[0-9a-f]{64}$ ]]' in step_text
+    assert '"$remote_digest" != "$subject_digest"' in step_text
+    assert "printf 'subject_digest=%s\\n' \"$subject_digest\"" in step_text
+    assert "printf 'subject_digest=%s\\n' \"$remote_digest\"" not in step_text
     assert 'docker image inspect "$image"' in step_text
     assert "repo_digest" in step_text
     assert "sitecustomize.py" in step_text
