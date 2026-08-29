@@ -927,3 +927,4 @@ path = "src/semantic_release/version/version.py"
 status = "M"
 kind = "python-source"
 reason = "Bolt performance optimization for frequent Version.__eq__ short-circuit evaluation."
+gates = ["python-lint", "python-format", "python-type", "python-test"]
