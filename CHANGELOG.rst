@@ -4,6 +4,35 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.5.0:
+
+v1.5.0 (2026-08-29)
+===================
+
+✨ Features
+-----------
+
+* Add strict G1 publisher runtime (`553275c`_)
+
+🪲 Bug Fixes
+------------
+
+* Define commit-author regex locally — GitPython >= 3.1.45 removed Actor.name_email_regex
+  (`201fef0`_)
+
+* Harden G1 publisher boundaries (`577bf32`_)
+
+* Resolve G1 publisher lint diagnostics (`18a7af4`_)
+
+* Retain publisher output channel across writes (`edfd90a`_)
+
+.. _18a7af4: https://github.com/n24q02m/better-semantic-release/commit/18a7af43c855248b592880b076a013f5286b6a7c
+.. _201fef0: https://github.com/n24q02m/better-semantic-release/commit/201fef0b36aa1ab2d3a85ed16c3653fd1cda4d56
+.. _553275c: https://github.com/n24q02m/better-semantic-release/commit/553275c76e6966a7aedcfe815a4f00e8970a9138
+.. _577bf32: https://github.com/n24q02m/better-semantic-release/commit/577bf32d087f74afe2091492d1b84644639c09bd
+.. _edfd90a: https://github.com/n24q02m/better-semantic-release/commit/edfd90afe0b73753df1b81b4f71d64c8dc4f2f18
+
+
 .. _changelog-v1.4.0:
 
 v1.4.0 (2026-08-25)
