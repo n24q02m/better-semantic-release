@@ -921,3 +921,9 @@ kind = "other"
 owner = "bsr-g1-publisher"
 reason = "Phase A digest-pinned non-root publisher runtime image."
 gates = ["other"]
+
+[[ownership.exceptions]]
+path = "src/semantic_release/version/version.py"
+status = "M"
+kind = "python-source"
+reason = "Bolt performance optimization for frequent Version.__eq__ short-circuit evaluation."
