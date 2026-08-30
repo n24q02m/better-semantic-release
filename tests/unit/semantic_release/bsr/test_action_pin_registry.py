@@ -741,6 +741,23 @@ def test_gh_attestation_verifier_enforces_identity_and_source_ref(
     assert captured["bundle"] == raw_bundle
 
 
+def test_gh_attestation_verifier_rejects_failed_signature(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        registry_module.subprocess,
+        "run",
+        lambda *_args, **_kwargs: registry_module.subprocess.CompletedProcess([], 1),
+    )
+
+    with pytest.raises(RegistryError, match="attestation signature"):
+        registry_module.verify_attestation_with_gh(
+            json.dumps(_provenance_bundle()).encode(),
+            REPOSITORY,
+            IMAGE_DIGEST,
+        )
+
+
 @pytest.mark.parametrize(
     "invalid_bundle",
     [
