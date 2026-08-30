@@ -10,6 +10,7 @@ puts credentials or response bodies into exceptions or logs.
 from __future__ import annotations
 
 import argparse
+import errno
 import hashlib
 import json
 import os
@@ -597,7 +598,9 @@ def _open_descriptor_file(path: Path, workspace: Path, scope: str) -> int:
             directory_fds.append(child_fd)
         _before_workspace_component_open(workspace, parts, scope)
         return os.open(parts[-1], file_flags, dir_fd=directory_fds[-1])
-    except OSError:
+    except OSError as error:
+        if error.errno == errno.ELOOP:
+            raise ManifestError(f"manifest {scope} symlink") from None
         raise ManifestError(f"manifest {scope} file") from None
     finally:
         _close_fds(directory_fds)
