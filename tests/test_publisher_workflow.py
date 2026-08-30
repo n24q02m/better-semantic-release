@@ -86,6 +86,44 @@ def test_candidate_job_contains_only_image_bootstrap_mutations() -> None:
     assert "sitecustomize-ran" in step_text
 
 
+def test_candidate_job_verifies_provenance_and_exports_exact_handoff() -> None:
+    document = _load_workflow()
+    steps = document["jobs"]["publisher-image"]["steps"]
+
+    provenance = next(
+        step
+        for step in steps
+        if step.get("name") == "Attest candidate image provenance"
+    )
+    assert provenance["id"] == "provenance"
+    assert provenance["uses"] == (
+        "actions/attest-build-provenance@" "e8998f949152b193b063cb0ec769d69d929409be"
+    )
+
+    handoff = next(
+        step
+        for step in steps
+        if step.get("name") == "Verify provenance and write candidate handoff"
+    )
+    command = handoff["run"].lower()
+    assert 'gh attestation verify "oci://$repo_digest"' in command
+    assert "publisher-image-candidate.json" in command
+    assert "dockerfile_sha256" in command
+    assert "runtime_sha256" in command
+    assert handoff["env"]["ATTESTATION_ID"] == (
+        "${{ steps.provenance.outputs.attestation-id }}"
+    )
+
+    upload = next(
+        step for step in steps if step.get("name") == "Upload candidate handoff"
+    )
+    assert upload["uses"] == (
+        "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02"
+    )
+    assert upload["with"]["path"] == "publisher-image-candidate.json"
+    assert upload["with"]["if-no-files-found"] == "error"
+
+
 def test_workflow_validator_pin_supports_attestations() -> None:
     content = (ROOT / ".pre-commit-config.yaml").read_text(encoding="utf-8")
     assert 'rev: "0.30.0"' in content
