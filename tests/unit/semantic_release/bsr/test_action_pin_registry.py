@@ -638,6 +638,36 @@ def test_http_attestation_reader_uses_subject_digest_and_exact_bundle_id(
     assert digest == hashlib.sha256(raw_bundle).hexdigest()
 
 
+def test_http_attestation_reader_rejects_forged_bundle_after_crypto_verification(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    bundle = _provenance_bundle()
+    bundle_url = (
+        "https://tmaproduction.blob.core.windows.net/attestations/"
+        "123/2026/08/30/937309.json.sn?sv=fixture"
+    )
+    opener = _CapturingOpener(json.dumps(bundle).encode())
+    monkeypatch.setattr(
+        registry_module.urllib.request,
+        "build_opener",
+        lambda *_values: opener,
+    )
+    provider = _AttestationHTTPProvider(
+        [
+            {
+                "repository_id": 123,
+                "bundle_url": bundle_url,
+                "initiator": "user",
+                "bundle": None,
+            }
+        ]
+    )
+    provider._attestation_verifier = lambda *_args: False
+
+    with pytest.raises(RegistryError, match="attestation signature"):
+        provider.read_attestation(REPOSITORY, IMAGE_DIGEST, "937309")
+
+
 @pytest.mark.parametrize(
     "invalid_bundle",
     [
