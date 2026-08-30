@@ -137,6 +137,9 @@ _REPOSITORY_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 _TIMESTAMP_RE = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$")
 _TAG_RE = re.compile(r"^v[0-9]+\.[0-9]+\.[0-9]+(?:-(?:alpha|beta|rc)\.[0-9]+)?$")
 _IMAGE_DIGEST_RE = re.compile(r"^sha256:[0-9a-f]{64}$")
+_GHCR_PUBLISHER_PATH_RE = re.compile(
+    r"^[a-z0-9](?:[a-z0-9_.-]*[a-z0-9])?/[a-z0-9](?:[a-z0-9_.-]*[a-z0-9])?-publisher$"
+)
 
 
 class RegistryError(Exception):
@@ -1501,13 +1504,11 @@ class HttpRegistryProvider:
         return value
 
     def read_oci_manifest(self, image_ref: str, image_digest: str) -> str:
-        authority, separator, path = image_ref.partition("/")
-        if (
-            authority != "ghcr.io"
-            or not separator
-            or not path
-            or "ghcr.io/" in path
-        ):
+        prefix = "ghcr.io/"
+        if not image_ref.startswith(prefix):
+            raise RegistryError("provider image ref")
+        path = image_ref[len(prefix) :]
+        if _GHCR_PUBLISHER_PATH_RE.fullmatch(path) is None:
             raise RegistryError("provider image ref")
         _data, headers = self._request(
             f"https://ghcr.io/v2/{urllib.parse.quote(path, safe='/')}/manifests/{urllib.parse.quote(image_digest, safe=':')}",
