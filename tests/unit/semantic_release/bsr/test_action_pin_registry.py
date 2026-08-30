@@ -690,6 +690,28 @@ def test_http_attestation_reader_rejects_zero_or_competing_matches() -> None:
             provider.read_attestation(REPOSITORY, IMAGE_DIGEST, "937309")
 
 
+@pytest.mark.parametrize(
+    "image_ref",
+    [
+        "ghcr.io/owner/ghcr.io/repository",
+        "owner/ghcr.io/repository",
+        "https://ghcr.io/owner/repository",
+    ],
+)
+def test_http_provider_rejects_embedded_or_non_authority_ghcr_reference(
+    monkeypatch: pytest.MonkeyPatch, image_ref: str
+) -> None:
+    provider = registry_module.HttpRegistryProvider(timeout=1)
+    monkeypatch.setattr(
+        provider,
+        "_request",
+        lambda *_args, **_kwargs: pytest.fail("invalid image reference reached HTTP"),
+    )
+
+    with pytest.raises(RegistryError, match="provider image ref"):
+        provider.read_oci_manifest(image_ref, IMAGE_DIGEST)
+
+
 def test_http_provider_never_forwards_token_and_rejects_foreign_redirect(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

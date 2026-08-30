@@ -1501,9 +1501,14 @@ class HttpRegistryProvider:
         return value
 
     def read_oci_manifest(self, image_ref: str, image_digest: str) -> str:
-        if not image_ref.startswith("ghcr.io/"):
+        authority, separator, path = image_ref.partition("/")
+        if (
+            authority != "ghcr.io"
+            or not separator
+            or not path
+            or "ghcr.io/" in path
+        ):
             raise RegistryError("provider image ref")
-        path = image_ref[len("ghcr.io/") :]
         _data, headers = self._request(
             f"https://ghcr.io/v2/{urllib.parse.quote(path, safe='/')}/manifests/{urllib.parse.quote(image_digest, safe=':')}",
             accept="application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json",
