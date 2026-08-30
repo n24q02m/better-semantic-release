@@ -224,16 +224,102 @@ jobs:
             echo "remote image digest does not match the local subject digest"
             exit 1
           fi
-          printf 'subject_name=%s\n' "$REPOSITORY" >> "$GITHUB_OUTPUT"
-          printf 'subject_digest=%s\n' "$SUBJECT_DIGEST" >> "$GITHUB_OUTPUT"
-          printf 'repo_digest=%s\n' "$REPO_DIGEST" >> "$GITHUB_OUTPUT"
+          {
+            printf 'subject_name=%s\n' "$REPOSITORY"
+            printf 'subject_digest=%s\n' "$SUBJECT_DIGEST"
+            printf 'repo_digest=%s\n' "$REPO_DIGEST"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Attest candidate image provenance
+        id: provenance
         uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2.2.0
         with:
           subject-name: ${{ steps.image.outputs.subject_name }}
           subject-digest: ${{ steps.image.outputs.subject_digest }}
           push-to-registry: true
+
+      - name: Verify provenance and write candidate handoff
+        id: handoff
+        env:
+          ATTESTATION_BUNDLE: ${{ steps.provenance.outputs.bundle-path }}
+          ATTESTATION_ID: ${{ steps.provenance.outputs.attestation-id }}
+          ATTESTATION_URL: ${{ steps.provenance.outputs.attestation-url }}
+          GH_TOKEN: ${{ github.token }}
+          REPO_DIGEST: ${{ steps.image.outputs.repo_digest }}
+          SUBJECT_DIGEST: ${{ steps.image.outputs.subject_digest }}
+          SUBJECT_NAME: ${{ steps.image.outputs.subject_name }}
+        run: |
+          set -euo pipefail
+          case "$ATTESTATION_ID" in
+            ''|*[!0-9]*) echo "attestation id is not numeric"; exit 1 ;;
+          esac
+          case "$SUBJECT_DIGEST" in
+            sha256:[0-9a-f][0-9a-f]*) ;;
+            *) echo "subject digest is not sha256"; exit 1 ;;
+          esac
+          test "$REPO_DIGEST" = "$SUBJECT_NAME@$SUBJECT_DIGEST"
+          gh attestation verify "oci://$REPO_DIGEST" \
+            --repo "$GITHUB_REPOSITORY"
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          def sha256(path: Path) -> str:
+              return hashlib.sha256(path.read_bytes()).hexdigest()
+
+          bundle_path = Path(os.environ["ATTESTATION_BUNDLE"])
+          if not bundle_path.is_file() or bundle_path.stat().st_size > 16 * 1024 * 1024:
+              raise SystemExit("attestation bundle is missing or oversized")
+          bundle = json.loads(bundle_path.read_text(encoding="utf-8"))
+          canonical_bundle = json.dumps(
+              bundle,
+              ensure_ascii=False,
+              sort_keys=True,
+              separators=(",", ":"),
+              allow_nan=False,
+          ).encode("utf-8")
+          handoff = {
+              "schema_version": "bsr-publisher-candidate/v1",
+              "repository": os.environ["GITHUB_REPOSITORY"],
+              "source_commit": os.environ["GITHUB_SHA"],
+              "workflow_run_id": int(os.environ["GITHUB_RUN_ID"]),
+              "workflow_run_attempt": int(os.environ["GITHUB_RUN_ATTEMPT"]),
+              "image_ref": os.environ["SUBJECT_NAME"],
+              "image_digest": os.environ["SUBJECT_DIGEST"],
+              "repo_digest": os.environ["REPO_DIGEST"],
+              "provenance_attestation_id": os.environ["ATTESTATION_ID"],
+              "provenance_attestation_url": os.environ["ATTESTATION_URL"],
+              "provenance_digest": hashlib.sha256(canonical_bundle).hexdigest(),
+              "dockerfile_sha256": sha256(Path("publish-action/Dockerfile")),
+              "runtime_sha256": sha256(
+                  Path("src/semantic_release/bsr/release_publisher.py")
+              ),
+          }
+          encoded = (
+              json.dumps(
+                  handoff,
+                  ensure_ascii=False,
+                  sort_keys=True,
+                  separators=(",", ":"),
+                  allow_nan=False,
+              )
+              + "\n"
+          ).encode("utf-8")
+          Path("publisher-image-candidate.json").write_bytes(encoded)
+          with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as output:
+              output.write(f"metadata_sha256={hashlib.sha256(encoded).hexdigest()}\n")
+          PY
+
+      - name: Upload candidate handoff
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: publisher-image-candidate-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: publisher-image-candidate.json
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
 # No downstream notification is dispatched from here, and that is a decision
 # rather than an omission -- worth writing down, because a shared library cutting
 # a stable release is exactly the case where you would expect one.
