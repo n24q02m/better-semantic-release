@@ -654,8 +654,10 @@ def test_http_attestation_reader_uses_subject_digest_and_exact_bundle_id(
     assert verified_bundles == [(raw_bundle, REPOSITORY, IMAGE_DIGEST)]
 
 
+@pytest.mark.parametrize("verifier_result", [False, 0, "unexpected"])
 def test_http_attestation_reader_rejects_forged_bundle_after_crypto_verification(
     monkeypatch: pytest.MonkeyPatch,
+    verifier_result: Any,
 ) -> None:
     bundle = _provenance_bundle()
     bundle_url = (
@@ -677,7 +679,7 @@ def test_http_attestation_reader_rejects_forged_bundle_after_crypto_verification
                 "bundle": None,
             }
         ],
-        attestation_verifier=lambda *_args: False,
+        attestation_verifier=lambda *_args: verifier_result,
     )
 
     with pytest.raises(RegistryError, match="attestation signature"):

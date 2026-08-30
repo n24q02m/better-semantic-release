@@ -1640,7 +1640,7 @@ class HttpRegistryProvider:
             raise
         except Exception:  # noqa: BLE001 - verifier failures are normalized.
             raise RegistryError("provider attestation signature") from None
-        if verified is False:
+        if verified is not None and verified is not True:
             raise RegistryError("provider attestation signature")
         return hashlib.sha256(_canonical_json(bundle)).hexdigest()
 
