@@ -745,7 +745,7 @@ jobs:
               json.dumps(
                   manifest,
                   ensure_ascii=False,
-                  sort_keys=True,
+                  sort_keys=False,
                   separators=(",", ":"),
                   allow_nan=False,
               )

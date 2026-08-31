@@ -159,6 +159,19 @@ def test_g1_job_signs_publishes_and_fresh_loads_create_once_pair() -> None:
     assert upload["with"]["if-no-files-found"] == "error"
 
 
+def test_g1_release_manifest_preserves_publisher_schema_key_order() -> None:
+    document = _load_workflow()
+    registry = document["jobs"]["registry-g1"]
+    manifest_step = next(
+        step
+        for step in registry["steps"]
+        if step.get("name") == "Build exact create-once release manifest"
+    )
+    command = manifest_step["run"]
+    assert "sort_keys=False" in command
+    assert "sort_keys=True" not in command
+
+
 def test_candidate_job_contains_only_image_bootstrap_mutations() -> None:
     document = _load_workflow()
     image = document["jobs"]["publisher-image"]
