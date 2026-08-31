@@ -95,6 +95,7 @@ def test_final_publisher_action_pins_verified_candidate_digest() -> None:
         f"{PUBLISHER_DIGEST}"
     )
     assert action["runs"]["args"] == ["--manifest", "${{ inputs.manifest }}"]
+    assert action["runs"]["env"] == {"INPUT_TOKEN": "${{ inputs.token }}"}
 
 
 def test_registry_action_is_a_self_contained_remote_loader() -> None:
