@@ -7,6 +7,11 @@ import yaml
 ROOT = Path(__file__).parents[1]
 WORKFLOW = ROOT / ".github" / "workflows" / "cd.yml"
 DOCKERFILE = ROOT / "publish-action" / "Dockerfile"
+PUBLISH_ACTION = ROOT / "publish-action" / "action.yml"
+REGISTRY_ACTION = ROOT / "registry-action" / "action.yml"
+PUBLISHER_DIGEST = (
+    "sha256:6be3e4d7b610f0c946f0fd237cf7d74c70a1f2be343dd038d731b8fe405151ab"
+)
 
 
 def _load_workflow() -> dict[str, object]:
@@ -17,13 +22,16 @@ def _load_workflow() -> dict[str, object]:
     )
 
 
-def test_manual_cd_has_mutually_exclusive_release_and_image_operations() -> None:
+def test_manual_cd_operations_are_mutually_exclusive_and_gated() -> None:
     document = _load_workflow()
 
     dispatch = document["on"]["workflow_dispatch"]
     operation = dispatch["inputs"]["operation"]
     assert operation["default"] == "release"
-    assert operation["options"] == ["release", "publisher-image"]
+    assert operation["options"] == ["release", "publisher-image", "registry-g1"]
+    for input_name in ("registry_tag", "candidate_run_id", "candidate_run_attempt"):
+        assert dispatch["inputs"][input_name]["required"] == "false"
+
     assert document["jobs"]["release"]["if"] == "inputs.operation == 'release'"
     image = document["jobs"]["publisher-image"]
     assert image["if"] == (
@@ -45,6 +53,19 @@ def test_manual_cd_has_mutually_exclusive_release_and_image_operations() -> None
         "docker/setup-buildx-action@" "8d2750c68a42422c14e847fe6c8ac0403b4cbd6f"
     )
 
+    registry = document["jobs"]["registry-g1"]
+    assert registry["if"] == (
+        "inputs.operation == 'registry-g1' && " "github.ref == 'refs/heads/main'"
+    )
+    assert registry["environment"]["name"] == "beta-publish"
+    assert registry["permissions"] == {
+        "actions": "read",
+        "attestations": "read",
+        "contents": "write",
+        "id-token": "write",
+        "packages": "read",
+    }
+
 
 def test_release_route_has_no_image_permissions_or_image_steps() -> None:
     document = _load_workflow()
@@ -57,12 +78,68 @@ def test_release_route_has_no_image_permissions_or_image_steps() -> None:
         or "python-semantic-release/publish-action" in str(step.get("uses", ""))
         for step in release["steps"]
     )
-    workflow_text = WORKFLOW.read_text(encoding="utf-8").lower()
-    assert "gh release" not in workflow_text
+    release_text = "\n".join(
+        f"{step.get('name', '')} {step.get('run', '')} {step.get('uses', '')}"
+        for step in release["steps"]
+    ).lower()
+    assert "gh release" not in release_text
 
 
-def test_publisher_runtime_is_not_the_final_action_yet() -> None:
-    assert not (ROOT / "publish-action" / "action.yml").exists()
+def test_final_publisher_action_pins_verified_candidate_digest() -> None:
+    action = yaml.safe_load(PUBLISH_ACTION.read_text(encoding="utf-8"))
+    assert action["inputs"]["manifest"]["required"] is True
+    assert action["inputs"]["token"]["required"] is True
+    assert action["runs"]["using"] == "docker"
+    assert action["runs"]["image"] == (
+        "docker://ghcr.io/n24q02m/better-semantic-release-publisher@"
+        f"{PUBLISHER_DIGEST}"
+    )
+    assert action["runs"]["args"] == ["--manifest", "${{ inputs.manifest }}"]
+
+
+def test_registry_action_is_a_self_contained_remote_loader() -> None:
+    action = yaml.safe_load(REGISTRY_ACTION.read_text(encoding="utf-8"))
+    assert action["runs"]["using"] == "composite"
+    assert (
+        action["outputs"]["registry"]["value"] == "${{ steps.load.outputs.registry }}"
+    )
+    installer, loader = action["runs"]["steps"]
+    assert installer["uses"] == (
+        "sigstore/cosign-installer@" "6f9f17788090df1f26f669e9d70d6ae9567deba6"
+    )
+    assert loader["id"] == "load"
+    command = loader["run"]
+    assert "scripts/action_pin_registry.py" in command
+    assert " load " in command
+    assert "--expected" in command
+    assert "--repository" in command
+
+
+def test_g1_job_signs_publishes_and_fresh_loads_create_once_pair() -> None:
+    document = _load_workflow()
+    registry = document["jobs"]["registry-g1"]
+    text = "\n".join(
+        f"{step.get('name', '')} {step.get('run', '')} {step.get('uses', '')}"
+        for step in registry["steps"]
+    ).lower()
+    assert "gh run download" in text
+    assert "scripts/action_pin_registry.py generate" in text
+    assert "cosign sign-blob" in text
+    assert "cosign verify-blob" in text
+    assert "tampered" in text
+    assert "./publish-action" in text
+    assert "./registry-action" in text
+    assert "g1-release-manifest.json" in text
+    assert "g1-loader-result.json" in text
+    upload = next(
+        step
+        for step in registry["steps"]
+        if step.get("name") == "Upload signed G1 evidence"
+    )
+    assert upload["uses"] == (
+        "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02"
+    )
+    assert upload["with"]["if-no-files-found"] == "error"
 
 
 def test_candidate_job_contains_only_image_bootstrap_mutations() -> None:
