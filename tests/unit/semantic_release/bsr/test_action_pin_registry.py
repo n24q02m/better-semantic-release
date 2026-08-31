@@ -19,6 +19,7 @@ from semantic_release.bsr.action_pin_registry import (
     RegistryError,
     build_record,
     canonical_record_bytes,
+    load_remote_chain_head,
     load_remote_registry,
     select_latest,
     verify_record,
@@ -368,6 +369,63 @@ class _Provider:
         return "8" * 64
 
 
+def test_chain_head_verifies_latest_signed_record_without_fresh_reads() -> None:
+    record = build_record(_base_record())
+    raw = canonical_record_bytes(record)
+    provider = _Provider(raw)
+    verified: list[tuple[bytes, bytes]] = []
+
+    head = load_remote_chain_head(
+        provider=provider,
+        signature_verifier=lambda payload, bundle: verified.append((payload, bundle)),
+        repository=REPOSITORY,
+        now=NOW,
+    )
+
+    assert head == record
+    assert provider.release_pages == [1, 2]
+    assert verified == [(raw, b"bundle")]
+
+
+def test_chain_head_returns_none_only_for_clean_absence(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    record = build_record(_base_record())
+    provider = _Provider(canonical_record_bytes(record))
+    monkeypatch.setattr(provider, "list_releases", lambda *_args, **_kwargs: [])
+
+    assert (
+        load_remote_chain_head(
+            provider=provider,
+            signature_verifier=lambda _payload, _bundle: None,
+            repository=REPOSITORY,
+            now=NOW,
+        )
+        is None
+    )
+
+
+def test_chain_head_excludes_current_target_for_idempotent_retry() -> None:
+    record = build_record(_base_record())
+    provider = _Provider(canonical_record_bytes(record))
+    verified: list[tuple[bytes, bytes]] = []
+
+    assert (
+        load_remote_chain_head(
+            provider=provider,
+            signature_verifier=lambda payload, bundle: verified.append(
+                (payload, bundle)
+            ),
+            repository=REPOSITORY,
+            excluded_tag="v1.6.0-beta.1",
+            now=NOW,
+        )
+        is None
+    )
+    assert provider.release_pages == [1, 2]
+    assert verified == []
+
+
 def test_loader_fresh_reads_all_bound_surfaces_and_emits_stable_hash() -> None:
     record = build_record(_base_record())
     raw = canonical_record_bytes(record)
@@ -452,6 +510,63 @@ def test_cli_generates_and_verifies_canonical_record(tmp_path: Path) -> None:
     assert verified.read_bytes() == generated.read_bytes()
 
 
+def test_cli_generates_executable_successor_from_signed_chain_head(
+    tmp_path: Path,
+) -> None:
+    previous = build_record(_base_record())
+    successor_source = json.loads(json.dumps(_base_record()))
+    successor_head = "c" * 40
+    successor_source["generation"] = 999
+    successor_source["previous"] = {"invalid": "placeholder"}
+    successor_source["head_oid"] = successor_head
+    for action_name in ("version_action", "publish_action", "registry_action"):
+        successor_source[action_name]["sha"] = successor_head
+    successor_source["publisher"]["image_source_commit"] = successor_head
+    successor_source["advertisement"].update(
+        {
+            "tag": "v1.6.0-beta.2",
+            "target_sha": successor_head,
+            "release_url": (
+                "https://github.com/n24q02m/better-semantic-release/"
+                "releases/tag/v1.6.0-beta.2"
+            ),
+        }
+    )
+    successor_source["workflow"]["release_commit"] = successor_head
+
+    source_path = tmp_path / "successor-source.json"
+    previous_path = tmp_path / "previous-registry.json"
+    generated_path = tmp_path / "successor-registry.json"
+    source_path.write_text(json.dumps(successor_source), encoding="utf-8")
+    previous_path.write_bytes(canonical_record_bytes(previous))
+
+    assert (
+        registry_module.main(
+            [
+                "generate",
+                "--input",
+                str(source_path),
+                "--previous",
+                str(previous_path),
+                "--output",
+                str(generated_path),
+            ]
+        )
+        == 0
+    )
+    successor = verify_record(generated_path.read_bytes(), now=NOW)
+    assert successor["generation"] == 2
+    assert successor["previous"] == {
+        "generation": 1,
+        "head_oid": previous["head_oid"],
+        "record_hash": previous["record_hash"],
+        "result_oid": previous["result_oid"],
+        "result_hash": previous["result_hash"],
+        "advertisement_tag": previous["advertisement"]["tag"],
+    }
+    assert select_latest([previous, successor], now=NOW) == successor
+
+
 def test_cli_redacts_registry_errors(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -531,7 +646,17 @@ def _provenance_bundle(subject_digest: str = IMAGE_DIGEST) -> dict[str, Any]:
     ).encode()
     return {
         "mediaType": "application/vnd.dev.sigstore.bundle.v0.3+json",
-        "verificationMaterial": {},
+        "verificationMaterial": {
+            "tlogEntries": [
+                {
+                    "inclusionProof": {
+                        "checkpoint": {
+                            "envelope": "rekor.sigstore.dev\n1\nfixture-root-hash\n"
+                        }
+                    }
+                }
+            ]
+        },
         "dsseEnvelope": {
             "payload": base64.b64encode(payload).decode(),
             "payloadType": "application/vnd.in-toto+json",
@@ -650,7 +775,11 @@ def test_http_attestation_reader_uses_subject_digest_and_exact_bundle_id(
             Message(),
             bundle_url,
         )
-    assert digest == hashlib.sha256(raw_bundle).hexdigest()
+    statement = json.loads(
+        base64.b64decode(bundle["dsseEnvelope"]["payload"], validate=True)
+    )
+    expected = json.dumps(statement, sort_keys=True, separators=(",", ":")).encode()
+    assert digest == hashlib.sha256(expected).hexdigest()
     assert verified_bundles == [(raw_bundle, REPOSITORY, IMAGE_DIGEST)]
 
 
@@ -727,7 +856,7 @@ def test_gh_attestation_verifier_enforces_identity_and_source_ref(
     ]
     assert command[command.index("--repo") + 1] == REPOSITORY
     assert command[command.index("--cert-identity") + 1] == (
-        f"https://github.com/{REPOSITORY}/.github/workflows/" "cd.yml@refs/heads/main"
+        f"https://github.com/{REPOSITORY}/.github/workflows/cd.yml@refs/heads/main"
     )
     assert command[command.index("--cert-oidc-issuer") + 1] == (
         "https://token.actions.githubusercontent.com"
@@ -812,6 +941,101 @@ def test_http_attestation_reader_rejects_zero_or_competing_matches() -> None:
             provider.read_attestation(REPOSITORY, IMAGE_DIGEST, "937309")
 
 
+def test_http_attestation_reader_rejects_non_lf_checkpoint_controls(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    bundle = _provenance_bundle()
+    bundle["verificationMaterial"]["tlogEntries"][0]["inclusionProof"]["checkpoint"][
+        "envelope"
+    ] = "rekor.sigstore.dev\r\n1\nfixture-root-hash\n"
+    bundle_url = (
+        "https://tmaproduction.blob.core.windows.net/attestations/"
+        "123/2026/08/30/937309.json.sn?sv=fixture"
+    )
+    opener = _CapturingOpener(json.dumps(bundle).encode())
+    monkeypatch.setattr(
+        registry_module.urllib.request,
+        "build_opener",
+        lambda *_values: opener,
+    )
+    provider = _AttestationHTTPProvider(
+        [
+            {
+                "repository_id": 123,
+                "bundle_url": bundle_url,
+                "initiator": "user",
+                "bundle": None,
+            }
+        ],
+        attestation_verifier=lambda *_args: pytest.fail(
+            "invalid checkpoint reached verifier"
+        ),
+    )
+
+    with pytest.raises(RegistryError, match="control character"):
+        provider.read_attestation(REPOSITORY, IMAGE_DIGEST, "937309")
+
+
+def test_http_provider_exchanges_scoped_ghcr_token_before_manifest_read(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = registry_module.HttpRegistryProvider(
+        token="github-token",
+        timeout=1,
+    )
+    requests: list[tuple[str, str, str | None, bool]] = []
+
+    def fake_request(
+        url: str,
+        *,
+        accept: str = "application/json",
+        bearer_token: str | None = None,
+        include_github_token: bool = True,
+    ) -> tuple[bytes, Message]:
+        requests.append((url, accept, bearer_token, include_github_token))
+        headers = Message()
+        if url.startswith("https://ghcr.io/token?"):
+            return b'{"token":"ghcr-pull-token"}', headers
+        headers["docker-content-digest"] = IMAGE_DIGEST
+        return b"{}", headers
+
+    monkeypatch.setattr(provider, "_request", fake_request)
+
+    assert (
+        provider.read_oci_manifest(
+            "ghcr.io/n24q02m/better-semantic-release-publisher",
+            IMAGE_DIGEST,
+        )
+        == IMAGE_DIGEST
+    )
+    token_url = (
+        "https://ghcr.io/token?service=ghcr.io&"
+        "scope=repository%3An24q02m%2Fbetter-semantic-release-publisher%3Apull"
+    )
+    manifest_url = (
+        "https://ghcr.io/v2/n24q02m/better-semantic-release-publisher/"
+        f"manifests/{IMAGE_DIGEST}"
+    )
+    manifest_accept = (
+        "application/vnd.oci.image.manifest.v1+json, "
+        "application/vnd.docker.distribution.manifest.v2+json"
+    )
+    assert requests == [
+        (
+            token_url,
+            "application/json",
+            None,
+            False,
+        ),
+        (
+            manifest_url,
+            manifest_accept,
+            "ghcr-pull-token",
+            False,
+        ),
+    ]
+
+
 @pytest.mark.parametrize(
     "image_ref",
     [
@@ -832,6 +1056,31 @@ def test_http_provider_rejects_embedded_or_non_authority_ghcr_reference(
 
     with pytest.raises(RegistryError, match="provider image ref"):
         provider.read_oci_manifest(image_ref, IMAGE_DIGEST)
+
+
+def test_http_provider_omits_github_token_for_anonymous_exchange(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    opener = _CapturingOpener(b'{"token":"ghcr-pull-token"}')
+    monkeypatch.setattr(
+        registry_module.urllib.request,
+        "build_opener",
+        lambda *_values: opener,
+    )
+    provider = registry_module.HttpRegistryProvider(
+        token="github-token",
+        timeout=1,
+    )
+
+    provider._json(
+        "https://ghcr.io/token?service=ghcr.io&scope=repository%3Afixture%3Apull",
+        include_github_token=False,
+    )
+
+    assert len(opener.requests) == 1
+    request = opener.requests[0]
+    assert "Authorization" not in request.headers
+    assert "Authorization" not in request.unredirected_hdrs
 
 
 def test_http_provider_never_forwards_token_and_rejects_foreign_redirect(

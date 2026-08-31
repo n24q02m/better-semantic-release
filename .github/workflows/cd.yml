@@ -303,6 +303,7 @@ jobs:
           gh attestation verify "oci://$REPO_DIGEST" \
             --repo "$GITHUB_REPOSITORY"
           python - <<'PY'
+          import base64
           import hashlib
           import json
           import os
@@ -315,8 +316,29 @@ jobs:
           if not bundle_path.is_file() or bundle_path.stat().st_size > 16 * 1024 * 1024:
               raise SystemExit("attestation bundle is missing or oversized")
           bundle = json.loads(bundle_path.read_text(encoding="utf-8"))
-          canonical_bundle = json.dumps(
-              bundle,
+          envelope = bundle.get("dsseEnvelope") if isinstance(bundle, dict) else None
+          encoded_payload = (
+              envelope.get("payload") if isinstance(envelope, dict) else None
+          )
+          if not isinstance(encoded_payload, str):
+              raise SystemExit("attestation payload is missing")
+          statement = json.loads(
+              base64.b64decode(encoded_payload, validate=True).decode("utf-8")
+          )
+          subjects = statement.get("subject") if isinstance(statement, dict) else None
+          if (
+              statement.get("_type") != "https://in-toto.io/Statement/v1"
+              or statement.get("predicateType") != "https://slsa.dev/provenance/v1"
+              or not isinstance(subjects, list)
+              or len(subjects) != 1
+              or not isinstance(subjects[0], dict)
+              or subjects[0].get("name") != os.environ["SUBJECT_NAME"]
+              or subjects[0].get("digest")
+              != {"sha256": os.environ["SUBJECT_DIGEST"].removeprefix("sha256:")}
+          ):
+              raise SystemExit("attestation subject is not the publisher image")
+          canonical_statement = json.dumps(
+              statement,
               ensure_ascii=False,
               sort_keys=True,
               separators=(",", ":"),
@@ -333,7 +355,7 @@ jobs:
               "repo_digest": os.environ["REPO_DIGEST"],
               "provenance_attestation_id": os.environ["ATTESTATION_ID"],
               "provenance_attestation_url": os.environ["ATTESTATION_URL"],
-              "provenance_digest": hashlib.sha256(canonical_bundle).hexdigest(),
+              "provenance_digest": hashlib.sha256(canonical_statement).hexdigest(),
               "dockerfile_sha256": sha256(Path("publish-action/Dockerfile")),
               "runtime_sha256": sha256(
                   Path("src/semantic_release/bsr/release_publisher.py")
@@ -409,6 +431,22 @@ jobs:
             --name "$ARTIFACT_NAME" \
             --dir candidate
           test -s candidate/publisher-image-candidate.json
+
+      - name: Install cosign for registry signing
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v3.10.1
+
+      - name: Resolve signed registry chain head
+        env:
+          CERTIFICATE_IDENTITY: https://github.com/${{ github.repository }}/.github/workflows/cd.yml@refs/heads/main
+          GITHUB_TOKEN: ${{ github.token }}
+          REGISTRY_TAG: ${{ inputs.registry_tag }}
+        run: |
+          set -euo pipefail
+          python3 -I -S scripts/action_pin_registry.py head \
+            --repository "$GITHUB_REPOSITORY" \
+            --identity "$CERTIFICATE_IDENTITY" \
+            --exclude-tag "$REGISTRY_TAG" \
+            --output previous-registry.json
 
       - name: Download release assets and build canonical G1 record
         env:
@@ -539,6 +577,7 @@ jobs:
           ).replace(tzinfo=datetime.timezone.utc)
           expires_at = issued_at + datetime.timedelta(days=30)
 
+
           workflow_path = ".github/workflows/cd.yml"
           workflow_bytes = Path(workflow_path).read_bytes()
           source = {
@@ -606,13 +645,12 @@ jobs:
           PY
           python3 -I -S scripts/action_pin_registry.py generate \
             --input g1-registry-source.json \
+            --previous previous-registry.json \
             --output generated-registry.json
           python3 -I -S scripts/action_pin_registry.py verify \
             --input generated-registry.json \
             --output /dev/null
 
-      - name: Install cosign for registry signing
-        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v3.10.1
 
       - name: Select or create the exact signed G1 pair
         env:
@@ -788,9 +826,10 @@ jobs:
           case "$REUSED_COUNT" in ''|*[!0-9]*) exit 1 ;; esac
           test "$((UPLOADED_COUNT + REUSED_COUNT))" -eq 4
           printf '%s\n' "$LOADED_REGISTRY" > g1-loader-result.json
-          jq -e \
-            '.generation == 1 and .phase == "G1" and .channel == "beta"' \
-            g1-loader-result.json
+          jq -e -s \
+            '.[0].generation == .[1].generation and
+             .[0].phase == "G1" and .[0].channel == "beta"' \
+            g1-loader-result.json generated-registry.json
           RECORD_SHA256="$(sha256sum generated-registry.json | cut -d' ' -f1)"
           SIGNATURE_SHA256="$(
             sha256sum release-assets/bsr-action-registry.sigstore.json |

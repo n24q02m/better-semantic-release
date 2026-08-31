@@ -208,20 +208,34 @@ def _walk_for_controls(value: Any) -> None:
             _walk_for_controls(child)
 
 
-def _canonical_json(value: Any) -> bytes:
-    try:
-        return json.dumps(
-            value,
-            ensure_ascii=False,
-            sort_keys=True,
-            separators=(",", ":"),
-            allow_nan=False,
-        ).encode("utf-8")
-    except (TypeError, ValueError, UnicodeEncodeError):
-        raise RegistryError("record canonical json") from None
+def _walk_for_attestation_controls(
+    value: Any,
+    path: tuple[str | int, ...] = (),
+) -> None:
+    if isinstance(value, str):
+        controls = {ord(char) for char in value if ord(char) < 0x20}
+        checkpoint_envelope = (
+            len(path) == 6
+            and path[:2] == ("verificationMaterial", "tlogEntries")
+            and isinstance(path[2], int)
+            and path[3:] == ("inclusionProof", "checkpoint", "envelope")
+        )
+        if controls and (not checkpoint_envelope or controls - {0x0A}):
+            raise RegistryError("record control character")
+        return
+    if isinstance(value, Mapping):
+        for key, child in value.items():
+            if not isinstance(key, str):
+                raise RegistryError("record key")
+            _walk_for_controls(key)
+            _walk_for_attestation_controls(child, (*path, key))
+        return
+    if isinstance(value, Sequence) and not isinstance(value, (bytes, bytearray, str)):
+        for index, child in enumerate(value):
+            _walk_for_attestation_controls(child, (*path, index))
 
 
-def _parse_json(raw: bytes, *, max_bytes: int = _MAX_RECORD_BYTES) -> Mapping[str, Any]:
+def _decode_json(raw: bytes, *, max_bytes: int) -> Mapping[str, Any]:
     if not isinstance(raw, bytes) or len(raw) > max_bytes:
         raise RegistryError("record size")
     try:
@@ -240,7 +254,31 @@ def _parse_json(raw: bytes, *, max_bytes: int = _MAX_RECORD_BYTES) -> Mapping[st
         raise RegistryError("record json") from None
     if not isinstance(value, Mapping):
         raise RegistryError("record object")
+    return value
+
+
+def _canonical_json(value: Any) -> bytes:
+    try:
+        return json.dumps(
+            value,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+            allow_nan=False,
+        ).encode("utf-8")
+    except (TypeError, ValueError, UnicodeEncodeError):
+        raise RegistryError("record canonical json") from None
+
+
+def _parse_json(raw: bytes, *, max_bytes: int = _MAX_RECORD_BYTES) -> Mapping[str, Any]:
+    value = _decode_json(raw, max_bytes=max_bytes)
     _walk_for_controls(value)
+    return value
+
+
+def _parse_attestation_json(raw: bytes) -> Mapping[str, Any]:
+    value = _decode_json(raw, max_bytes=_MAX_ASSET_BYTES)
+    _walk_for_attestation_controls(value)
     return value
 
 
@@ -633,6 +671,30 @@ def _previous_summary(record: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
+def build_chained_record(
+    source: Mapping[str, Any],
+    previous: Mapping[str, Any] | bytes | None,
+    *,
+    now: _datetime.datetime | None = None,
+) -> dict[str, Any]:
+    """Build the initial record or the sole successor of a verified chain head."""
+    current = copy.deepcopy(dict(source))
+    if previous is None:
+        current["generation"] = 1
+        current["previous"] = None
+        return build_record(current)
+    checked_previous = (
+        verify_record(previous, now=now)
+        if isinstance(previous, bytes)
+        else verify_record(canonical_record_bytes(previous), now=now)
+    )
+    if checked_previous["phase"] == "G2" and current.get("phase") == "G1":
+        raise RegistryError("phase chain")
+    current["generation"] = checked_previous["generation"] + 1
+    current["previous"] = _previous_summary(checked_previous)
+    return build_record(current)
+
+
 def _bounded_record_list(
     records: Iterable[Mapping[str, Any] | bytes],
 ) -> list[Mapping[str, Any] | bytes]:
@@ -1023,29 +1085,66 @@ def _registry_candidate(
     return candidate
 
 
+def _collect_remote_candidates(
+    provider: RegistryProvider,
+    signature_verifier: SignatureVerifier,
+    repository: str,
+    *,
+    excluded_tag: str | None = None,
+) -> list[dict[str, Any]]:
+    seen_release_ids: set[int] = set()
+    candidates: list[dict[str, Any]] = []
+    for release in _bounded_pages(provider, "list_releases", repository):
+        if excluded_tag is not None and release.get("tag_name") == excluded_tag:
+            continue
+        candidate = _registry_candidate(
+            provider=provider,
+            signature_verifier=signature_verifier,
+            repository=repository,
+            release=release,
+            seen_release_ids=seen_release_ids,
+        )
+        if candidate is not None:
+            candidates.append(candidate)
+    return candidates
+
+
 def _remote_candidates(
     provider: RegistryProvider,
     signature_verifier: SignatureVerifier,
     repository: str,
 ) -> list[dict[str, Any]]:
-    seen_release_ids: set[int] = set()
-    candidates = [
-        candidate
-        for release in _bounded_pages(provider, "list_releases", repository)
-        if (
-            candidate := _registry_candidate(
-                provider=provider,
-                signature_verifier=signature_verifier,
-                repository=repository,
-                release=release,
-                seen_release_ids=seen_release_ids,
-            )
-        )
-        is not None
-    ]
+    candidates = _collect_remote_candidates(
+        provider,
+        signature_verifier,
+        repository,
+    )
     if not candidates:
         raise RegistryError("registry absent")
     return candidates
+
+
+def load_remote_chain_head(
+    *,
+    provider: RegistryProvider,
+    signature_verifier: SignatureVerifier,
+    repository: str,
+    excluded_tag: str | None = None,
+    now: _datetime.datetime | None = None,
+) -> dict[str, Any] | None:
+    """Verify the remote signed chain and return its latest record, if present."""
+    repository = _repository(repository, "repository")
+    if excluded_tag is not None:
+        excluded_tag = _validate_tag(excluded_tag)
+    if not callable(signature_verifier):
+        raise RegistryError("signature verifier")
+    candidates = _collect_remote_candidates(
+        provider,
+        signature_verifier,
+        repository,
+        excluded_tag=excluded_tag,
+    )
+    return select_latest(candidates, now=now) if candidates else None
 
 
 def load_remote_registry(
@@ -1398,9 +1497,10 @@ def _validate_attested_subject(
 
 def _validate_attestation_bundle(
     bundle: Mapping[str, Any], subject_digest: str
-) -> None:
+) -> Mapping[str, Any]:
     statement = _decode_attestation_statement(bundle)
     _validate_attested_subject(statement, subject_digest)
+    return statement
 
 
 def verify_attestation_with_gh(
@@ -1485,7 +1585,12 @@ class HttpRegistryProvider:
         )
 
     def _request(
-        self, url: str, *, accept: str = "application/json"
+        self,
+        url: str,
+        *,
+        accept: str = "application/json",
+        bearer_token: str | None = None,
+        include_github_token: bool = True,
     ) -> tuple[bytes, Mapping[str, str]]:
         _validated_https_url(url, _github_redirect_host, "provider url")
         headers = {
@@ -1495,8 +1600,15 @@ class HttpRegistryProvider:
         request = urllib.request.Request(  # noqa: S310 - URL validated above.
             url, headers=headers, method="GET"
         )
-        if self._token:
-            request.add_unredirected_header("Authorization", f"Bearer {self._token}")
+        authorization = (
+            bearer_token
+            if bearer_token is not None
+            else self._token
+            if include_github_token
+            else None
+        )
+        if authorization:
+            request.add_unredirected_header("Authorization", f"Bearer {authorization}")
         return _open_bounded(
             urllib.request.build_opener(_SafeRedirectHandler()),
             request,
@@ -1505,8 +1617,11 @@ class HttpRegistryProvider:
             transport_error="provider transport",
         )
 
-    def _json(self, url: str) -> Any:
-        data, _headers = self._request(url)
+    def _json(self, url: str, *, include_github_token: bool = True) -> Any:
+        data, _headers = self._request(
+            url,
+            include_github_token=include_github_token,
+        )
         try:
             return json.loads(
                 data.decode("utf-8"),
@@ -1583,9 +1698,28 @@ class HttpRegistryProvider:
         path = image_ref[len(prefix) :]
         if _GHCR_PUBLISHER_PATH_RE.fullmatch(path) is None:
             raise RegistryError("provider image ref")
+        token_query = urllib.parse.urlencode(
+            {
+                "service": "ghcr.io",
+                "scope": f"repository:{path}:pull",
+            }
+        )
+        token_response = self._json(
+            f"https://ghcr.io/token?{token_query}",
+            include_github_token=False,
+        )
+        if not isinstance(token_response, Mapping):
+            raise RegistryError("provider registry token")
+        registry_token = _text(
+            token_response.get("token"),
+            "provider registry token",
+            max_length=16384,
+        )
         _data, headers = self._request(
             f"https://ghcr.io/v2/{urllib.parse.quote(path, safe='/')}/manifests/{urllib.parse.quote(image_digest, safe=':')}",
             accept="application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json",
+            bearer_token=registry_token,
+            include_github_token=False,
         )
         digest = headers.get("docker-content-digest")
         if digest is None:
@@ -1628,8 +1762,8 @@ class HttpRegistryProvider:
         bundle_url = _select_attestation_bundle_url(response, attestation_id)
         raw, headers = self._request_public_bundle(bundle_url)
         bundle_bytes = _attestation_json_bytes(raw, headers)
-        bundle = _parse_json(bundle_bytes, max_bytes=_MAX_ASSET_BYTES)
-        _validate_attestation_bundle(bundle, subject_digest)
+        bundle = _parse_attestation_json(bundle_bytes)
+        statement = _validate_attestation_bundle(bundle, subject_digest)
         try:
             verified = self._attestation_verifier(
                 bundle_bytes,
@@ -1642,7 +1776,7 @@ class HttpRegistryProvider:
             raise RegistryError("provider attestation signature") from None
         if verified is not None and verified is not True:
             raise RegistryError("provider attestation signature")
-        return hashlib.sha256(_canonical_json(bundle)).hexdigest()
+        return hashlib.sha256(_canonical_json(statement)).hexdigest()
 
 
 def verify_with_cosign(
@@ -1723,6 +1857,10 @@ def _parser() -> argparse.ArgumentParser:
     generate.add_argument(
         "--output", default="-", help="canonical output, or - for stdout"
     )
+    generate.add_argument(
+        "--previous",
+        help="verified previous record, or canonical JSON null for an initial record",
+    )
 
     verify = commands.add_parser("verify", help="verify canonical registry bytes")
     verify.add_argument("--input", default="-", help="record source, or - for stdin")
@@ -1730,6 +1868,17 @@ def _parser() -> argparse.ArgumentParser:
         "--output", default="-", help="canonical output, or - for stdout"
     )
     verify.add_argument("--now", help="verification time in UTC YYYY-MM-DDTHH:MM:SSZ")
+
+    head = commands.add_parser("head", help="read the remote signed chain head")
+    head.add_argument("--repository", required=True)
+    head.add_argument("--identity", required=True)
+    head.add_argument("--output", default="-", help="canonical output, or - for stdout")
+    head.add_argument("--exclude-tag")
+    head.add_argument("--token", default=None)
+    head.add_argument("--api-timeout", type=float, default=30.0)
+    head.add_argument("--cosign", default="cosign")
+    head.add_argument("--cosign-timeout", type=float, default=30.0)
+    head.add_argument("--now", help="verification time in UTC YYYY-MM-DDTHH:MM:SSZ")
 
     load = commands.add_parser("load", help="read and verify a remote registry")
     load.add_argument("--expected", required=True, help="expected tuple JSON")
@@ -1745,7 +1894,15 @@ def _parser() -> argparse.ArgumentParser:
 def _run_cli(arguments: argparse.Namespace) -> None:
     if arguments.command == "generate":
         source = _parse_json(_read_input(arguments.input))
-        _write_output(arguments.output, canonical_record_bytes(build_record(source)))
+        if arguments.previous is None:
+            record = build_record(source)
+        else:
+            previous_raw = _read_input(arguments.previous)
+            previous = (
+                None if previous_raw.strip() == b"null" else verify_record(previous_raw)
+            )
+            record = build_chained_record(source, previous)
+        _write_output(arguments.output, canonical_record_bytes(record))
         return
     if arguments.command == "verify":
         raw = _read_input(arguments.input)
@@ -1757,11 +1914,30 @@ def _run_cli(arguments: argparse.Namespace) -> None:
         if arguments.token is not None
         else os.environ.get("GITHUB_TOKEN")
     )
+    provider = HttpRegistryProvider(token=token, timeout=arguments.api_timeout)
+    if arguments.command == "head":
+        identity = _text(arguments.identity, "signature identity", max_length=4096)
+        head = load_remote_chain_head(
+            provider=provider,
+            signature_verifier=lambda payload, bundle: verify_with_cosign(
+                payload,
+                bundle,
+                identity=identity,
+                cosign_binary=arguments.cosign,
+                timeout=arguments.cosign_timeout,
+            ),
+            repository=arguments.repository,
+            excluded_tag=arguments.exclude_tag,
+            now=_cli_time(arguments.now),
+        )
+        encoded = b"null\n" if head is None else canonical_record_bytes(head)
+        _write_output(arguments.output, encoded)
+        return
     expected = verify_record(
         _read_input(arguments.expected),
         now=_cli_time(arguments.now),
     )
-    provider = HttpRegistryProvider(token=token, timeout=arguments.api_timeout)
+
     publisher = _mapping(expected["publisher"], _PUBLISHER_KEYS, "publisher")
     identity = cast(str, publisher["identity"])
     output = load_remote_registry(
