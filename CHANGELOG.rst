@@ -4,6 +4,33 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.6.0-beta.2:
+
+v1.6.0-beta.2 (2026-08-31)
+==========================
+
+✨ Features
+-----------
+
+* **bsr**: Publish signed G1 action registry (`PR#116`_, `117e0f8`_)
+
+🪲 Bug Fixes
+------------
+
+* **bsr**: Bind G1 candidate run tuple (`PR#116`_, `117e0f8`_)
+
+* **bsr**: Make publisher image builds reproducible (`PR#115`_, `a0b858d`_)
+
+* **bsr**: Pass publisher token into Docker action (`PR#117`_, `11f0191`_)
+
+.. _117e0f8: https://github.com/n24q02m/better-semantic-release/commit/117e0f86478412f24c0d10325cd107b2ee186709
+.. _11f0191: https://github.com/n24q02m/better-semantic-release/commit/11f01919bc6c67786bc0c1d30dde3d6e7167ecd6
+.. _a0b858d: https://github.com/n24q02m/better-semantic-release/commit/a0b858d962ffcac988fa6d0d572791abeeb30a12
+.. _PR#115: https://github.com/n24q02m/better-semantic-release/pull/115
+.. _PR#116: https://github.com/n24q02m/better-semantic-release/pull/116
+.. _PR#117: https://github.com/n24q02m/better-semantic-release/pull/117
+
+
 .. _changelog-v1.6.0-beta.1:
 
 v1.6.0-beta.1 (2026-08-31)
