@@ -604,10 +604,10 @@ jobs:
               encoding="utf-8",
           )
           PY
-          python3 scripts/action_pin_registry.py generate \
+          python3 -I -S scripts/action_pin_registry.py generate \
             --input g1-registry-source.json \
             --output generated-registry.json
-          python3 scripts/action_pin_registry.py verify \
+          python3 -I -S scripts/action_pin_registry.py verify \
             --input generated-registry.json \
             --output /dev/null
 
