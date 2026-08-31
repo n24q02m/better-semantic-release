@@ -4,6 +4,20 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.6.0-beta.3:
+
+v1.6.0-beta.3 (2026-08-31)
+==========================
+
+🪲 Bug Fixes
+------------
+
+* **bsr**: Isolate registry CLI from package imports (`PR#118`_, `6e7e60b`_)
+
+.. _6e7e60b: https://github.com/n24q02m/better-semantic-release/commit/6e7e60b1a564486c4dddb2a9748e58af1b12db17
+.. _PR#118: https://github.com/n24q02m/better-semantic-release/pull/118
+
+
 .. _changelog-v1.6.0-beta.2:
 
 v1.6.0-beta.2 (2026-08-31)
