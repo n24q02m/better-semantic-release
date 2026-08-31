@@ -961,3 +961,19 @@ kind = "other"
 owner = "bsr-g1-registry"
 reason = "Phase B self-contained composite action for signed remote registry loading."
 gates = ["other"]
+
+[[ownership]]
+path = "src/semantic_release/version/version.py"
+status = "M"
+kind = "python-source"
+owner = "bsr-core"
+reason = "Bolt persona optimized Version.__eq__ method for better performance by replacing all() generator evaluation with explicit boolean short-circuiting."
+gates = ["python-lint", "python-format", "python-type"]
+
+[[ownership]]
+path = ".jules/bolt.md"
+status = "A"
+kind = "other"
+owner = "bsr-estate-task2"
+reason = "Bolt persona journal entry for the Version.__eq__ method optimization learning."
+gates = ["other"]
