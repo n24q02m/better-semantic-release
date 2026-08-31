@@ -660,7 +660,11 @@ def test_http_attestation_reader_uses_subject_digest_and_exact_bundle_id(
             Message(),
             bundle_url,
         )
-    assert digest == hashlib.sha256(raw_bundle).hexdigest()
+    statement = json.loads(
+        base64.b64decode(bundle["dsseEnvelope"]["payload"], validate=True)
+    )
+    expected = json.dumps(statement, sort_keys=True, separators=(",", ":")).encode()
+    assert digest == hashlib.sha256(expected).hexdigest()
     assert verified_bundles == [(raw_bundle, REPOSITORY, IMAGE_DIGEST)]
 
 
@@ -864,15 +868,16 @@ def test_http_provider_exchanges_scoped_ghcr_token_before_manifest_read(
         token="github-token",
         timeout=1,
     )
-    requests: list[tuple[str, str, str | None]] = []
+    requests: list[tuple[str, str, str | None, bool]] = []
 
     def fake_request(
         url: str,
         *,
         accept: str = "application/json",
         bearer_token: str | None = None,
+        include_github_token: bool = True,
     ) -> tuple[bytes, Message]:
-        requests.append((url, accept, bearer_token))
+        requests.append((url, accept, bearer_token, include_github_token))
         headers = Message()
         if url.startswith("https://ghcr.io/token?"):
             return b'{"token":"ghcr-pull-token"}', headers
@@ -888,19 +893,30 @@ def test_http_provider_exchanges_scoped_ghcr_token_before_manifest_read(
         )
         == IMAGE_DIGEST
     )
+    token_url = (
+        "https://ghcr.io/token?service=ghcr.io&"
+        "scope=repository%3An24q02m%2Fbetter-semantic-release-publisher%3Apull"
+    )
+    manifest_url = (
+        "https://ghcr.io/v2/n24q02m/better-semantic-release-publisher/"
+        f"manifests/{IMAGE_DIGEST}"
+    )
+    manifest_accept = (
+        "application/vnd.oci.image.manifest.v1+json, "
+        "application/vnd.docker.distribution.manifest.v2+json"
+    )
     assert requests == [
         (
-            "https://ghcr.io/token?service=ghcr.io&"
-            "scope=repository%3An24q02m%2Fbetter-semantic-release-publisher%3Apull",
+            token_url,
             "application/json",
             None,
+            False,
         ),
         (
-            "https://ghcr.io/v2/n24q02m/better-semantic-release-publisher/"
-            f"manifests/{IMAGE_DIGEST}",
-            "application/vnd.oci.image.manifest.v1+json, "
-            "application/vnd.docker.distribution.manifest.v2+json",
+            manifest_url,
+            manifest_accept,
             "ghcr-pull-token",
+            False,
         ),
     ]
 
@@ -925,6 +941,31 @@ def test_http_provider_rejects_embedded_or_non_authority_ghcr_reference(
 
     with pytest.raises(RegistryError, match="provider image ref"):
         provider.read_oci_manifest(image_ref, IMAGE_DIGEST)
+
+
+def test_http_provider_omits_github_token_for_anonymous_exchange(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    opener = _CapturingOpener(b'{"token":"ghcr-pull-token"}')
+    monkeypatch.setattr(
+        registry_module.urllib.request,
+        "build_opener",
+        lambda *_values: opener,
+    )
+    provider = registry_module.HttpRegistryProvider(
+        token="github-token",
+        timeout=1,
+    )
+
+    provider._json(
+        "https://ghcr.io/token?service=ghcr.io&scope=repository%3Afixture%3Apull",
+        include_github_token=False,
+    )
+
+    assert len(opener.requests) == 1
+    request = opener.requests[0]
+    assert "Authorization" not in request.headers
+    assert "Authorization" not in request.unredirected_hdrs
 
 
 def test_http_provider_never_forwards_token_and_rejects_foreign_redirect(

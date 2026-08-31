@@ -38,7 +38,7 @@ def test_manual_cd_operations_are_mutually_exclusive_and_gated() -> None:
     assert document["jobs"]["release"]["if"] == "inputs.operation == 'release'"
     image = document["jobs"]["publisher-image"]
     assert image["if"] == (
-        "inputs.operation == 'publisher-image' && " "github.ref == 'refs/heads/main'"
+        "inputs.operation == 'publisher-image' && github.ref == 'refs/heads/main'"
     )
     assert image["permissions"] == {
         "contents": "read",
@@ -53,12 +53,12 @@ def test_manual_cd_operations_are_mutually_exclusive_and_gated() -> None:
         if step.get("name") == "Set up isolated BuildKit builder"
     )
     assert buildx["uses"] == (
-        "docker/setup-buildx-action@" "8d2750c68a42422c14e847fe6c8ac0403b4cbd6f"
+        "docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f"
     )
 
     registry = document["jobs"]["registry-g1"]
     assert registry["if"] == (
-        "inputs.operation == 'registry-g1' && " "github.ref == 'refs/heads/main'"
+        "inputs.operation == 'registry-g1' && github.ref == 'refs/heads/main'"
     )
     assert registry["environment"]["name"] == "beta-publish"
     assert registry["permissions"] == {
@@ -94,8 +94,7 @@ def test_final_publisher_action_pins_verified_candidate_digest() -> None:
     assert action["inputs"]["token"]["required"] is True
     assert action["runs"]["using"] == "docker"
     assert action["runs"]["image"] == (
-        "docker://ghcr.io/n24q02m/better-semantic-release-publisher@"
-        f"{PUBLISHER_DIGEST}"
+        f"docker://ghcr.io/n24q02m/better-semantic-release-publisher@{PUBLISHER_DIGEST}"
     )
     assert action["runs"]["args"] == ["--manifest", "${{ inputs.manifest }}"]
     assert action["runs"]["env"] == {"INPUT_TOKEN": "${{ inputs.token }}"}
@@ -109,7 +108,7 @@ def test_registry_action_is_a_self_contained_remote_loader() -> None:
     )
     installer, loader = action["runs"]["steps"]
     assert installer["uses"] == (
-        "sigstore/cosign-installer@" "6f9f17788090df1f26f669e9d70d6ae9567deba6"
+        "sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6"
     )
     assert loader["id"] == "load"
     command = loader["run"]
@@ -234,7 +233,7 @@ def test_candidate_job_verifies_provenance_and_exports_exact_handoff() -> None:
     )
     assert provenance["id"] == "provenance"
     assert provenance["uses"] == (
-        "actions/attest-build-provenance@" "e8998f949152b193b063cb0ec769d69d929409be"
+        "actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be"
     )
 
     handoff = next(
@@ -247,6 +246,10 @@ def test_candidate_job_verifies_provenance_and_exports_exact_handoff() -> None:
     assert "publisher-image-candidate.json" in command
     assert "dockerfile_sha256" in command
     assert "runtime_sha256" in command
+    assert "base64.b64decode" in command
+    assert "canonical_statement" in command
+    assert "hashlib.sha256(canonical_statement)" in command
+    assert "canonical_bundle" not in command
     assert handoff["env"]["ATTESTATION_ID"] == (
         "${{ steps.provenance.outputs.attestation-id }}"
     )

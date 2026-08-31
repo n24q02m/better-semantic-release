@@ -303,6 +303,7 @@ jobs:
           gh attestation verify "oci://$REPO_DIGEST" \
             --repo "$GITHUB_REPOSITORY"
           python - <<'PY'
+          import base64
           import hashlib
           import json
           import os
@@ -315,8 +316,29 @@ jobs:
           if not bundle_path.is_file() or bundle_path.stat().st_size > 16 * 1024 * 1024:
               raise SystemExit("attestation bundle is missing or oversized")
           bundle = json.loads(bundle_path.read_text(encoding="utf-8"))
-          canonical_bundle = json.dumps(
-              bundle,
+          envelope = bundle.get("dsseEnvelope") if isinstance(bundle, dict) else None
+          encoded_payload = (
+              envelope.get("payload") if isinstance(envelope, dict) else None
+          )
+          if not isinstance(encoded_payload, str):
+              raise SystemExit("attestation payload is missing")
+          statement = json.loads(
+              base64.b64decode(encoded_payload, validate=True).decode("utf-8")
+          )
+          subjects = statement.get("subject") if isinstance(statement, dict) else None
+          if (
+              statement.get("_type") != "https://in-toto.io/Statement/v1"
+              or statement.get("predicateType") != "https://slsa.dev/provenance/v1"
+              or not isinstance(subjects, list)
+              or len(subjects) != 1
+              or not isinstance(subjects[0], dict)
+              or subjects[0].get("name") != os.environ["SUBJECT_NAME"]
+              or subjects[0].get("digest")
+              != {"sha256": os.environ["SUBJECT_DIGEST"].removeprefix("sha256:")}
+          ):
+              raise SystemExit("attestation subject is not the publisher image")
+          canonical_statement = json.dumps(
+              statement,
               ensure_ascii=False,
               sort_keys=True,
               separators=(",", ":"),
@@ -333,7 +355,7 @@ jobs:
               "repo_digest": os.environ["REPO_DIGEST"],
               "provenance_attestation_id": os.environ["ATTESTATION_ID"],
               "provenance_attestation_url": os.environ["ATTESTATION_URL"],
-              "provenance_digest": hashlib.sha256(canonical_bundle).hexdigest(),
+              "provenance_digest": hashlib.sha256(canonical_statement).hexdigest(),
               "dockerfile_sha256": sha256(Path("publish-action/Dockerfile")),
               "runtime_sha256": sha256(
                   Path("src/semantic_release/bsr/release_publisher.py")

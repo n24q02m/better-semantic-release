@@ -208,20 +208,34 @@ def _walk_for_controls(value: Any) -> None:
             _walk_for_controls(child)
 
 
-def _canonical_json(value: Any) -> bytes:
-    try:
-        return json.dumps(
-            value,
-            ensure_ascii=False,
-            sort_keys=True,
-            separators=(",", ":"),
-            allow_nan=False,
-        ).encode("utf-8")
-    except (TypeError, ValueError, UnicodeEncodeError):
-        raise RegistryError("record canonical json") from None
+def _walk_for_attestation_controls(
+    value: Any,
+    path: tuple[str | int, ...] = (),
+) -> None:
+    if isinstance(value, str):
+        controls = {ord(char) for char in value if ord(char) < 0x20}
+        checkpoint_envelope = (
+            len(path) == 6
+            and path[:2] == ("verificationMaterial", "tlogEntries")
+            and isinstance(path[2], int)
+            and path[3:] == ("inclusionProof", "checkpoint", "envelope")
+        )
+        if controls and (not checkpoint_envelope or controls - {0x0A}):
+            raise RegistryError("record control character")
+        return
+    if isinstance(value, Mapping):
+        for key, child in value.items():
+            if not isinstance(key, str):
+                raise RegistryError("record key")
+            _walk_for_controls(key)
+            _walk_for_attestation_controls(child, (*path, key))
+        return
+    if isinstance(value, Sequence) and not isinstance(value, (bytes, bytearray, str)):
+        for index, child in enumerate(value):
+            _walk_for_attestation_controls(child, (*path, index))
 
 
-def _parse_json(raw: bytes, *, max_bytes: int = _MAX_RECORD_BYTES) -> Mapping[str, Any]:
+def _decode_json(raw: bytes, *, max_bytes: int) -> Mapping[str, Any]:
     if not isinstance(raw, bytes) or len(raw) > max_bytes:
         raise RegistryError("record size")
     try:
@@ -240,7 +254,31 @@ def _parse_json(raw: bytes, *, max_bytes: int = _MAX_RECORD_BYTES) -> Mapping[st
         raise RegistryError("record json") from None
     if not isinstance(value, Mapping):
         raise RegistryError("record object")
+    return value
+
+
+def _canonical_json(value: Any) -> bytes:
+    try:
+        return json.dumps(
+            value,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+            allow_nan=False,
+        ).encode("utf-8")
+    except (TypeError, ValueError, UnicodeEncodeError):
+        raise RegistryError("record canonical json") from None
+
+
+def _parse_json(raw: bytes, *, max_bytes: int = _MAX_RECORD_BYTES) -> Mapping[str, Any]:
+    value = _decode_json(raw, max_bytes=max_bytes)
     _walk_for_controls(value)
+    return value
+
+
+def _parse_attestation_json(raw: bytes) -> Mapping[str, Any]:
+    value = _decode_json(raw, max_bytes=_MAX_ASSET_BYTES)
+    _walk_for_attestation_controls(value)
     return value
 
 
@@ -1398,9 +1436,10 @@ def _validate_attested_subject(
 
 def _validate_attestation_bundle(
     bundle: Mapping[str, Any], subject_digest: str
-) -> None:
+) -> Mapping[str, Any]:
     statement = _decode_attestation_statement(bundle)
     _validate_attested_subject(statement, subject_digest)
+    return statement
 
 
 def verify_attestation_with_gh(
@@ -1485,7 +1524,12 @@ class HttpRegistryProvider:
         )
 
     def _request(
-        self, url: str, *, accept: str = "application/json"
+        self,
+        url: str,
+        *,
+        accept: str = "application/json",
+        bearer_token: str | None = None,
+        include_github_token: bool = True,
     ) -> tuple[bytes, Mapping[str, str]]:
         _validated_https_url(url, _github_redirect_host, "provider url")
         headers = {
@@ -1495,8 +1539,15 @@ class HttpRegistryProvider:
         request = urllib.request.Request(  # noqa: S310 - URL validated above.
             url, headers=headers, method="GET"
         )
-        if self._token:
-            request.add_unredirected_header("Authorization", f"Bearer {self._token}")
+        authorization = (
+            bearer_token
+            if bearer_token is not None
+            else self._token
+            if include_github_token
+            else None
+        )
+        if authorization:
+            request.add_unredirected_header("Authorization", f"Bearer {authorization}")
         return _open_bounded(
             urllib.request.build_opener(_SafeRedirectHandler()),
             request,
@@ -1505,8 +1556,11 @@ class HttpRegistryProvider:
             transport_error="provider transport",
         )
 
-    def _json(self, url: str) -> Any:
-        data, _headers = self._request(url)
+    def _json(self, url: str, *, include_github_token: bool = True) -> Any:
+        data, _headers = self._request(
+            url,
+            include_github_token=include_github_token,
+        )
         try:
             return json.loads(
                 data.decode("utf-8"),
@@ -1583,9 +1637,28 @@ class HttpRegistryProvider:
         path = image_ref[len(prefix) :]
         if _GHCR_PUBLISHER_PATH_RE.fullmatch(path) is None:
             raise RegistryError("provider image ref")
+        token_query = urllib.parse.urlencode(
+            {
+                "service": "ghcr.io",
+                "scope": f"repository:{path}:pull",
+            }
+        )
+        token_response = self._json(
+            f"https://ghcr.io/token?{token_query}",
+            include_github_token=False,
+        )
+        if not isinstance(token_response, Mapping):
+            raise RegistryError("provider registry token")
+        registry_token = _text(
+            token_response.get("token"),
+            "provider registry token",
+            max_length=16384,
+        )
         _data, headers = self._request(
             f"https://ghcr.io/v2/{urllib.parse.quote(path, safe='/')}/manifests/{urllib.parse.quote(image_digest, safe=':')}",
             accept="application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json",
+            bearer_token=registry_token,
+            include_github_token=False,
         )
         digest = headers.get("docker-content-digest")
         if digest is None:
@@ -1628,8 +1701,8 @@ class HttpRegistryProvider:
         bundle_url = _select_attestation_bundle_url(response, attestation_id)
         raw, headers = self._request_public_bundle(bundle_url)
         bundle_bytes = _attestation_json_bytes(raw, headers)
-        bundle = _parse_json(bundle_bytes, max_bytes=_MAX_ASSET_BYTES)
-        _validate_attestation_bundle(bundle, subject_digest)
+        bundle = _parse_attestation_json(bundle_bytes)
+        statement = _validate_attestation_bundle(bundle, subject_digest)
         try:
             verified = self._attestation_verifier(
                 bundle_bytes,
@@ -1642,7 +1715,7 @@ class HttpRegistryProvider:
             raise RegistryError("provider attestation signature") from None
         if verified is not None and verified is not True:
             raise RegistryError("provider attestation signature")
-        return hashlib.sha256(_canonical_json(bundle)).hexdigest()
+        return hashlib.sha256(_canonical_json(statement)).hexdigest()
 
 
 def verify_with_cosign(
