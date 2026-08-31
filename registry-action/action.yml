@@ -40,7 +40,7 @@ runs:
       run: |
         set -euo pipefail
         command=(
-          python3 "$GITHUB_ACTION_PATH/../scripts/action_pin_registry.py" load
+          python3 -I -S "$GITHUB_ACTION_PATH/../scripts/action_pin_registry.py" load
           --expected "$EXPECTED"
           --repository "$REPOSITORY"
         )
