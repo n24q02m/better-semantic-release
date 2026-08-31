@@ -432,6 +432,20 @@ jobs:
             --dir candidate
           test -s candidate/publisher-image-candidate.json
 
+      - name: Install cosign for registry signing
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v3.10.1
+
+      - name: Resolve signed registry chain head
+        env:
+          CERTIFICATE_IDENTITY: https://github.com/${{ github.repository }}/.github/workflows/cd.yml@refs/heads/main
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          python3 -I -S scripts/action_pin_registry.py head \
+            --repository "$GITHUB_REPOSITORY" \
+            --identity "$CERTIFICATE_IDENTITY" \
+            --output previous-registry.json
+
       - name: Download release assets and build canonical G1 record
         env:
           CANDIDATE_RUN_ATTEMPT: ${{ inputs.candidate_run_attempt }}
@@ -560,18 +574,40 @@ jobs:
               release["published_at"], "%Y-%m-%dT%H:%M:%SZ"
           ).replace(tzinfo=datetime.timezone.utc)
           expires_at = issued_at + datetime.timedelta(days=30)
+          previous_record = json.loads(
+              Path("previous-registry.json").read_text(encoding="utf-8")
+          )
+          if previous_record is None:
+              generation = 1
+              previous = None
+          else:
+              if (
+                  not isinstance(previous_record, dict)
+                  or previous_record.get("phase") == "G2"
+              ):
+                  raise SystemExit("signed registry chain cannot accept G1")
+              previous_advertisement = previous_record["advertisement"]
+              generation = previous_record["generation"] + 1
+              previous = {
+                  "head_oid": previous_record["head_oid"],
+                  "record_hash": previous_record["record_hash"],
+                  "result_oid": previous_record["result_oid"],
+                  "result_hash": previous_record["result_hash"],
+                  "advertisement_tag": previous_advertisement["tag"],
+              }
+
 
           workflow_path = ".github/workflows/cd.yml"
           workflow_bytes = Path(workflow_path).read_bytes()
           source = {
               "schema_version": "bsr-action-registry/v1",
-              "generation": 1,
+              "generation": generation,
               "phase": "G1",
               "channel": "beta",
               "issued_at": issued_at.strftime("%Y-%m-%dT%H:%M:%SZ"),
               "expires_at": expires_at.strftime("%Y-%m-%dT%H:%M:%SZ"),
               "owner": "release-security",
-              "previous": None,
+              "previous": previous,
               "head_oid": head,
               "head_hash": sha256_bytes(
                   subprocess.check_output(["git", "cat-file", "commit", head])
@@ -633,8 +669,6 @@ jobs:
             --input generated-registry.json \
             --output /dev/null
 
-      - name: Install cosign for registry signing
-        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v3.10.1
 
       - name: Select or create the exact signed G1 pair
         env:

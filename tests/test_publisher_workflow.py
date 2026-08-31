@@ -147,6 +147,10 @@ def test_g1_job_signs_publishes_and_fresh_loads_create_once_pair() -> None:
     assert "./registry-action" in text
     assert "g1-release-manifest.json" in text
     assert "g1-loader-result.json" in text
+    assert "action_pin_registry.py head" in text
+    assert "previous-registry.json" in text
+    assert '"generation": generation' in text
+    assert '"previous": previous' in text
     upload = next(
         step
         for step in registry["steps"]

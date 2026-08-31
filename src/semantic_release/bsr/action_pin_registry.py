@@ -1061,13 +1061,13 @@ def _registry_candidate(
     return candidate
 
 
-def _remote_candidates(
+def _collect_remote_candidates(
     provider: RegistryProvider,
     signature_verifier: SignatureVerifier,
     repository: str,
 ) -> list[dict[str, Any]]:
     seen_release_ids: set[int] = set()
-    candidates = [
+    return [
         candidate
         for release in _bounded_pages(provider, "list_releases", repository)
         if (
@@ -1081,9 +1081,40 @@ def _remote_candidates(
         )
         is not None
     ]
+
+
+def _remote_candidates(
+    provider: RegistryProvider,
+    signature_verifier: SignatureVerifier,
+    repository: str,
+) -> list[dict[str, Any]]:
+    candidates = _collect_remote_candidates(
+        provider,
+        signature_verifier,
+        repository,
+    )
     if not candidates:
         raise RegistryError("registry absent")
     return candidates
+
+
+def load_remote_chain_head(
+    *,
+    provider: RegistryProvider,
+    signature_verifier: SignatureVerifier,
+    repository: str,
+    now: _datetime.datetime | None = None,
+) -> dict[str, Any] | None:
+    """Verify the remote signed chain and return its latest record, if present."""
+    repository = _repository(repository, "repository")
+    if not callable(signature_verifier):
+        raise RegistryError("signature verifier")
+    candidates = _collect_remote_candidates(
+        provider,
+        signature_verifier,
+        repository,
+    )
+    return select_latest(candidates, now=now) if candidates else None
 
 
 def load_remote_registry(
@@ -1804,6 +1835,16 @@ def _parser() -> argparse.ArgumentParser:
     )
     verify.add_argument("--now", help="verification time in UTC YYYY-MM-DDTHH:MM:SSZ")
 
+    head = commands.add_parser("head", help="read the remote signed chain head")
+    head.add_argument("--repository", required=True)
+    head.add_argument("--identity", required=True)
+    head.add_argument("--output", default="-", help="canonical output, or - for stdout")
+    head.add_argument("--token", default=None)
+    head.add_argument("--api-timeout", type=float, default=30.0)
+    head.add_argument("--cosign", default="cosign")
+    head.add_argument("--cosign-timeout", type=float, default=30.0)
+    head.add_argument("--now", help="verification time in UTC YYYY-MM-DDTHH:MM:SSZ")
+
     load = commands.add_parser("load", help="read and verify a remote registry")
     load.add_argument("--expected", required=True, help="expected tuple JSON")
     load.add_argument("--repository", required=True)
@@ -1830,11 +1871,29 @@ def _run_cli(arguments: argparse.Namespace) -> None:
         if arguments.token is not None
         else os.environ.get("GITHUB_TOKEN")
     )
+    provider = HttpRegistryProvider(token=token, timeout=arguments.api_timeout)
+    if arguments.command == "head":
+        identity = _text(arguments.identity, "signature identity", max_length=4096)
+        head = load_remote_chain_head(
+            provider=provider,
+            signature_verifier=lambda payload, bundle: verify_with_cosign(
+                payload,
+                bundle,
+                identity=identity,
+                cosign_binary=arguments.cosign,
+                timeout=arguments.cosign_timeout,
+            ),
+            repository=arguments.repository,
+            now=_cli_time(arguments.now),
+        )
+        encoded = b"null\n" if head is None else canonical_record_bytes(head)
+        _write_output(arguments.output, encoded)
+        return
     expected = verify_record(
         _read_input(arguments.expected),
         now=_cli_time(arguments.now),
     )
-    provider = HttpRegistryProvider(token=token, timeout=arguments.api_timeout)
+
     publisher = _mapping(expected["publisher"], _PUBLISHER_KEYS, "publisher")
     identity = cast(str, publisher["identity"])
     output = load_remote_registry(

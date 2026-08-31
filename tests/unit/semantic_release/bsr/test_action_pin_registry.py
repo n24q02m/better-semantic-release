@@ -19,6 +19,7 @@ from semantic_release.bsr.action_pin_registry import (
     RegistryError,
     build_record,
     canonical_record_bytes,
+    load_remote_chain_head,
     load_remote_registry,
     select_latest,
     verify_record,
@@ -366,6 +367,42 @@ class _Provider:
         assert subject_digest == IMAGE_DIGEST
         assert attestation_id == "937309"
         return "8" * 64
+
+
+def test_chain_head_verifies_latest_signed_record_without_fresh_reads() -> None:
+    record = build_record(_base_record())
+    raw = canonical_record_bytes(record)
+    provider = _Provider(raw)
+    verified: list[tuple[bytes, bytes]] = []
+
+    head = load_remote_chain_head(
+        provider=provider,
+        signature_verifier=lambda payload, bundle: verified.append((payload, bundle)),
+        repository=REPOSITORY,
+        now=NOW,
+    )
+
+    assert head == record
+    assert provider.release_pages == [1, 2]
+    assert verified == [(raw, b"bundle")]
+
+
+def test_chain_head_returns_none_only_for_clean_absence(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    record = build_record(_base_record())
+    provider = _Provider(canonical_record_bytes(record))
+    monkeypatch.setattr(provider, "list_releases", lambda *_args, **_kwargs: [])
+
+    assert (
+        load_remote_chain_head(
+            provider=provider,
+            signature_verifier=lambda _payload, _bundle: None,
+            repository=REPOSITORY,
+            now=NOW,
+        )
+        is None
+    )
 
 
 def test_loader_fresh_reads_all_bound_surfaces_and_emits_stable_hash() -> None:
