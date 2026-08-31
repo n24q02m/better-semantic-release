@@ -33,6 +33,8 @@ outputs:
 runs:
   using: docker
   image: docker://ghcr.io/n24q02m/better-semantic-release-publisher@sha256:6be3e4d7b610f0c946f0fd237cf7d74c70a1f2be343dd038d731b8fe405151ab
+  env:
+    INPUT_TOKEN: ${{ inputs.token }}
   args:
     - --manifest
     - ${{ inputs.manifest }}
