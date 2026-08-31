@@ -439,11 +439,13 @@ jobs:
         env:
           CERTIFICATE_IDENTITY: https://github.com/${{ github.repository }}/.github/workflows/cd.yml@refs/heads/main
           GITHUB_TOKEN: ${{ github.token }}
+          REGISTRY_TAG: ${{ inputs.registry_tag }}
         run: |
           set -euo pipefail
           python3 -I -S scripts/action_pin_registry.py head \
             --repository "$GITHUB_REPOSITORY" \
             --identity "$CERTIFICATE_IDENTITY" \
+            --exclude-tag "$REGISTRY_TAG" \
             --output previous-registry.json
 
       - name: Download release assets and build canonical G1 record

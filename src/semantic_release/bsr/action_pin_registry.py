@@ -1089,22 +1089,24 @@ def _collect_remote_candidates(
     provider: RegistryProvider,
     signature_verifier: SignatureVerifier,
     repository: str,
+    *,
+    excluded_tag: str | None = None,
 ) -> list[dict[str, Any]]:
     seen_release_ids: set[int] = set()
-    return [
-        candidate
-        for release in _bounded_pages(provider, "list_releases", repository)
-        if (
-            candidate := _registry_candidate(
-                provider=provider,
-                signature_verifier=signature_verifier,
-                repository=repository,
-                release=release,
-                seen_release_ids=seen_release_ids,
-            )
+    candidates: list[dict[str, Any]] = []
+    for release in _bounded_pages(provider, "list_releases", repository):
+        if excluded_tag is not None and release.get("tag_name") == excluded_tag:
+            continue
+        candidate = _registry_candidate(
+            provider=provider,
+            signature_verifier=signature_verifier,
+            repository=repository,
+            release=release,
+            seen_release_ids=seen_release_ids,
         )
-        is not None
-    ]
+        if candidate is not None:
+            candidates.append(candidate)
+    return candidates
 
 
 def _remote_candidates(
@@ -1127,16 +1129,20 @@ def load_remote_chain_head(
     provider: RegistryProvider,
     signature_verifier: SignatureVerifier,
     repository: str,
+    excluded_tag: str | None = None,
     now: _datetime.datetime | None = None,
 ) -> dict[str, Any] | None:
     """Verify the remote signed chain and return its latest record, if present."""
     repository = _repository(repository, "repository")
+    if excluded_tag is not None:
+        excluded_tag = _validate_tag(excluded_tag)
     if not callable(signature_verifier):
         raise RegistryError("signature verifier")
     candidates = _collect_remote_candidates(
         provider,
         signature_verifier,
         repository,
+        excluded_tag=excluded_tag,
     )
     return select_latest(candidates, now=now) if candidates else None
 
@@ -1867,6 +1873,7 @@ def _parser() -> argparse.ArgumentParser:
     head.add_argument("--repository", required=True)
     head.add_argument("--identity", required=True)
     head.add_argument("--output", default="-", help="canonical output, or - for stdout")
+    head.add_argument("--exclude-tag")
     head.add_argument("--token", default=None)
     head.add_argument("--api-timeout", type=float, default=30.0)
     head.add_argument("--cosign", default="cosign")
@@ -1920,6 +1927,7 @@ def _run_cli(arguments: argparse.Namespace) -> None:
                 timeout=arguments.cosign_timeout,
             ),
             repository=arguments.repository,
+            excluded_tag=arguments.exclude_tag,
             now=_cli_time(arguments.now),
         )
         encoded = b"null\n" if head is None else canonical_record_bytes(head)

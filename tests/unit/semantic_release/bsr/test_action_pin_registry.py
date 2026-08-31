@@ -405,6 +405,27 @@ def test_chain_head_returns_none_only_for_clean_absence(
     )
 
 
+def test_chain_head_excludes_current_target_for_idempotent_retry() -> None:
+    record = build_record(_base_record())
+    provider = _Provider(canonical_record_bytes(record))
+    verified: list[tuple[bytes, bytes]] = []
+
+    assert (
+        load_remote_chain_head(
+            provider=provider,
+            signature_verifier=lambda payload, bundle: verified.append(
+                (payload, bundle)
+            ),
+            repository=REPOSITORY,
+            excluded_tag="v1.6.0-beta.1",
+            now=NOW,
+        )
+        is None
+    )
+    assert provider.release_pages == [1, 2]
+    assert verified == []
+
+
 def test_loader_fresh_reads_all_bound_surfaces_and_emits_stable_hash() -> None:
     record = build_record(_base_record())
     raw = canonical_record_bytes(record)
