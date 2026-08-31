@@ -450,6 +450,52 @@ def test_loader_fresh_reads_all_bound_surfaces_and_emits_stable_hash() -> None:
     )
 
 
+def test_loader_decodes_contents_api_wrapped_base64() -> None:
+    record = build_record(_base_record())
+    provider = _Provider(canonical_record_bytes(record))
+    blob = provider.blobs["action.yml"]
+    encoded = base64.b64encode(blob["bytes"]).decode("ascii")
+    provider.blobs["action.yml"] = {
+        "sha": blob["oid"],
+        "encoding": "base64",
+        "content": "\r\n".join(
+            encoded[offset : offset + 12] for offset in range(0, len(encoded), 12)
+        ),
+    }
+
+    output = load_remote_registry(
+        expected=record,
+        provider=provider,
+        signature_verifier=lambda _payload, _bundle: None,
+        repository=REPOSITORY,
+        now=NOW,
+    )
+
+    assert output["head_oid"] == HEAD
+
+
+@pytest.mark.parametrize("separator", [" ", "\t"])
+def test_loader_rejects_non_crlf_base64_whitespace(separator: str) -> None:
+    record = build_record(_base_record())
+    provider = _Provider(canonical_record_bytes(record))
+    blob = provider.blobs["action.yml"]
+    encoded = base64.b64encode(blob["bytes"]).decode("ascii")
+    provider.blobs["action.yml"] = {
+        "sha": blob["oid"],
+        "encoding": "base64",
+        "content": f"{encoded[:12]}{separator}{encoded[12:]}",
+    }
+
+    with pytest.raises(RegistryError, match="blob content"):
+        load_remote_registry(
+            expected=record,
+            provider=provider,
+            signature_verifier=lambda _payload, _bundle: None,
+            repository=REPOSITORY,
+            now=NOW,
+        )
+
+
 def test_loader_rejects_moved_action_blob() -> None:
     record = build_record(_base_record())
     provider = _Provider(canonical_record_bytes(record))
