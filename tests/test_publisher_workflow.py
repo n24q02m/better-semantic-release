@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import subprocess
+import sys
 from pathlib import Path
 
 import yaml
@@ -9,6 +11,7 @@ WORKFLOW = ROOT / ".github" / "workflows" / "cd.yml"
 DOCKERFILE = ROOT / "publish-action" / "Dockerfile"
 PUBLISH_ACTION = ROOT / "publish-action" / "action.yml"
 REGISTRY_ACTION = ROOT / "registry-action" / "action.yml"
+REGISTRY_SCRIPT = ROOT / "scripts" / "action_pin_registry.py"
 PUBLISHER_DIGEST = (
     "sha256:6be3e4d7b610f0c946f0fd237cf7d74c70a1f2be343dd038d731b8fe405151ab"
 )
@@ -111,9 +114,22 @@ def test_registry_action_is_a_self_contained_remote_loader() -> None:
     assert loader["id"] == "load"
     command = loader["run"]
     assert "scripts/action_pin_registry.py" in command
+    assert 'python3 -I -S "$GITHUB_ACTION_PATH' in command
     assert 'action_pin_registry.py" load' in command
     assert "--expected" in command
     assert "--repository" in command
+
+
+def test_registry_cli_boots_without_project_dependencies() -> None:
+    completed = subprocess.run(  # noqa: S603
+        [sys.executable, "-I", "-S", str(REGISTRY_SCRIPT), "--help"],
+        cwd=ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert completed.returncode == 0, completed.stderr
+    assert "build a canonical registry record" in completed.stdout
 
 
 def test_g1_job_signs_publishes_and_fresh_loads_create_once_pair() -> None:
