@@ -36,6 +36,14 @@ def test_manual_cd_has_mutually_exclusive_release_and_image_operations() -> None
         "attestations": "write",
     }
     assert image["environment"]["name"] == "beta-publish"
+    buildx = next(
+        step
+        for step in image["steps"]
+        if step.get("name") == "Set up isolated BuildKit builder"
+    )
+    assert buildx["uses"] == (
+        "docker/setup-buildx-action@" "8d2750c68a42422c14e847fe6c8ac0403b4cbd6f"
+    )
 
 
 def test_release_route_has_no_image_permissions_or_image_steps() -> None:
@@ -73,6 +81,14 @@ def test_candidate_job_contains_only_image_bootstrap_mutations() -> None:
     assert '--build-arg "publisher_uid=' in step_text
     assert '--build-arg "publisher_gid=' in step_text
     assert '--build-arg "SOURCE_DATE_EPOCH=0"' in raw_step_text
+    assert "docker buildx build" in step_text
+    assert "--no-cache" in step_text
+    assert "rewrite-timestamp=true" in step_text
+    assert "repro-first" in step_text
+    assert "{{.id}}" in step_text
+    assert "{{json .rootfs.layers}}" in step_text
+    assert 'test "$first_id" = "$second_id"' in step_text
+    assert 'test "$first_layers" = "$second_layers"' in step_text
     assert "github-output" in step_text
     assert "preflight" in step_text
     assert '[[ ! "$subject_digest" =~ ^sha256:[0-9a-f]{64}$ ]]' in step_text
