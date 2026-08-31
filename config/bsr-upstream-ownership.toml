@@ -945,3 +945,19 @@ kind = "python-test"
 owner = "bsr-g1-registry"
 reason = "Phase B canonical hashes, chain rollover, signature identity, remote pagination, blob, redirect, and provenance contracts."
 gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "publish-action/action.yml"
+status = "A"
+kind = "other"
+owner = "bsr-g1-publisher"
+reason = "Phase B immutable digest-pinned Docker action metadata for the create-once publisher."
+gates = ["other"]
+
+[[ownership]]
+path = "registry-action/action.yml"
+status = "A"
+kind = "other"
+owner = "bsr-g1-registry"
+reason = "Phase B self-contained composite action for signed remote registry loading."
+gates = ["other"]
