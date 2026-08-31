@@ -181,9 +181,7 @@ def test_g1_release_manifest_uses_publisher_asset_digest_format() -> None:
         if step.get("name") == "Build exact create-once release manifest"
     )
     command = manifest_step["run"]
-    assert (
-        '"sha256": "sha256:" + hashlib.sha256(content).hexdigest()' in command
-    )
+    assert '"sha256": "sha256:" + hashlib.sha256(content).hexdigest()' in command
 
 
 def test_candidate_job_contains_only_image_bootstrap_mutations() -> None:
