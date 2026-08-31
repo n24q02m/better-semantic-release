@@ -489,6 +489,63 @@ def test_cli_generates_and_verifies_canonical_record(tmp_path: Path) -> None:
     assert verified.read_bytes() == generated.read_bytes()
 
 
+def test_cli_generates_executable_successor_from_signed_chain_head(
+    tmp_path: Path,
+) -> None:
+    previous = build_record(_base_record())
+    successor_source = json.loads(json.dumps(_base_record()))
+    successor_head = "c" * 40
+    successor_source["generation"] = 999
+    successor_source["previous"] = {"invalid": "placeholder"}
+    successor_source["head_oid"] = successor_head
+    for action_name in ("version_action", "publish_action", "registry_action"):
+        successor_source[action_name]["sha"] = successor_head
+    successor_source["publisher"]["image_source_commit"] = successor_head
+    successor_source["advertisement"].update(
+        {
+            "tag": "v1.6.0-beta.2",
+            "target_sha": successor_head,
+            "release_url": (
+                "https://github.com/n24q02m/better-semantic-release/"
+                "releases/tag/v1.6.0-beta.2"
+            ),
+        }
+    )
+    successor_source["workflow"]["release_commit"] = successor_head
+
+    source_path = tmp_path / "successor-source.json"
+    previous_path = tmp_path / "previous-registry.json"
+    generated_path = tmp_path / "successor-registry.json"
+    source_path.write_text(json.dumps(successor_source), encoding="utf-8")
+    previous_path.write_bytes(canonical_record_bytes(previous))
+
+    assert (
+        registry_module.main(
+            [
+                "generate",
+                "--input",
+                str(source_path),
+                "--previous",
+                str(previous_path),
+                "--output",
+                str(generated_path),
+            ]
+        )
+        == 0
+    )
+    successor = verify_record(generated_path.read_bytes(), now=NOW)
+    assert successor["generation"] == 2
+    assert successor["previous"] == {
+        "generation": 1,
+        "head_oid": previous["head_oid"],
+        "record_hash": previous["record_hash"],
+        "result_oid": previous["result_oid"],
+        "result_hash": previous["result_hash"],
+        "advertisement_tag": previous["advertisement"]["tag"],
+    }
+    assert select_latest([previous, successor], now=NOW) == successor
+
+
 def test_cli_redacts_registry_errors(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

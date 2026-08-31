@@ -574,40 +574,19 @@ jobs:
               release["published_at"], "%Y-%m-%dT%H:%M:%SZ"
           ).replace(tzinfo=datetime.timezone.utc)
           expires_at = issued_at + datetime.timedelta(days=30)
-          previous_record = json.loads(
-              Path("previous-registry.json").read_text(encoding="utf-8")
-          )
-          if previous_record is None:
-              generation = 1
-              previous = None
-          else:
-              if (
-                  not isinstance(previous_record, dict)
-                  or previous_record.get("phase") == "G2"
-              ):
-                  raise SystemExit("signed registry chain cannot accept G1")
-              previous_advertisement = previous_record["advertisement"]
-              generation = previous_record["generation"] + 1
-              previous = {
-                  "head_oid": previous_record["head_oid"],
-                  "record_hash": previous_record["record_hash"],
-                  "result_oid": previous_record["result_oid"],
-                  "result_hash": previous_record["result_hash"],
-                  "advertisement_tag": previous_advertisement["tag"],
-              }
 
 
           workflow_path = ".github/workflows/cd.yml"
           workflow_bytes = Path(workflow_path).read_bytes()
           source = {
               "schema_version": "bsr-action-registry/v1",
-              "generation": generation,
+              "generation": 1,
               "phase": "G1",
               "channel": "beta",
               "issued_at": issued_at.strftime("%Y-%m-%dT%H:%M:%SZ"),
               "expires_at": expires_at.strftime("%Y-%m-%dT%H:%M:%SZ"),
               "owner": "release-security",
-              "previous": previous,
+              "previous": None,
               "head_oid": head,
               "head_hash": sha256_bytes(
                   subprocess.check_output(["git", "cat-file", "commit", head])
@@ -664,6 +643,7 @@ jobs:
           PY
           python3 -I -S scripts/action_pin_registry.py generate \
             --input g1-registry-source.json \
+            --previous previous-registry.json \
             --output generated-registry.json
           python3 -I -S scripts/action_pin_registry.py verify \
             --input generated-registry.json \
@@ -844,9 +824,10 @@ jobs:
           case "$REUSED_COUNT" in ''|*[!0-9]*) exit 1 ;; esac
           test "$((UPLOADED_COUNT + REUSED_COUNT))" -eq 4
           printf '%s\n' "$LOADED_REGISTRY" > g1-loader-result.json
-          jq -e \
-            '.generation == 1 and .phase == "G1" and .channel == "beta"' \
-            g1-loader-result.json
+          jq -e -s \
+            '.[0].generation == .[1].generation and
+             .[0].phase == "G1" and .[0].channel == "beta"' \
+            g1-loader-result.json generated-registry.json
           RECORD_SHA256="$(sha256sum generated-registry.json | cut -d' ' -f1)"
           SIGNATURE_SHA256="$(
             sha256sum release-assets/bsr-action-registry.sigstore.json |

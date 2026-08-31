@@ -671,6 +671,30 @@ def _previous_summary(record: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
+def build_chained_record(
+    source: Mapping[str, Any],
+    previous: Mapping[str, Any] | bytes | None,
+    *,
+    now: _datetime.datetime | None = None,
+) -> dict[str, Any]:
+    """Build the initial record or the sole successor of a verified chain head."""
+    current = copy.deepcopy(dict(source))
+    if previous is None:
+        current["generation"] = 1
+        current["previous"] = None
+        return build_record(current)
+    checked_previous = (
+        verify_record(previous, now=now)
+        if isinstance(previous, bytes)
+        else verify_record(canonical_record_bytes(previous), now=now)
+    )
+    if checked_previous["phase"] == "G2" and current.get("phase") == "G1":
+        raise RegistryError("phase chain")
+    current["generation"] = checked_previous["generation"] + 1
+    current["previous"] = _previous_summary(checked_previous)
+    return build_record(current)
+
+
 def _bounded_record_list(
     records: Iterable[Mapping[str, Any] | bytes],
 ) -> list[Mapping[str, Any] | bytes]:
@@ -1827,6 +1851,10 @@ def _parser() -> argparse.ArgumentParser:
     generate.add_argument(
         "--output", default="-", help="canonical output, or - for stdout"
     )
+    generate.add_argument(
+        "--previous",
+        help="verified previous record, or canonical JSON null for an initial record",
+    )
 
     verify = commands.add_parser("verify", help="verify canonical registry bytes")
     verify.add_argument("--input", default="-", help="record source, or - for stdin")
@@ -1859,7 +1887,15 @@ def _parser() -> argparse.ArgumentParser:
 def _run_cli(arguments: argparse.Namespace) -> None:
     if arguments.command == "generate":
         source = _parse_json(_read_input(arguments.input))
-        _write_output(arguments.output, canonical_record_bytes(build_record(source)))
+        if arguments.previous is None:
+            record = build_record(source)
+        else:
+            previous_raw = _read_input(arguments.previous)
+            previous = (
+                None if previous_raw.strip() == b"null" else verify_record(previous_raw)
+            )
+            record = build_chained_record(source, previous)
+        _write_output(arguments.output, canonical_record_bytes(record))
         return
     if arguments.command == "verify":
         raw = _read_input(arguments.input)
