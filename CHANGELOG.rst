@@ -4,6 +4,34 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.6.0-beta.6:
+
+v1.6.0-beta.6 (2026-08-31)
+==========================
+
+🪲 Bug Fixes
+------------
+
+* Continue published G1 registry chain (`PR#121`_, `c5fd40a`_)
+
+* Enforce consumer registry freshness (`PR#122`_, `740240c`_)
+
+* Enforce default registry freshness (`PR#122`_, `740240c`_)
+
+* Fresh-load live GHCR provenance (`PR#121`_, `c5fd40a`_)
+
+* Generate verified registry successor (`PR#121`_, `c5fd40a`_)
+
+* Keep registry retry idempotent (`PR#121`_, `c5fd40a`_)
+
+* Load live GHCR and Sigstore provenance (`PR#121`_, `c5fd40a`_)
+
+.. _740240c: https://github.com/n24q02m/better-semantic-release/commit/740240cb9cd8e2e65dda0c995fc97d2cdf727e64
+.. _c5fd40a: https://github.com/n24q02m/better-semantic-release/commit/c5fd40a925764e944847bee31c880aaec4c4a200
+.. _PR#121: https://github.com/n24q02m/better-semantic-release/pull/121
+.. _PR#122: https://github.com/n24q02m/better-semantic-release/pull/122
+
+
 .. _changelog-v1.6.0-beta.5:
 
 v1.6.0-beta.5 (2026-08-31)
