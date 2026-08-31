@@ -4,6 +4,37 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.6.0-beta.1:
+
+v1.6.0-beta.1 (2026-08-31)
+==========================
+
+✨ Features
+-----------
+
+* **bsr**: Add signed action-pin registry publisher (`PR#111`_, `085f929`_)
+
+🪲 Bug Fixes
+------------
+
+* Validate exact ghcr publisher paths (`PR#111`_, `085f929`_)
+
+* **bsr**: Cryptographically verify provenance bundles (`PR#113`_, `d088103`_)
+
+* **bsr**: Reject ambiguous verifier results (`PR#113`_, `d088103`_)
+
+* **bsr**: Validate GHCR image authority (`PR#111`_, `085f929`_)
+
+* **bsr**: Verify provenance bundle signatures (`PR#113`_, `d088103`_)
+
+* **publisher**: Classify nofollow symlink errors (`PR#111`_, `085f929`_)
+
+.. _085f929: https://github.com/n24q02m/better-semantic-release/commit/085f92948b0990f4786c7eb9cdd93f552ceb8b2e
+.. _d088103: https://github.com/n24q02m/better-semantic-release/commit/d0881032e420326e518af9491ce79c11e5c0fa48
+.. _PR#111: https://github.com/n24q02m/better-semantic-release/pull/111
+.. _PR#113: https://github.com/n24q02m/better-semantic-release/pull/113
+
+
 .. _changelog-v1.5.0:
 
 v1.5.0 (2026-08-29)
