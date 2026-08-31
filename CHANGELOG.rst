@@ -4,6 +4,22 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.6.0-beta.4:
+
+v1.6.0-beta.4 (2026-08-31)
+==========================
+
+🪲 Bug Fixes
+------------
+
+* Preserve G1 publisher manifest key order (`PR#119`_, `b6e5aa4`_)
+
+* Preserve publisher manifest key order (`PR#119`_, `b6e5aa4`_)
+
+.. _b6e5aa4: https://github.com/n24q02m/better-semantic-release/commit/b6e5aa43ce7d71f65bf90a9d55df37a8b9bcb856
+.. _PR#119: https://github.com/n24q02m/better-semantic-release/pull/119
+
+
 .. _changelog-v1.6.0-beta.3:
 
 v1.6.0-beta.3 (2026-08-31)
