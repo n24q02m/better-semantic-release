@@ -1,0 +1,55 @@
+---
+name: BSR signed action registry loader
+description: Load and fresh-verify a signed BSR action-pin registry record
+
+inputs:
+  expected:
+    description: Workspace-relative path to the expected canonical registry record
+    required: true
+  repository:
+    description: GitHub repository that advertises the signed registry
+    required: true
+  token:
+    description: Optional GitHub token for authenticated read-only provider access
+    required: false
+    default: ""
+  now:
+    description: Optional UTC verification instant in YYYY-MM-DDTHH:MM:SSZ form
+    required: false
+    default: ""
+
+outputs:
+  registry:
+    description: Canonical verified registry tuple
+    value: ${{ steps.load.outputs.registry }}
+
+runs:
+  using: composite
+  steps:
+    - name: Install cosign
+      uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v3.10.1
+
+    - name: Fresh-load signed registry
+      id: load
+      shell: bash
+      env:
+        EXPECTED: ${{ inputs.expected }}
+        GITHUB_TOKEN: ${{ inputs.token }}
+        NOW: ${{ inputs.now }}
+        REPOSITORY: ${{ inputs.repository }}
+      run: |
+        set -euo pipefail
+        command=(
+          python3 "$GITHUB_ACTION_PATH/../scripts/action_pin_registry.py" load
+          --expected "$EXPECTED"
+          --repository "$REPOSITORY"
+        )
+        if [ -n "$GITHUB_TOKEN" ]; then
+          command+=(--token "$GITHUB_TOKEN")
+        fi
+        if [ -n "$NOW" ]; then
+          command+=(--now "$NOW")
+        fi
+        registry="$("${command[@]}")"
+        test -n "$registry"
+        printf 'registry=%s\n' "$registry" >> "$GITHUB_OUTPUT"

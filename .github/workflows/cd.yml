@@ -12,13 +12,14 @@ on:
   workflow_dispatch:
     inputs:
       operation:
-        description: Select the existing release route or the candidate publisher image bootstrap
+        description: Select release, publisher candidate, or signed G1 registry publication
         type: choice
         required: true
         default: release
         options:
           - release
           - publisher-image
+          - registry-g1
       release_type:
         description: Release type (beta-first -- pick stable only when ready to publish for real)
         type: choice
@@ -27,6 +28,19 @@ on:
         options:
           - beta
           - stable
+      registry_tag:
+        description: Existing beta release tag that will advertise the signed G1 pair
+        type: string
+        required: false
+      candidate_run_id:
+        description: Release-bound publisher candidate workflow run ID
+        type: string
+        required: false
+      candidate_run_attempt:
+        description: Exact candidate workflow run attempt
+        type: string
+        required: false
+        default: "1"
 
 concurrency:
   group: release
@@ -347,6 +361,474 @@ jobs:
           path: publisher-image-candidate.json
           if-no-files-found: error
           retention-days: 30
+          compression-level: 0
+
+  registry-g1:
+    name: Publish and fresh-load signed G1 registry
+    if: inputs.operation == 'registry-g1' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment:
+      name: beta-publish
+    permissions:
+      actions: read
+      attestations: read
+      contents: write
+      id-token: write
+      packages: read
+
+    steps:
+      - name: Checkout release-bound source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Download exact release-bound candidate handoff
+        env:
+          CANDIDATE_RUN_ATTEMPT: ${{ inputs.candidate_run_attempt }}
+          CANDIDATE_RUN_ID: ${{ inputs.candidate_run_id }}
+          GH_TOKEN: ${{ github.token }}
+          REGISTRY_TAG: ${{ inputs.registry_tag }}
+        run: |
+          set -euo pipefail
+          case "$CANDIDATE_RUN_ID" in
+            ''|*[!0-9]*) echo "candidate run id is not numeric"; exit 1 ;;
+          esac
+          case "$CANDIDATE_RUN_ATTEMPT" in
+            ''|*[!0-9]*) echo "candidate run attempt is not numeric"; exit 1 ;;
+          esac
+          case "$REGISTRY_TAG" in
+            v[0-9]*.[0-9]*.[0-9]*-*) ;;
+            *) echo "registry tag is not a prerelease tag"; exit 1 ;;
+          esac
+          git fetch --force origin "refs/tags/$REGISTRY_TAG:refs/tags/$REGISTRY_TAG"
+          test "$(git rev-list -n 1 "$REGISTRY_TAG")" = "$GITHUB_SHA"
+          ARTIFACT_NAME="publisher-image-candidate-$GITHUB_SHA-$CANDIDATE_RUN_ID-$CANDIDATE_RUN_ATTEMPT"
+          mkdir candidate
+          gh run download "$CANDIDATE_RUN_ID" \
+            --repo "$GITHUB_REPOSITORY" \
+            --name "$ARTIFACT_NAME" \
+            --dir candidate
+          test -s candidate/publisher-image-candidate.json
+
+      - name: Download release assets and build canonical G1 record
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REGISTRY_TAG: ${{ inputs.registry_tag }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/releases/tags/$REGISTRY_TAG" > release.json
+          mkdir release-assets
+          while IFS=$'\t' read -r asset_id asset_name; do
+            case "$asset_id" in
+              ''|*[!0-9]*) echo "release asset id is not numeric"; exit 1 ;;
+            esac
+            case "$asset_name" in
+              ''|*/*|*\\*|.|..) echo "unsafe release asset name"; exit 1 ;;
+            esac
+            gh api \
+              -H "Accept: application/octet-stream" \
+              "repos/$GITHUB_REPOSITORY/releases/assets/$asset_id" \
+              > "release-assets/$asset_name"
+          done < <(jq -r '.assets[] | [.id, .name] | @tsv' release.json)
+
+          REPO_DIGEST="$(jq -er '.repo_digest' candidate/publisher-image-candidate.json)"
+          gh attestation verify "oci://$REPO_DIGEST" \
+            --repo "$GITHUB_REPOSITORY" \
+            --cert-identity "https://github.com/$GITHUB_REPOSITORY/.github/workflows/cd.yml@refs/heads/main" \
+            --cert-oidc-issuer "https://token.actions.githubusercontent.com" \
+            --predicate-type "https://slsa.dev/provenance/v1" \
+            --source-ref refs/heads/main \
+            --deny-self-hosted-runners
+
+          python3 - <<'PY'
+          from __future__ import annotations
+
+          import datetime
+          import hashlib
+          import json
+          import os
+          import subprocess
+          from pathlib import Path
+
+          repository = os.environ["GITHUB_REPOSITORY"]
+          head = os.environ["GITHUB_SHA"]
+          tag = os.environ["REGISTRY_TAG"]
+
+          def sha256_bytes(value: bytes) -> str:
+              return hashlib.sha256(value).hexdigest()
+
+          def git(*arguments: str) -> str:
+              return subprocess.check_output(
+                  ["git", *arguments],
+                  encoding="utf-8",
+              ).strip()
+
+          def action(path: str) -> dict[str, str]:
+              content = Path(path).read_bytes()
+              return {
+                  "repository": repository,
+                  "path": path,
+                  "sha": head,
+                  "action_blob_oid": git("rev-parse", f"{head}:{path}"),
+                  "action_sha256": sha256_bytes(content),
+              }
+
+          candidate_path = Path("candidate/publisher-image-candidate.json")
+          candidate = json.loads(candidate_path.read_text(encoding="utf-8"))
+          candidate_keys = {
+              "schema_version",
+              "repository",
+              "source_commit",
+              "workflow_run_id",
+              "workflow_run_attempt",
+              "image_ref",
+              "image_digest",
+              "repo_digest",
+              "provenance_attestation_id",
+              "provenance_attestation_url",
+              "provenance_digest",
+              "dockerfile_sha256",
+              "runtime_sha256",
+          }
+          if set(candidate) != candidate_keys:
+              raise SystemExit("candidate handoff shape mismatch")
+          if candidate["schema_version"] != "bsr-publisher-candidate/v1":
+              raise SystemExit("candidate handoff schema mismatch")
+          if candidate["repository"] != repository or candidate["source_commit"] != head:
+              raise SystemExit("candidate handoff source mismatch")
+          if (
+              candidate["repo_digest"]
+              != f"{candidate['image_ref']}@{candidate['image_digest']}"
+          ):
+              raise SystemExit("candidate image tuple mismatch")
+
+          publisher_action = Path("publish-action/action.yml").read_text(
+              encoding="utf-8"
+          )
+          expected_publisher_image = (
+              f"image: docker://{candidate['image_ref']}@{candidate['image_digest']}"
+          )
+          image_lines = [
+              line.strip()
+              for line in publisher_action.splitlines()
+              if line.strip().startswith("image:")
+          ]
+          if image_lines != [expected_publisher_image]:
+              raise SystemExit("publisher action digest mismatch")
+
+          release = json.loads(Path("release.json").read_text(encoding="utf-8"))
+          if (
+              release["tag_name"] != tag
+              or release["draft"] is not False
+              or release["prerelease"] is not True
+              or release["html_url"]
+              != f"https://github.com/{repository}/releases/tag/{tag}"
+          ):
+              raise SystemExit("beta release tuple mismatch")
+          issued_at = datetime.datetime.strptime(
+              release["published_at"], "%Y-%m-%dT%H:%M:%SZ"
+          ).replace(tzinfo=datetime.timezone.utc)
+          expires_at = issued_at + datetime.timedelta(days=30)
+
+          workflow_path = ".github/workflows/cd.yml"
+          workflow_bytes = Path(workflow_path).read_bytes()
+          source = {
+              "schema_version": "bsr-action-registry/v1",
+              "generation": 1,
+              "phase": "G1",
+              "channel": "beta",
+              "issued_at": issued_at.strftime("%Y-%m-%dT%H:%M:%SZ"),
+              "expires_at": expires_at.strftime("%Y-%m-%dT%H:%M:%SZ"),
+              "owner": "release-security",
+              "previous": None,
+              "head_oid": head,
+              "head_hash": sha256_bytes(
+                  subprocess.check_output(["git", "cat-file", "commit", head])
+              ),
+              "version_action": action("action.yml"),
+              "publish_action": action("publish-action/action.yml"),
+              "registry_action": action("registry-action/action.yml"),
+              "publisher": {
+                  "identity": (
+                      f"https://github.com/{repository}/.github/workflows/"
+                      "cd.yml@refs/heads/main"
+                  ),
+                  "image_ref": candidate["image_ref"],
+                  "image_digest": candidate["image_digest"],
+                  "image_source_commit": head,
+                  "dockerfile_sha256": candidate["dockerfile_sha256"],
+                  "runtime_sha256": candidate["runtime_sha256"],
+                  "provenance_repository": repository,
+                  "provenance_workflow": workflow_path,
+                  "provenance_attestation_id": candidate[
+                      "provenance_attestation_id"
+                  ],
+                  "provenance_digest": candidate["provenance_digest"],
+              },
+              "advertisement": {
+                  "repository": repository,
+                  "tag": tag,
+                  "target_sha": head,
+                  "release_url": release["html_url"],
+                  "registry_asset": "bsr-action-registry.json",
+                  "signature_asset": "bsr-action-registry.sigstore.json",
+                  "image_ref": candidate["repo_digest"],
+              },
+              "workflow": {
+                  "repository": repository,
+                  "path": workflow_path,
+                  "release_commit": head,
+                  "blob_oid": git("rev-parse", f"{head}:{workflow_path}"),
+                  "sha256": sha256_bytes(workflow_bytes),
+                  "environment": "beta-publish",
+              },
+          }
+          Path("g1-registry-source.json").write_text(
+              json.dumps(
+                  source,
+                  ensure_ascii=False,
+                  sort_keys=True,
+                  separators=(",", ":"),
+                  allow_nan=False,
+              )
+              + "\n",
+              encoding="utf-8",
+          )
+          PY
+          python3 scripts/action_pin_registry.py generate \
+            --input g1-registry-source.json \
+            --output generated-registry.json
+          python3 scripts/action_pin_registry.py verify \
+            --input generated-registry.json \
+            --output /dev/null
+
+      - name: Install cosign for registry signing
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v3.10.1
+
+      - name: Select or create the exact signed G1 pair
+        env:
+          CERTIFICATE_IDENTITY: https://github.com/${{ github.repository }}/.github/workflows/cd.yml@refs/heads/main
+        run: |
+          set -euo pipefail
+          RECORD="release-assets/bsr-action-registry.json"
+          SIGNATURE="release-assets/bsr-action-registry.sigstore.json"
+          if [ -e "$SIGNATURE" ] && [ ! -e "$RECORD" ]; then
+            echo "release contains an orphan registry signature"
+            exit 1
+          fi
+          if [ -e "$RECORD" ]; then
+            cmp --silent generated-registry.json "$RECORD"
+          else
+            cp generated-registry.json "$RECORD"
+          fi
+          if [ ! -e "$SIGNATURE" ]; then
+            cosign sign-blob \
+              --yes \
+              --bundle "$SIGNATURE" \
+              "$RECORD"
+          fi
+          cosign verify-blob \
+            --bundle "$SIGNATURE" \
+            --certificate-identity "$CERTIFICATE_IDENTITY" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+            "$RECORD"
+
+          cp "$RECORD" tampered-registry.json
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("tampered-registry.json")
+          original = b'"owner":"release-security"'
+          replacement = b'"owner":"release-securitz"'
+          content = path.read_bytes()
+          if content.count(original) != 1 or len(original) != len(replacement):
+              raise SystemExit("tamper target mismatch")
+          path.write_bytes(content.replace(original, replacement, 1))
+          PY
+          set +e
+          cosign verify-blob \
+            --bundle "$SIGNATURE" \
+            --certificate-identity "$CERTIFICATE_IDENTITY" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+            tampered-registry.json \
+            > tampered-verification.stdout \
+            2> tampered-verification.stderr
+          tampered_status=$?
+          set -e
+          test "$tampered_status" -ne 0
+          test -s tampered-verification.stderr
+
+      - name: Build exact create-once release manifest
+        env:
+          REGISTRY_TAG: ${{ inputs.registry_tag }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from __future__ import annotations
+
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          release = json.loads(Path("release.json").read_text(encoding="utf-8"))
+          asset_directory = Path("release-assets")
+          names = sorted(path.name for path in asset_directory.iterdir())
+          registry_names = {
+              "bsr-action-registry.json",
+              "bsr-action-registry.sigstore.json",
+          }
+          distributions = [name for name in names if name not in registry_names]
+          if (
+              len(names) != 4
+              or len(distributions) != 2
+              or sum(name.endswith(".whl") for name in distributions) != 1
+              or sum(name.endswith(".tar.gz") for name in distributions) != 1
+              or not registry_names.issubset(names)
+          ):
+              raise SystemExit("release asset set is not the exact G1 set")
+
+          existing_content_types = {
+              asset["name"]: asset["content_type"] for asset in release["assets"]
+          }
+          body = release["body"] or ""
+          body_path = Path("g1-release-body.txt")
+          body_path.write_text(body, encoding="utf-8")
+
+          assets = []
+          for name in names:
+              path = asset_directory / name
+              content = path.read_bytes()
+              assets.append(
+                  {
+                      "name": name,
+                      "path": path.as_posix(),
+                      "size": len(content),
+                      "sha256": hashlib.sha256(content).hexdigest(),
+                      "content_type": existing_content_types.get(
+                          name, "application/json"
+                      ),
+                  }
+              )
+
+          manifest = {
+              "schema_version": "bsr-release-manifest/v1",
+              "repository": os.environ["GITHUB_REPOSITORY"],
+              "transaction_id": (
+                  f"bsr-g1-{os.environ['GITHUB_RUN_ID']}-"
+                  f"{os.environ['GITHUB_RUN_ATTEMPT']}"
+              ),
+              "tag": os.environ["REGISTRY_TAG"],
+              "target_sha": os.environ["GITHUB_SHA"],
+              "release": {
+                  "name": release["name"],
+                  "body_path": body_path.as_posix(),
+                  "body_sha256": hashlib.sha256(
+                      body_path.read_bytes()
+                  ).hexdigest(),
+                  "draft": False,
+                  "prerelease": True,
+                  "make_latest": False,
+              },
+              "assets": assets,
+          }
+          Path("g1-release-manifest.json").write_text(
+              json.dumps(
+                  manifest,
+                  ensure_ascii=False,
+                  sort_keys=True,
+                  separators=(",", ":"),
+                  allow_nan=False,
+              )
+              + "\n",
+              encoding="utf-8",
+          )
+          PY
+
+      - name: Publish create-once signed G1 asset pair
+        id: publish
+        uses: ./publish-action
+        with:
+          manifest: g1-release-manifest.json
+          token: ${{ github.token }}
+
+      - name: Fresh-load published signed G1 registry
+        id: load
+        uses: ./registry-action
+        with:
+          expected: generated-registry.json
+          repository: ${{ github.repository }}
+          token: ${{ github.token }}
+
+      - name: Capture and verify G1 publication handoff
+        env:
+          ASSET_SET_SHA256: ${{ steps.publish.outputs.asset_set_sha256 }}
+          CREATED: ${{ steps.publish.outputs.created }}
+          LOADED_REGISTRY: ${{ steps.load.outputs.registry }}
+          MANIFEST_SHA256: ${{ steps.publish.outputs.manifest_sha256 }}
+          RELEASE_ID: ${{ steps.publish.outputs.release_id }}
+          RELEASE_URL: ${{ steps.publish.outputs.release_url }}
+          RESULT_SHA256: ${{ steps.publish.outputs.result_sha256 }}
+          REUSED_COUNT: ${{ steps.publish.outputs.reused_count }}
+          TRANSACTION_ID: ${{ steps.publish.outputs.transaction_id }}
+          UPLOADED_COUNT: ${{ steps.publish.outputs.uploaded_count }}
+        run: |
+          set -euo pipefail
+          test "$CREATED" = "false"
+          case "$UPLOADED_COUNT" in ''|*[!0-9]*) exit 1 ;; esac
+          case "$REUSED_COUNT" in ''|*[!0-9]*) exit 1 ;; esac
+          test "$((UPLOADED_COUNT + REUSED_COUNT))" -eq 4
+          printf '%s\n' "$LOADED_REGISTRY" > g1-loader-result.json
+          jq -e \
+            '.generation == 1 and .phase == "G1" and .channel == "beta"' \
+            g1-loader-result.json
+          RECORD_SHA256="$(sha256sum generated-registry.json | cut -d' ' -f1)"
+          SIGNATURE_SHA256="$(
+            sha256sum release-assets/bsr-action-registry.sigstore.json |
+              cut -d' ' -f1
+          )"
+          jq -n \
+            --arg asset_set_sha256 "$ASSET_SET_SHA256" \
+            --arg created "$CREATED" \
+            --arg manifest_sha256 "$MANIFEST_SHA256" \
+            --arg record_sha256 "$RECORD_SHA256" \
+            --arg release_id "$RELEASE_ID" \
+            --arg release_url "$RELEASE_URL" \
+            --arg result_sha256 "$RESULT_SHA256" \
+            --arg signature_sha256 "$SIGNATURE_SHA256" \
+            --arg transaction_id "$TRANSACTION_ID" \
+            --argjson reused_count "$REUSED_COUNT" \
+            --argjson uploaded_count "$UPLOADED_COUNT" \
+            '{
+              schema_version: "bsr-g1-publication-handoff/v1",
+              transaction_id: $transaction_id,
+              release_id: $release_id,
+              release_url: $release_url,
+              created: ($created == "true"),
+              uploaded_count: $uploaded_count,
+              reused_count: $reused_count,
+              manifest_sha256: $manifest_sha256,
+              asset_set_sha256: $asset_set_sha256,
+              result_sha256: $result_sha256,
+              record_sha256: $record_sha256,
+              signature_sha256: $signature_sha256
+            }' > g1-publication-handoff.json
+
+      - name: Upload signed G1 evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: signed-g1-registry-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            candidate/publisher-image-candidate.json
+            generated-registry.json
+            release-assets/bsr-action-registry.json
+            release-assets/bsr-action-registry.sigstore.json
+            g1-release-manifest.json
+            g1-loader-result.json
+            g1-publication-handoff.json
+            tampered-verification.stderr
+          if-no-files-found: error
+          retention-days: 90
           compression-level: 0
 # No downstream notification is dispatched from here, and that is a decision
 # rather than an omission -- worth writing down, because a shared library cutting

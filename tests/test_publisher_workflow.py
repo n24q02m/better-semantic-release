@@ -110,7 +110,7 @@ def test_registry_action_is_a_self_contained_remote_loader() -> None:
     assert loader["id"] == "load"
     command = loader["run"]
     assert "scripts/action_pin_registry.py" in command
-    assert " load " in command
+    assert 'action_pin_registry.py" load' in command
     assert "--expected" in command
     assert "--repository" in command
 
