@@ -122,6 +122,9 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+      - name: Set up isolated BuildKit builder
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+
 
       - name: Log in to GHCR
         env:
@@ -130,11 +133,11 @@ jobs:
           printf '%s\n' "$GHCR_TOKEN" | docker login ghcr.io \
             --username "$GITHUB_ACTOR" --password-stdin
 
-      - name: Build candidate image
+      - name: Build reproducible candidate image
         env:
           IMAGE: ghcr.io/${{ github.repository }}-publisher:candidate-${{ github.sha }}
         run: |
-          set -eu
+          set -euo pipefail
           RUNNER_UID="$(id -u)"
           RUNNER_GID="$(id -g)"
           case "$RUNNER_UID" in ''|*[!0-9]*) echo "runner uid is not numeric"; exit 1;; esac
@@ -147,12 +150,37 @@ jobs:
             echo "runner gid is outside the image range"
             exit 1
           fi
-          docker build \
-            --build-arg "PUBLISHER_UID=$RUNNER_UID" \
-            --build-arg "PUBLISHER_GID=$RUNNER_GID" \
-            --file publish-action/Dockerfile \
-            --tag "$IMAGE" \
-            .
+
+          FIRST_IMAGE="${IMAGE}-repro-first"
+          FIRST_ARCHIVE="$RUNNER_TEMP/publisher-image-first.tar"
+          SECOND_ARCHIVE="$RUNNER_TEMP/publisher-image-second.tar"
+          trap 'rm -f "$FIRST_ARCHIVE" "$SECOND_ARCHIVE"' EXIT
+
+          build_candidate() {
+            local output="$1"
+            local name="$2"
+            docker buildx build \
+              --no-cache \
+              --build-arg "PUBLISHER_UID=$RUNNER_UID" \
+              --build-arg "PUBLISHER_GID=$RUNNER_GID" \
+              --build-arg "SOURCE_DATE_EPOCH=0" \
+              --file publish-action/Dockerfile \
+              --output "type=docker,dest=$output,name=$name,rewrite-timestamp=true" \
+              .
+          }
+
+          build_candidate "$FIRST_ARCHIVE" "$FIRST_IMAGE"
+          build_candidate "$SECOND_ARCHIVE" "$IMAGE"
+          docker load --input "$FIRST_ARCHIVE"
+          docker load --input "$SECOND_ARCHIVE"
+
+          FIRST_ID="$(docker image inspect "$FIRST_IMAGE" --format '{{.Id}}')"
+          SECOND_ID="$(docker image inspect "$IMAGE" --format '{{.Id}}')"
+          FIRST_LAYERS="$(docker image inspect "$FIRST_IMAGE" --format '{{json .RootFS.Layers}}')"
+          SECOND_LAYERS="$(docker image inspect "$IMAGE" --format '{{json .RootFS.Layers}}')"
+          test "$FIRST_ID" = "$SECOND_ID"
+          test "$FIRST_LAYERS" = "$SECOND_LAYERS"
+          docker image rm "$FIRST_IMAGE"
 
       - name: Smoke-test candidate runtime mounts with output preflight
         env:
