@@ -465,8 +465,19 @@ def test_cli_redacts_registry_errors(
 
 
 class _AttestationHTTPProvider(registry_module.HttpRegistryProvider):
-    def __init__(self, attestations: list[dict[str, Any]]) -> None:
-        super().__init__(timeout=1)
+    def __init__(
+        self,
+        attestations: list[dict[str, Any]],
+        attestation_verifier: registry_module.AttestationVerifier | None = None,
+    ) -> None:
+        super().__init__(
+            timeout=1,
+            attestation_verifier=(
+                (lambda *_args: True)
+                if attestation_verifier is None
+                else attestation_verifier
+            ),
+        )
         self.attestations = attestations
         self.query_url = ""
 
@@ -599,6 +610,7 @@ def test_http_attestation_reader_uses_subject_digest_and_exact_bundle_id(
         "urlopen",
         lambda *_args, **_kwargs: pytest.fail("explicit opener required"),
     )
+    verified_bundles: list[tuple[bytes, str, str]] = []
     provider = _AttestationHTTPProvider(
         [
             {
@@ -607,7 +619,10 @@ def test_http_attestation_reader_uses_subject_digest_and_exact_bundle_id(
                 "initiator": "user",
                 "bundle": None,
             }
-        ]
+        ],
+        attestation_verifier=lambda raw, repository, digest: verified_bundles.append(
+            (raw, repository, digest)
+        ),
     )
 
     digest = provider.read_attestation(REPOSITORY, IMAGE_DIGEST, "937309")
@@ -636,6 +651,113 @@ def test_http_attestation_reader_uses_subject_digest_and_exact_bundle_id(
             bundle_url,
         )
     assert digest == hashlib.sha256(raw_bundle).hexdigest()
+    assert verified_bundles == [(raw_bundle, REPOSITORY, IMAGE_DIGEST)]
+
+
+@pytest.mark.parametrize("verifier_result", [False, 0, "unexpected"])
+def test_http_attestation_reader_rejects_forged_bundle_after_crypto_verification(
+    monkeypatch: pytest.MonkeyPatch,
+    verifier_result: Any,
+) -> None:
+    bundle = _provenance_bundle()
+    bundle_url = (
+        "https://tmaproduction.blob.core.windows.net/attestations/"
+        "123/2026/08/30/937309.json.sn?sv=fixture"
+    )
+    opener = _CapturingOpener(json.dumps(bundle).encode())
+    monkeypatch.setattr(
+        registry_module.urllib.request,
+        "build_opener",
+        lambda *_values: opener,
+    )
+    provider = _AttestationHTTPProvider(
+        [
+            {
+                "repository_id": 123,
+                "bundle_url": bundle_url,
+                "initiator": "user",
+                "bundle": None,
+            }
+        ],
+        attestation_verifier=lambda *_args: verifier_result,
+    )
+
+    with pytest.raises(RegistryError, match="attestation signature"):
+        provider.read_attestation(REPOSITORY, IMAGE_DIGEST, "937309")
+
+
+def test_gh_attestation_verifier_enforces_identity_and_source_ref(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    raw_bundle = json.dumps(_provenance_bundle()).encode()
+    captured: dict[str, Any] = {}
+
+    def fake_run(
+        command: list[str],
+        *,
+        check: bool,
+        capture_output: bool,
+        timeout: float,
+    ) -> Any:
+        captured["command"] = command
+        captured["check"] = check
+        captured["capture_output"] = capture_output
+        captured["timeout"] = timeout
+        bundle_path = command[command.index("--bundle") + 1]
+        with open(bundle_path, "rb") as stream:
+            captured["bundle"] = stream.read()
+        return registry_module.subprocess.CompletedProcess(command, 0)
+
+    monkeypatch.setattr(registry_module.subprocess, "run", fake_run)
+
+    registry_module.verify_attestation_with_gh(
+        raw_bundle,
+        REPOSITORY,
+        IMAGE_DIGEST,
+        gh_binary="gh-fixture",
+        timeout=7,
+    )
+
+    command = captured["command"]
+    assert command[:4] == [
+        "gh-fixture",
+        "attestation",
+        "verify",
+        f"oci://ghcr.io/{REPOSITORY}-publisher@{IMAGE_DIGEST}",
+    ]
+    assert command[command.index("--repo") + 1] == REPOSITORY
+    assert command[command.index("--cert-identity") + 1] == (
+        f"https://github.com/{REPOSITORY}/.github/workflows/" "cd.yml@refs/heads/main"
+    )
+    assert command[command.index("--cert-oidc-issuer") + 1] == (
+        "https://token.actions.githubusercontent.com"
+    )
+    assert command[command.index("--predicate-type") + 1] == (
+        "https://slsa.dev/provenance/v1"
+    )
+    assert command[command.index("--source-ref") + 1] == "refs/heads/main"
+    assert "--deny-self-hosted-runners" in command
+    assert captured["check"] is False
+    assert captured["capture_output"] is True
+    assert captured["timeout"] == 7
+    assert captured["bundle"] == raw_bundle
+
+
+def test_gh_attestation_verifier_rejects_failed_signature(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        registry_module.subprocess,
+        "run",
+        lambda *_args, **_kwargs: registry_module.subprocess.CompletedProcess([], 1),
+    )
+
+    with pytest.raises(RegistryError, match="attestation signature"):
+        registry_module.verify_attestation_with_gh(
+            json.dumps(_provenance_bundle()).encode(),
+            REPOSITORY,
+            IMAGE_DIGEST,
+        )
 
 
 @pytest.mark.parametrize(

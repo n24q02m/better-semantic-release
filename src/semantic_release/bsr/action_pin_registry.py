@@ -171,6 +171,7 @@ class RegistryProvider(Protocol):
 
 
 SignatureVerifier = Callable[[bytes, bytes], Any]
+AttestationVerifier = Callable[[bytes, str, str], Any]
 
 
 class _DuplicateKey(ValueError):
@@ -1402,14 +1403,86 @@ def _validate_attestation_bundle(
     _validate_attested_subject(statement, subject_digest)
 
 
+def verify_attestation_with_gh(
+    bundle: bytes,
+    repository: str,
+    subject_digest: str,
+    *,
+    gh_binary: str = "gh",
+    timeout: float = 30.0,
+) -> None:
+    """Cryptographically verify one downloaded GitHub provenance bundle."""
+    repository = _repository(repository, "repository")
+    subject_digest = _image_digest(subject_digest, "subject digest")
+    if not isinstance(gh_binary, str) or not gh_binary or timeout <= 0:
+        raise RegistryError("provider attestation verifier")
+    identity = (
+        f"https://github.com/{repository}/.github/workflows/cd.yml@refs/heads/main"
+    )
+    image = f"oci://ghcr.io/{repository.lower()}-publisher@{subject_digest}"
+    try:
+        with tempfile.TemporaryDirectory(prefix="bsr-attestation-") as directory:
+            bundle_path = os.path.join(directory, "bundle.json")
+            with open(bundle_path, "wb") as bundle_file:
+                bundle_file.write(
+                    _bytes_value(
+                        bundle,
+                        "provider attestation bundle",
+                        max_bytes=_MAX_ASSET_BYTES,
+                    )
+                )
+            command = [
+                gh_binary,
+                "attestation",
+                "verify",
+                image,
+                "--repo",
+                repository,
+                "--bundle",
+                bundle_path,
+                "--cert-identity",
+                identity,
+                "--cert-oidc-issuer",
+                _COSIGN_ISSUER,
+                "--predicate-type",
+                _SLSA_PROVENANCE_TYPE,
+                "--source-ref",
+                "refs/heads/main",
+                "--deny-self-hosted-runners",
+            ]
+            completed = subprocess.run(  # noqa: S603
+                command,
+                check=False,
+                capture_output=True,
+                timeout=timeout,
+            )
+    except (OSError, subprocess.SubprocessError, ValueError):
+        raise RegistryError("provider attestation verifier") from None
+    if completed.returncode != 0:
+        raise RegistryError("provider attestation signature")
+
+
 class HttpRegistryProvider:
     """Small stdlib GitHub/GHCR read-only provider for the CLI."""
 
-    def __init__(self, *, token: str | None = None, timeout: float = 30.0) -> None:
+    def __init__(
+        self,
+        *,
+        token: str | None = None,
+        timeout: float = 30.0,
+        attestation_verifier: AttestationVerifier | None = None,
+    ) -> None:
         if timeout <= 0:
             raise RegistryError("provider timeout")
+        if attestation_verifier is not None and not callable(attestation_verifier):
+            raise RegistryError("provider attestation verifier")
         self._token = token
         self._timeout = timeout
+        self._attestation_verifier = (
+            verify_attestation_with_gh
+            if attestation_verifier is None
+            else attestation_verifier
+        )
 
     def _request(
         self, url: str, *, accept: str = "application/json"
@@ -1554,11 +1627,21 @@ class HttpRegistryProvider:
         )
         bundle_url = _select_attestation_bundle_url(response, attestation_id)
         raw, headers = self._request_public_bundle(bundle_url)
-        bundle = _parse_json(
-            _attestation_json_bytes(raw, headers),
-            max_bytes=_MAX_ASSET_BYTES,
-        )
+        bundle_bytes = _attestation_json_bytes(raw, headers)
+        bundle = _parse_json(bundle_bytes, max_bytes=_MAX_ASSET_BYTES)
         _validate_attestation_bundle(bundle, subject_digest)
+        try:
+            verified = self._attestation_verifier(
+                bundle_bytes,
+                repository,
+                subject_digest,
+            )
+        except RegistryError:
+            raise
+        except Exception:  # noqa: BLE001 - verifier failures are normalized.
+            raise RegistryError("provider attestation signature") from None
+        if verified is not None and verified is not True:
+            raise RegistryError("provider attestation signature")
         return hashlib.sha256(_canonical_json(bundle)).hexdigest()
 
 
@@ -1709,6 +1792,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
 
 __all__ = [
+    "AttestationVerifier",
     "HttpRegistryProvider",
     "RegistryError",
     "RegistryProvider",
@@ -1718,6 +1802,7 @@ __all__ = [
     "load_remote_registry",
     "main",
     "select_latest",
+    "verify_attestation_with_gh",
     "verify_record",
     "verify_with_cosign",
 ]
