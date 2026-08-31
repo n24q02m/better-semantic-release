@@ -531,7 +531,17 @@ def _provenance_bundle(subject_digest: str = IMAGE_DIGEST) -> dict[str, Any]:
     ).encode()
     return {
         "mediaType": "application/vnd.dev.sigstore.bundle.v0.3+json",
-        "verificationMaterial": {},
+        "verificationMaterial": {
+            "tlogEntries": [
+                {
+                    "inclusionProof": {
+                        "checkpoint": {
+                            "envelope": "rekor.sigstore.dev\n1\nfixture-root-hash\n"
+                        }
+                    }
+                }
+            ]
+        },
         "dsseEnvelope": {
             "payload": base64.b64encode(payload).decode(),
             "payloadType": "application/vnd.in-toto+json",
@@ -727,7 +737,7 @@ def test_gh_attestation_verifier_enforces_identity_and_source_ref(
     ]
     assert command[command.index("--repo") + 1] == REPOSITORY
     assert command[command.index("--cert-identity") + 1] == (
-        f"https://github.com/{REPOSITORY}/.github/workflows/" "cd.yml@refs/heads/main"
+        f"https://github.com/{REPOSITORY}/.github/workflows/cd.yml@refs/heads/main"
     )
     assert command[command.index("--cert-oidc-issuer") + 1] == (
         "https://token.actions.githubusercontent.com"
@@ -810,6 +820,89 @@ def test_http_attestation_reader_rejects_zero_or_competing_matches() -> None:
         provider = _AttestationHTTPProvider(rows)
         with pytest.raises(RegistryError, match="attestation"):
             provider.read_attestation(REPOSITORY, IMAGE_DIGEST, "937309")
+
+
+def test_http_attestation_reader_rejects_non_lf_checkpoint_controls(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    bundle = _provenance_bundle()
+    bundle["verificationMaterial"]["tlogEntries"][0]["inclusionProof"]["checkpoint"][
+        "envelope"
+    ] = "rekor.sigstore.dev\r\n1\nfixture-root-hash\n"
+    bundle_url = (
+        "https://tmaproduction.blob.core.windows.net/attestations/"
+        "123/2026/08/30/937309.json.sn?sv=fixture"
+    )
+    opener = _CapturingOpener(json.dumps(bundle).encode())
+    monkeypatch.setattr(
+        registry_module.urllib.request,
+        "build_opener",
+        lambda *_values: opener,
+    )
+    provider = _AttestationHTTPProvider(
+        [
+            {
+                "repository_id": 123,
+                "bundle_url": bundle_url,
+                "initiator": "user",
+                "bundle": None,
+            }
+        ],
+        attestation_verifier=lambda *_args: pytest.fail(
+            "invalid checkpoint reached verifier"
+        ),
+    )
+
+    with pytest.raises(RegistryError, match="control character"):
+        provider.read_attestation(REPOSITORY, IMAGE_DIGEST, "937309")
+
+
+def test_http_provider_exchanges_scoped_ghcr_token_before_manifest_read(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = registry_module.HttpRegistryProvider(
+        token="github-token",
+        timeout=1,
+    )
+    requests: list[tuple[str, str, str | None]] = []
+
+    def fake_request(
+        url: str,
+        *,
+        accept: str = "application/json",
+        bearer_token: str | None = None,
+    ) -> tuple[bytes, Message]:
+        requests.append((url, accept, bearer_token))
+        headers = Message()
+        if url.startswith("https://ghcr.io/token?"):
+            return b'{"token":"ghcr-pull-token"}', headers
+        headers["docker-content-digest"] = IMAGE_DIGEST
+        return b"{}", headers
+
+    monkeypatch.setattr(provider, "_request", fake_request)
+
+    assert (
+        provider.read_oci_manifest(
+            "ghcr.io/n24q02m/better-semantic-release-publisher",
+            IMAGE_DIGEST,
+        )
+        == IMAGE_DIGEST
+    )
+    assert requests == [
+        (
+            "https://ghcr.io/token?service=ghcr.io&"
+            "scope=repository%3An24q02m%2Fbetter-semantic-release-publisher%3Apull",
+            "application/json",
+            None,
+        ),
+        (
+            "https://ghcr.io/v2/n24q02m/better-semantic-release-publisher/"
+            f"manifests/{IMAGE_DIGEST}",
+            "application/vnd.oci.image.manifest.v1+json, "
+            "application/vnd.docker.distribution.manifest.v2+json",
+            "ghcr-pull-token",
+        ),
+    ]
 
 
 @pytest.mark.parametrize(
