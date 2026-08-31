@@ -60,10 +60,11 @@ def test_publisher_runtime_is_not_the_final_action_yet() -> None:
 def test_candidate_job_contains_only_image_bootstrap_mutations() -> None:
     document = _load_workflow()
     image = document["jobs"]["publisher-image"]
-    step_text = "\n".join(
+    raw_step_text = "\n".join(
         f"{step.get('name', '')} {step.get('run', '')} {step.get('uses', '')}"
         for step in image["steps"]
-    ).lower()
+    )
+    step_text = raw_step_text.lower()
     assert "pypi" not in step_text
     assert "gh release" not in step_text
     assert "semantic-release publish" not in step_text
@@ -71,7 +72,7 @@ def test_candidate_job_contains_only_image_bootstrap_mutations() -> None:
     assert "id -g" in step_text
     assert '--build-arg "publisher_uid=' in step_text
     assert '--build-arg "publisher_gid=' in step_text
-    assert '--build-arg "source_date_epoch=0"' in step_text
+    assert '--build-arg "SOURCE_DATE_EPOCH=0"' in raw_step_text
     assert "github-output" in step_text
     assert "preflight" in step_text
     assert '[[ ! "$subject_digest" =~ ^sha256:[0-9a-f]{64}$ ]]' in step_text
