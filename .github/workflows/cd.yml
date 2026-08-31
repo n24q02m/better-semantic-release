@@ -713,7 +713,7 @@ jobs:
                       "name": name,
                       "path": path.as_posix(),
                       "size": len(content),
-                      "sha256": hashlib.sha256(content).hexdigest(),
+                      "sha256": "sha256:" + hashlib.sha256(content).hexdigest(),
                       "content_type": existing_content_types.get(
                           name, "application/json"
                       ),
