@@ -1848,6 +1848,13 @@ def _cli_time(value: str | None) -> _datetime.datetime | None:
     return _timestamp(value, "now")
 
 
+def _consumer_cli_time(value: str | None) -> _datetime.datetime:
+    parsed = _cli_time(value)
+    if parsed is not None:
+        return parsed
+    return _datetime.datetime.now(tz=_datetime.timezone.utc)
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="action_pin_registry")
     commands = parser.add_subparsers(dest="command", required=True)
@@ -1933,9 +1940,10 @@ def _run_cli(arguments: argparse.Namespace) -> None:
         encoded = b"null\n" if head is None else canonical_record_bytes(head)
         _write_output(arguments.output, encoded)
         return
+    consumer_now = _consumer_cli_time(arguments.now)
     expected = verify_record(
         _read_input(arguments.expected),
-        now=_cli_time(arguments.now),
+        now=consumer_now,
     )
 
     publisher = _mapping(expected["publisher"], _PUBLISHER_KEYS, "publisher")
@@ -1951,7 +1959,7 @@ def _run_cli(arguments: argparse.Namespace) -> None:
             timeout=arguments.cosign_timeout,
         ),
         repository=arguments.repository,
-        now=_cli_time(arguments.now),
+        now=consumer_now,
     )
     _write_output("-", _canonical_json(output) + b"\n")
 
