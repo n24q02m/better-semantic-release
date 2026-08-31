@@ -4,6 +4,22 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.6.0-beta.5:
+
+v1.6.0-beta.5 (2026-08-31)
+==========================
+
+🪲 Bug Fixes
+------------
+
+* Qualify G1 publisher asset digests (`PR#120`_, `e2b6e75`_)
+
+* Qualify publisher asset digests (`PR#120`_, `e2b6e75`_)
+
+.. _e2b6e75: https://github.com/n24q02m/better-semantic-release/commit/e2b6e75609ca886be8e0b480b6926f722b955be7
+.. _PR#120: https://github.com/n24q02m/better-semantic-release/pull/120
+
+
 .. _changelog-v1.6.0-beta.4:
 
 v1.6.0-beta.4 (2026-08-31)
