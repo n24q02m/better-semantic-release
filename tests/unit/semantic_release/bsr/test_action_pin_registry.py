@@ -567,6 +567,65 @@ def test_cli_generates_executable_successor_from_signed_chain_head(
     assert select_latest([previous, successor], now=NOW) == successor
 
 
+def test_remote_cli_renews_expired_predecessor_but_rejects_expired_consumer(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    source = _base_record()
+    source["issued_at"] = "2020-01-01T00:00:00Z"
+    source["expires_at"] = "2020-02-01T00:00:00Z"
+    raw = canonical_record_bytes(build_record(source))
+    provider = _Provider(raw)
+    expected_path = tmp_path / "expired-record.json"
+    head_path = tmp_path / "expired-head.json"
+    expected_path.write_bytes(raw)
+    monkeypatch.setattr(
+        registry_module,
+        "HttpRegistryProvider",
+        lambda **_kwargs: provider,
+    )
+    monkeypatch.setattr(
+        registry_module,
+        "verify_with_cosign",
+        lambda *_args, **_kwargs: None,
+    )
+
+    assert (
+        registry_module.main(
+            [
+                "head",
+                "--repository",
+                REPOSITORY,
+                "--identity",
+                (
+                    f"https://github.com/{REPOSITORY}/.github/workflows/"
+                    "cd.yml@refs/heads/main"
+                ),
+                "--output",
+                str(head_path),
+            ]
+        )
+        == 0
+    )
+    assert head_path.read_bytes() == raw
+    assert (
+        registry_module.main(
+            [
+                "load",
+                "--expected",
+                str(expected_path),
+                "--repository",
+                REPOSITORY,
+            ]
+        )
+        == 2
+    )
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err == "registry error\n"
+
+
 def test_cli_redacts_registry_errors(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
