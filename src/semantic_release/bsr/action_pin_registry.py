@@ -812,7 +812,8 @@ def _blob_bytes(value: Mapping[str, Any]) -> tuple[str, bytes]:
         if not isinstance(content, str) or encoding != "base64":
             raise RegistryError("blob content")
         try:
-            raw = base64.b64decode(content.encode("ascii"), validate=True)
+            normalized_content = content.replace("\r", "").replace("\n", "")
+            raw = base64.b64decode(normalized_content.encode("ascii"), validate=True)
         except (ValueError, UnicodeEncodeError):
             raise RegistryError("blob content") from None
         raw = _bytes_value(raw, "blob")
