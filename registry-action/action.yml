@@ -44,9 +44,6 @@ runs:
           --expected "$EXPECTED"
           --repository "$REPOSITORY"
         )
-        if [ -n "$GITHUB_TOKEN" ]; then
-          command+=(--token "$GITHUB_TOKEN")
-        fi
         if [ -n "$NOW" ]; then
           command+=(--now "$NOW")
         fi

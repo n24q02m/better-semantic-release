@@ -412,6 +412,8 @@ jobs:
 
       - name: Download release assets and build canonical G1 record
         env:
+          CANDIDATE_RUN_ATTEMPT: ${{ inputs.candidate_run_attempt }}
+          CANDIDATE_RUN_ID: ${{ inputs.candidate_run_id }}
           GH_TOKEN: ${{ github.token }}
           REGISTRY_TAG: ${{ inputs.registry_tag }}
         run: |
@@ -453,6 +455,8 @@ jobs:
           repository = os.environ["GITHUB_REPOSITORY"]
           head = os.environ["GITHUB_SHA"]
           tag = os.environ["REGISTRY_TAG"]
+          candidate_run_id = int(os.environ["CANDIDATE_RUN_ID"])
+          candidate_run_attempt = int(os.environ["CANDIDATE_RUN_ATTEMPT"])
 
           def sha256_bytes(value: bytes) -> str:
               return hashlib.sha256(value).hexdigest()
@@ -496,6 +500,11 @@ jobs:
               raise SystemExit("candidate handoff schema mismatch")
           if candidate["repository"] != repository or candidate["source_commit"] != head:
               raise SystemExit("candidate handoff source mismatch")
+          if (
+              candidate["workflow_run_id"] != candidate_run_id
+              or candidate["workflow_run_attempt"] != candidate_run_attempt
+          ):
+              raise SystemExit("candidate workflow run mismatch")
           if (
               candidate["repo_digest"]
               != f"{candidate['image_ref']}@{candidate['image_digest']}"
@@ -774,7 +783,7 @@ jobs:
           UPLOADED_COUNT: ${{ steps.publish.outputs.uploaded_count }}
         run: |
           set -euo pipefail
-          test "$CREATED" = "false"
+          case "$CREATED" in False|false) ;; *) exit 1 ;; esac
           case "$UPLOADED_COUNT" in ''|*[!0-9]*) exit 1 ;; esac
           case "$REUSED_COUNT" in ''|*[!0-9]*) exit 1 ;; esac
           test "$((UPLOADED_COUNT + REUSED_COUNT))" -eq 4
@@ -804,7 +813,7 @@ jobs:
               transaction_id: $transaction_id,
               release_id: $release_id,
               release_url: $release_url,
-              created: ($created == "true"),
+              created: (($created | ascii_downcase) == "true"),
               uploaded_count: $uploaded_count,
               reused_count: $reused_count,
               manifest_sha256: $manifest_sha256,
