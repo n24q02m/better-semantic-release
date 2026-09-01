@@ -961,3 +961,19 @@ kind = "other"
 owner = "bsr-g1-registry"
 reason = "Phase B self-contained composite action for signed remote registry loading."
 gates = ["other"]
+
+[[ownership]]
+path = ".jules/bolt.md"
+status = "A"
+kind = "other"
+owner = "bsr-core"
+reason = "Journal for critical performance learnings."
+gates = ["other"]
+
+[[ownership]]
+path = "src/semantic_release/version/version.py"
+status = "M"
+kind = "python-source"
+owner = "bsr-core"
+reason = "Performance improvement: explicit boolean chaining is faster than all() with generator in __eq__."
+gates = ["python-lint", "python-format", "python-type"]
