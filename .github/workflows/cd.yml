@@ -274,7 +274,7 @@ jobs:
 
       - name: Attest candidate image provenance
         id: provenance
-        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2.2.0
+        uses: actions/attest-build-provenance@520d128f165991a6c774bcb264f323e3d70747f4 # v2.2.0
         with:
           subject-name: ${{ steps.image.outputs.subject_name }}
           subject-digest: ${{ steps.image.outputs.subject_digest }}
@@ -433,7 +433,7 @@ jobs:
           test -s candidate/publisher-image-candidate.json
 
       - name: Install cosign for registry signing
-        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v3.10.1
+        uses: sigstore/cosign-installer@7e8b541eb2e61bf99390e1afd4be13a184e9ebc5 # v3.10.1
 
       - name: Resolve signed registry chain head
         env:
