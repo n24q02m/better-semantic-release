@@ -4,6 +4,20 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.6.0-beta.7:
+
+v1.6.0-beta.7 (2026-09-01)
+==========================
+
+🪲 Bug Fixes
+------------
+
+* Decode wrapped Contents API blobs (`PR#123`_, `5b7e7c3`_)
+
+.. _5b7e7c3: https://github.com/n24q02m/better-semantic-release/commit/5b7e7c30fff1b7fe3bd72e3359f1f322249ee2ed
+.. _PR#123: https://github.com/n24q02m/better-semantic-release/pull/123
+
+
 .. _changelog-v1.6.0-beta.6:
 
 v1.6.0-beta.6 (2026-08-31)
