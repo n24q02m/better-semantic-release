@@ -4,6 +4,20 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.6.0-beta.8:
+
+v1.6.0-beta.8 (2026-09-01)
+==========================
+
+🪲 Bug Fixes
+------------
+
+* **bsr**: Pin verified publisher candidate (`PR#125`_, `b0e0821`_)
+
+.. _b0e0821: https://github.com/n24q02m/better-semantic-release/commit/b0e0821acc4b57a4cec1db4534d258633d0f72b8
+.. _PR#125: https://github.com/n24q02m/better-semantic-release/pull/125
+
+
 .. _changelog-v1.6.0-beta.7:
 
 v1.6.0-beta.7 (2026-09-01)
