@@ -1,0 +1,40 @@
+---
+name: BSR create-once release publisher
+description: Publish an exact release manifest without overwriting existing assets
+
+inputs:
+  manifest:
+    description: Workspace-relative path to the canonical release manifest
+    required: true
+  token:
+    description: GitHub token with contents write access to the target repository
+    required: true
+
+outputs:
+  transaction_id:
+    description: Validated publication transaction identifier
+  manifest_sha256:
+    description: SHA-256 of the canonical manifest
+  release_id:
+    description: GitHub release identifier
+  release_url:
+    description: GitHub release URL
+  created:
+    description: Whether the release was created by this invocation
+  uploaded_count:
+    description: Number of newly uploaded assets
+  reused_count:
+    description: Number of byte-identical assets reused
+  asset_set_sha256:
+    description: SHA-256 of the reconciled asset set
+  result_sha256:
+    description: SHA-256 of the publication result tuple
+
+runs:
+  using: docker
+  image: docker://ghcr.io/n24q02m/better-semantic-release-publisher@sha256:e9d3c4ab0a18ef506217ea777148bb906900dab1776b607c729f1cb5c9e4947f
+  env:
+    INPUT_TOKEN: ${{ inputs.token }}
+  args:
+    - --manifest
+    - ${{ inputs.manifest }}

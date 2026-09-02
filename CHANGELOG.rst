@@ -4,6 +4,195 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.6.0-beta.8:
+
+v1.6.0-beta.8 (2026-09-01)
+==========================
+
+🪲 Bug Fixes
+------------
+
+* **bsr**: Pin verified publisher candidate (`PR#125`_, `b0e0821`_)
+
+.. _b0e0821: https://github.com/n24q02m/better-semantic-release/commit/b0e0821acc4b57a4cec1db4534d258633d0f72b8
+.. _PR#125: https://github.com/n24q02m/better-semantic-release/pull/125
+
+
+.. _changelog-v1.6.0-beta.7:
+
+v1.6.0-beta.7 (2026-09-01)
+==========================
+
+🪲 Bug Fixes
+------------
+
+* Decode wrapped Contents API blobs (`PR#123`_, `5b7e7c3`_)
+
+.. _5b7e7c3: https://github.com/n24q02m/better-semantic-release/commit/5b7e7c30fff1b7fe3bd72e3359f1f322249ee2ed
+.. _PR#123: https://github.com/n24q02m/better-semantic-release/pull/123
+
+
+.. _changelog-v1.6.0-beta.6:
+
+v1.6.0-beta.6 (2026-08-31)
+==========================
+
+🪲 Bug Fixes
+------------
+
+* Continue published G1 registry chain (`PR#121`_, `c5fd40a`_)
+
+* Enforce consumer registry freshness (`PR#122`_, `740240c`_)
+
+* Enforce default registry freshness (`PR#122`_, `740240c`_)
+
+* Fresh-load live GHCR provenance (`PR#121`_, `c5fd40a`_)
+
+* Generate verified registry successor (`PR#121`_, `c5fd40a`_)
+
+* Keep registry retry idempotent (`PR#121`_, `c5fd40a`_)
+
+* Load live GHCR and Sigstore provenance (`PR#121`_, `c5fd40a`_)
+
+.. _740240c: https://github.com/n24q02m/better-semantic-release/commit/740240cb9cd8e2e65dda0c995fc97d2cdf727e64
+.. _c5fd40a: https://github.com/n24q02m/better-semantic-release/commit/c5fd40a925764e944847bee31c880aaec4c4a200
+.. _PR#121: https://github.com/n24q02m/better-semantic-release/pull/121
+.. _PR#122: https://github.com/n24q02m/better-semantic-release/pull/122
+
+
+.. _changelog-v1.6.0-beta.5:
+
+v1.6.0-beta.5 (2026-08-31)
+==========================
+
+🪲 Bug Fixes
+------------
+
+* Qualify G1 publisher asset digests (`PR#120`_, `e2b6e75`_)
+
+* Qualify publisher asset digests (`PR#120`_, `e2b6e75`_)
+
+.. _e2b6e75: https://github.com/n24q02m/better-semantic-release/commit/e2b6e75609ca886be8e0b480b6926f722b955be7
+.. _PR#120: https://github.com/n24q02m/better-semantic-release/pull/120
+
+
+.. _changelog-v1.6.0-beta.4:
+
+v1.6.0-beta.4 (2026-08-31)
+==========================
+
+🪲 Bug Fixes
+------------
+
+* Preserve G1 publisher manifest key order (`PR#119`_, `b6e5aa4`_)
+
+* Preserve publisher manifest key order (`PR#119`_, `b6e5aa4`_)
+
+.. _b6e5aa4: https://github.com/n24q02m/better-semantic-release/commit/b6e5aa43ce7d71f65bf90a9d55df37a8b9bcb856
+.. _PR#119: https://github.com/n24q02m/better-semantic-release/pull/119
+
+
+.. _changelog-v1.6.0-beta.3:
+
+v1.6.0-beta.3 (2026-08-31)
+==========================
+
+🪲 Bug Fixes
+------------
+
+* **bsr**: Isolate registry CLI from package imports (`PR#118`_, `6e7e60b`_)
+
+.. _6e7e60b: https://github.com/n24q02m/better-semantic-release/commit/6e7e60b1a564486c4dddb2a9748e58af1b12db17
+.. _PR#118: https://github.com/n24q02m/better-semantic-release/pull/118
+
+
+.. _changelog-v1.6.0-beta.2:
+
+v1.6.0-beta.2 (2026-08-31)
+==========================
+
+✨ Features
+-----------
+
+* **bsr**: Publish signed G1 action registry (`PR#116`_, `117e0f8`_)
+
+🪲 Bug Fixes
+------------
+
+* **bsr**: Bind G1 candidate run tuple (`PR#116`_, `117e0f8`_)
+
+* **bsr**: Make publisher image builds reproducible (`PR#115`_, `a0b858d`_)
+
+* **bsr**: Pass publisher token into Docker action (`PR#117`_, `11f0191`_)
+
+.. _117e0f8: https://github.com/n24q02m/better-semantic-release/commit/117e0f86478412f24c0d10325cd107b2ee186709
+.. _11f0191: https://github.com/n24q02m/better-semantic-release/commit/11f01919bc6c67786bc0c1d30dde3d6e7167ecd6
+.. _a0b858d: https://github.com/n24q02m/better-semantic-release/commit/a0b858d962ffcac988fa6d0d572791abeeb30a12
+.. _PR#115: https://github.com/n24q02m/better-semantic-release/pull/115
+.. _PR#116: https://github.com/n24q02m/better-semantic-release/pull/116
+.. _PR#117: https://github.com/n24q02m/better-semantic-release/pull/117
+
+
+.. _changelog-v1.6.0-beta.1:
+
+v1.6.0-beta.1 (2026-08-31)
+==========================
+
+✨ Features
+-----------
+
+* **bsr**: Add signed action-pin registry publisher (`PR#111`_, `085f929`_)
+
+🪲 Bug Fixes
+------------
+
+* Validate exact ghcr publisher paths (`PR#111`_, `085f929`_)
+
+* **bsr**: Cryptographically verify provenance bundles (`PR#113`_, `d088103`_)
+
+* **bsr**: Reject ambiguous verifier results (`PR#113`_, `d088103`_)
+
+* **bsr**: Validate GHCR image authority (`PR#111`_, `085f929`_)
+
+* **bsr**: Verify provenance bundle signatures (`PR#113`_, `d088103`_)
+
+* **publisher**: Classify nofollow symlink errors (`PR#111`_, `085f929`_)
+
+.. _085f929: https://github.com/n24q02m/better-semantic-release/commit/085f92948b0990f4786c7eb9cdd93f552ceb8b2e
+.. _d088103: https://github.com/n24q02m/better-semantic-release/commit/d0881032e420326e518af9491ce79c11e5c0fa48
+.. _PR#111: https://github.com/n24q02m/better-semantic-release/pull/111
+.. _PR#113: https://github.com/n24q02m/better-semantic-release/pull/113
+
+
+.. _changelog-v1.5.0:
+
+v1.5.0 (2026-08-29)
+===================
+
+✨ Features
+-----------
+
+* Add strict G1 publisher runtime (`553275c`_)
+
+🪲 Bug Fixes
+------------
+
+* Define commit-author regex locally — GitPython >= 3.1.45 removed Actor.name_email_regex
+  (`201fef0`_)
+
+* Harden G1 publisher boundaries (`577bf32`_)
+
+* Resolve G1 publisher lint diagnostics (`18a7af4`_)
+
+* Retain publisher output channel across writes (`edfd90a`_)
+
+.. _18a7af4: https://github.com/n24q02m/better-semantic-release/commit/18a7af43c855248b592880b076a013f5286b6a7c
+.. _201fef0: https://github.com/n24q02m/better-semantic-release/commit/201fef0b36aa1ab2d3a85ed16c3653fd1cda4d56
+.. _553275c: https://github.com/n24q02m/better-semantic-release/commit/553275c76e6966a7aedcfe815a4f00e8970a9138
+.. _577bf32: https://github.com/n24q02m/better-semantic-release/commit/577bf32d087f74afe2091492d1b84644639c09bd
+.. _edfd90a: https://github.com/n24q02m/better-semantic-release/commit/edfd90afe0b73753df1b81b4f71d64c8dc4f2f18
+
+
 .. _changelog-v1.4.0:
 
 v1.4.0 (2026-08-25)

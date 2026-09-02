@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "better-semantic-release"
-version = "1.4.0"
+version = "1.6.0-beta.8"
 description = "Drop-in python-semantic-release fork with built-in release-safety guards (orphan-tag + registry-collision)."
 requires-python = "~= 3.8"
 license = { text = "Apache-2.0" }
@@ -102,6 +102,9 @@ mypy = [
   "types-pyyaml ~= 6.0",
 ]
 
+[tool.uv.extra-build-dependencies]
+flatdict = ["setuptools < 81"]
+
 
 [tool.setuptools]
 include-package-data = true
@@ -192,6 +195,7 @@ files = [
   "src/semantic_release/bsr",
   "src/semantic_release/__init__.py",
   "src/semantic_release/changelog/release_history.py",
+  "src/semantic_release/cli/config.py",
   "src/semantic_release/cli/cli_context.py",
   "src/semantic_release/cli/commands/publish.py",
   "src/semantic_release/cli/commands/version.py",

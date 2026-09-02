@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import logging
-import re
 import os
+import re
 from collections.abc import Mapping
 from dataclasses import dataclass, is_dataclass
 from enum import Enum
@@ -30,11 +30,6 @@ from typing import (
 # typing_extensions is for Python 3.8, 3.9, 3.10 compatibility
 import tomlkit
 from git import Actor, InvalidGitRepositoryError
-
-# GitPython >= 3.1.45 removed Actor.name_email_regex; keep the original
-# semantics locally so commit-author validation does not depend on the
-# installed GitPython version (upstream regex was `(.*) <(.*?)>`).
-_COMMIT_AUTHOR_REGEX = re.compile(r"(.*) <(.*?)>")
 from git.repo.base import Repo
 from jinja2 import Environment
 from pydantic import (
@@ -80,6 +75,10 @@ from semantic_release.version.declarations.pattern import PatternVersionDeclarat
 from semantic_release.version.declarations.toml import TomlVersionDeclaration
 from semantic_release.version.translator import VersionTranslator
 
+# GitPython >= 3.1.45 removed Actor.name_email_regex; keep the original
+# semantics locally so commit-author validation does not depend on the
+# installed GitPython version (upstream regex was `(.*) <(.*?)>`).
+_COMMIT_AUTHOR_REGEX = re.compile(r"(.*) <(.*?)>")
 NonEmptyString = Annotated[str, Field(..., min_length=1)]
 
 
