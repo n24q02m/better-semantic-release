@@ -963,14 +963,6 @@ reason = "Phase B self-contained composite action for signed remote registry loa
 gates = ["other"]
 
 [[ownership]]
-path = "src/semantic_release/version/version.py"
-status = "M"
-kind = "python-source"
-owner = "bsr-core"
-reason = "Bolt persona optimized Version.__eq__ method for better performance by replacing all() generator evaluation with explicit boolean short-circuiting."
-gates = ["python-lint", "python-format", "python-type"]
-
-[[ownership]]
 path = ".jules/bolt.md"
 status = "A"
 kind = "other"
