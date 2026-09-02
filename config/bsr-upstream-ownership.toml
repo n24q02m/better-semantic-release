@@ -875,17 +875,9 @@ reason = "Task 2 regression coverage proves unowned stock changes fail closed an
 gates = ["python-lint", "python-format", "python-test"]
 
 [[ownership]]
-path = "src/semantic_release/cli/config.py"
+path = "src/semantic_release/version/algorithm.py"
 status = "M"
 kind = "python-test"
 owner = "repo-maintainers"
 reason = "Current fork difference is intentionally retained and declared for ownership accounting."
 gates = ["python-test"]
-
-[[ownership]]
-path = ".jules/bolt.md"
-status = "A"
-kind = "other"
-owner = "repo-maintainers"
-reason = "AI agent journals."
-gates = ["other"]
