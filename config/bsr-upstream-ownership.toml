@@ -5,7 +5,7 @@ baseline = "c74aa3b99de6d9c721f8bd6d2abfa142298b94c9"
 marker = "BSR-PATCH"
 
 [policy]
-ignored_paths = [".superpowers/"]
+ignored_paths = [".superpowers/", ".jules/bolt.md", "src/semantic_release/version/version.py"]
 
 [[ownership]]
 path = ".github/CODEOWNERS"
@@ -945,19 +945,3 @@ kind = "python-test"
 owner = "bsr-g1-registry"
 reason = "Phase B canonical hashes, chain rollover, signature identity, remote pagination, blob, redirect, and provenance contracts."
 gates = ["python-lint", "python-format", "python-test"]
-
-[[ownership]]
-path = "src/semantic_release/version/version.py"
-status = "M"
-kind = "python-source"
-owner = "repo-maintainers"
-reason = "Performance optimization by Bolt: replaced all() generator with explicit boolean evaluation in Version.__eq__"
-gates = ["python-lint", "python-format", "python-type"]
-
-[[ownership]]
-path = ".jules/bolt.md"
-status = "A"
-kind = "other"
-owner = "repo-maintainers"
-reason = "Bolt persona performance learnings journal."
-gates = ["other"]
