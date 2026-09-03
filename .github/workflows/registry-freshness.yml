@@ -1,0 +1,82 @@
+name: Registry freshness
+on:
+  schedule:
+    - cron: "17 3 * * 1"
+  workflow_dispatch:
+    inputs:
+      warn_days:
+        description: Fail when registry expiry is within this many days
+        required: false
+        default: "14"
+
+# Read-only heartbeat. No environment: it deploys nothing, so it never blocks
+# on an approval gate. It fails loudly when the signed action-pin registry
+# needs human attention (source moved without a new generation, or expiry
+# approaching). Fresh issuances still go through the registry-g1 ceremony.
+concurrency:
+  group: registry-freshness
+  cancel-in-progress: true
+
+jobs:
+  heartbeat:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout release-bound source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Install cosign for registry verification
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v3.10.1
+
+      - name: Fresh-load live registry and enforce expiry margin
+        env:
+          GH_TOKEN: ${{ github.token }}
+          WARN_DAYS: ${{ inputs.warn_days }}
+        run: |
+          set -euo pipefail
+          TAG=$(gh release list --repo "$GITHUB_REPOSITORY" --limit 20 \
+            --json tagName,isPrerelease \
+            --jq '[.[] | select(.isPrerelease) | .tagName][0]')
+          test -n "$TAG"
+          echo "latest beta tag: $TAG"
+          git fetch --force origin "refs/tags/$TAG:refs/tags/$TAG"
+          TAG_SHA=$(git rev-list -n 1 "$TAG")
+          HEAD_SHA=$(git rev-parse HEAD)
+          echo "tag_sha=$TAG_SHA head_sha=$HEAD_SHA"
+          if [ "$TAG_SHA" != "$HEAD_SHA" ]; then
+            echo "::error::source moved since $TAG — run the publisher-image + registry-g1 ceremony for the new head"
+            exit 1
+          fi
+          rm -rf registry-live && mkdir registry-live
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" \
+            -p "bsr-action-registry.json" -p "bsr-action-registry.sigstore.json" \
+            -D registry-live --clobber
+          python3 -I -S scripts/action_pin_registry.py load \
+            --expected registry-live/bsr-action-registry.json \
+            --repository "$GITHUB_REPOSITORY" \
+            --cosign "$(command -v cosign)"
+          python3 - "$WARN_DAYS" <<'PY'
+          import datetime
+          import json
+          import os
+          import sys
+
+          warn_days = int(sys.argv[1])
+          days = (expires - now).total_seconds() / 86400.0
+          summary = (
+              f"generation={record['generation']} phase={record['phase']} "
+              f"tag={record['advertisement']['tag']} days_to_expiry={days:.1f}"
+          )
+          print(summary)
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as fh:
+              fh.write(f"{summary}\n")
+          if days <= 0:
+              print("::error::registry record EXPIRED — issue a new generation now")
+              sys.exit(1)
+          if days <= warn_days:
+              print(f"::error::registry expires in {days:.1f} days — issue a new generation")
+              sys.exit(1)
+          PY
