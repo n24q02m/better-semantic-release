@@ -104,6 +104,15 @@ reason = "Current CI workflow difference is intentionally retained and covered b
 gates = ["workflows"]
 
 [[ownership]]
+path = ".github/workflows/registry-freshness.yml"
+status = "A"
+kind = "workflows"
+owner = "ci-governance"
+reason = "Fork-added registry freshness heartbeat; read-only, covered by the ownership gate."
+gates = ["workflows"]
+
+
+[[ownership]]
 path = ".gitignore"
 status = "M"
 kind = "other"
