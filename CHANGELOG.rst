@@ -4,6 +4,22 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.6.0-beta.9:
+
+v1.6.0-beta.9 (2026-09-03)
+==========================
+
+🪲 Bug Fixes
+------------
+
+* **ci**: Add weekly registry freshness heartbeat (`PR#128`_, `d133716`_)
+
+* **ci**: Register registry-freshness workflow in ownership manifest (`PR#128`_, `d133716`_)
+
+.. _d133716: https://github.com/n24q02m/better-semantic-release/commit/d1337163994439a4fc5aae4cd171d99e6a4d3c0f
+.. _PR#128: https://github.com/n24q02m/better-semantic-release/pull/128
+
+
 .. _changelog-v1.6.0-beta.8:
 
 v1.6.0-beta.8 (2026-09-01)
