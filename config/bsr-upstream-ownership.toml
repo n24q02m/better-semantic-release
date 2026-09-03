@@ -978,11 +978,3 @@ kind = "python-source"
 owner = "bsr-stock-patch"
 reason = "Performance optimization to __eq__ by replacing all() with explicit boolean chaining."
 gates = ["python-lint", "python-format", "python-type"]
-
-[[ownership]]
-path = "pyproject.toml"
-status = "M"
-kind = "other"
-owner = "repo-maintainers"
-reason = "Current fork difference is intentionally retained and declared for ownership accounting."
-gates = ["other"]
