@@ -970,3 +970,11 @@ kind = "other"
 owner = "bsr-g1-registry"
 reason = "Phase B self-contained composite action for signed remote registry loading."
 gates = ["other"]
+
+[[ownership]]
+path = "src/semantic_release/version/version.py"
+status = "M"
+kind = "python-source"
+owner = "bsr-stock-patch"
+reason = "Performance optimization to __eq__ by replacing all() with explicit boolean chaining."
+gates = ["python-lint", "python-format", "python-type"]
