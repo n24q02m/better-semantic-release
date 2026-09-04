@@ -322,12 +322,11 @@ def next_version(
         if not prerelease
         else next(
             filter(
-                lambda version: all(
-                    [
-                        version.is_prerelease,
-                        version.prerelease_token == translator.prerelease_token,
-                        version >= latest_full_release_version,
-                    ]
+                # Performance optimization: Use explicit boolean short-circuiting instead of all([…]) to prevent eager evaluation
+                lambda version: (
+                    version.is_prerelease
+                    and version.prerelease_token == translator.prerelease_token
+                    and version >= latest_full_release_version
                 ),
                 historic_versions,
             ),
@@ -413,11 +412,9 @@ def next_version(
             dict(type_counts),
         )
 
-    if all(
-        [
-            level_bump is LevelBump.NO_RELEASE,
-            latest_version.major != 0 or allow_zero_version,
-        ]
+    # Performance optimization: Use explicit boolean short-circuiting instead of all([…]) to prevent eager evaluation
+    if level_bump is LevelBump.NO_RELEASE and (
+        latest_version.major != 0 or allow_zero_version
     ):
         logger.info("No release will be made")
         return latest_version
