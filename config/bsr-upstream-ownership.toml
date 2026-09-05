@@ -970,3 +970,19 @@ kind = "other"
 owner = "bsr-g1-registry"
 reason = "Phase B self-contained composite action for signed remote registry loading."
 gates = ["other"]
+
+[[ownership]]
+path = "src/semantic_release/version/version.py"
+status = "M"
+kind = "python-source"
+owner = "bsr-stock-patch"
+reason = "Performance optimization to Version.__eq__ execution using direct attribute access instead of generator all()."
+gates = ["python-lint", "python-format", "python-type"]
+
+[[ownership]]
+path = ".jules/bolt.md"
+status = "A"
+kind = "other"
+owner = "bsr-tests"
+reason = "Performance journal capturing the all() anti-pattern overhead."
+gates = ["other"]
