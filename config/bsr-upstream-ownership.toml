@@ -977,7 +977,7 @@ status = "M"
 kind = "python-source"
 owner = "bsr-stock-patch"
 reason = "Performance optimization to Version.__eq__ execution using direct attribute access instead of generator all()."
-gates = ["python-lint", "python-format"]
+gates = ["python-lint", "python-format", "python-type"]
 
 [[ownership]]
 path = ".jules/bolt.md"

@@ -287,6 +287,10 @@ class Version:
     def __eq__(self, other: Version) -> bool:  # type: ignore[override]
         # https://semver.org/#spec-item-11 -
         # build metadata is not used for comparison
+
+        # Performance optimization: Explicit boolean chaining with direct attribute
+        # access is significantly faster than using an `all()` generator expression
+        # with dynamic `getattr()`, avoiding function call overhead in hot paths like sorting.
         return (
             self.major == other.major
             and self.minor == other.minor
