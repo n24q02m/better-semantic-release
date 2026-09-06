@@ -199,6 +199,7 @@ files = [
   "src/semantic_release/cli/cli_context.py",
   "src/semantic_release/cli/commands/publish.py",
   "src/semantic_release/cli/commands/version.py",
+  "src/semantic_release/version/version.py",
   "src/semantic_release/cli/github_actions_output.py",
   "src/semantic_release/cli/masking_filter.py",
   "src/semantic_release/commit_parser/angular.py",
