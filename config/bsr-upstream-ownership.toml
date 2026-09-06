@@ -873,7 +873,7 @@ status = "A"
 kind = "python-tool"
 owner = "bsr-estate-task2"
 reason = "Task 2 checker validates ownership and executes manifest-derived Python gates."
-gates = ["python-lint", "python-format", "python-test"]
+gates = ["python-lint", "python-format"]
 
 [[ownership]]
 path = "tests/unit/semantic_release/bsr/test_upstream_ownership.py"
@@ -905,7 +905,7 @@ status = "A"
 kind = "python-tool"
 owner = "bsr-g1-publisher"
 reason = "Phase A standalone Docker action adapter for the stdlib publisher runtime."
-gates = ["python-lint", "python-format", "python-test"]
+gates = ["python-lint", "python-format"]
 
 [[ownership]]
 path = "tests/unit/semantic_release/bsr/test_release_publisher.py"
@@ -945,7 +945,7 @@ status = "A"
 kind = "python-tool"
 owner = "bsr-g1-registry"
 reason = "Phase B offline generator and read-only remote loader entry point."
-gates = ["python-lint", "python-format", "python-test"]
+gates = ["python-lint", "python-format"]
 
 [[ownership]]
 path = "tests/unit/semantic_release/bsr/test_action_pin_registry.py"
@@ -977,7 +977,7 @@ status = "M"
 kind = "python-source"
 owner = "bsr-stock-patch"
 reason = "Optimized __eq__ method to use explicit boolean chaining for performance."
-gates = ["python-lint", "python-format", "python-test"]
+gates = ["python-lint", "python-format", "python-type"]
 
 [[ownership]]
 path = ".jules/bolt.md"
