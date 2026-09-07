@@ -16,6 +16,14 @@ reason = "Current fork difference is intentionally retained and declared for own
 gates = ["other"]
 
 [[ownership]]
+path = ".jules/sentinel.md"
+status = "A"
+kind = "other"
+owner = "bsr-tests"
+reason = "Agent persona journal explicitly authorized."
+gates = ["other"]
+
+[[ownership]]
 path = ".github/ISSUE_TEMPLATE/bug_report.md"
 status = "A"
 kind = "other"
