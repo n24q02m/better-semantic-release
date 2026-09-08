@@ -4,6 +4,22 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.6.1-beta.1:
+
+v1.6.1-beta.1 (2026-09-08)
+==========================
+
+🪲 Bug Fixes
+------------
+
+* Authenticate registry freshness loader (`0f9d1ff`_)
+
+* Renew registry freshness through bounded beta release routes (`ebca537`_)
+
+.. _0f9d1ff: https://github.com/n24q02m/better-semantic-release/commit/0f9d1ffffc5c90f35c698e427029281fb4bdea14
+.. _ebca537: https://github.com/n24q02m/better-semantic-release/commit/ebca537d02354ced4a803a49cf8d62a26c342d1f
+
+
 .. _changelog-v1.6.0:
 
 v1.6.0 (2026-09-03)
