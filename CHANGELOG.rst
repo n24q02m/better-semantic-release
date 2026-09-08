@@ -4,6 +4,19 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.6.1-beta.6:
+
+v1.6.1-beta.6 (2026-09-08)
+==========================
+
+🪲 Bug Fixes
+------------
+
+* Parse candidate image tuple in freshness route (`0d2e018`_)
+
+.. _0d2e018: https://github.com/n24q02m/better-semantic-release/commit/0d2e018fc2085ccc9b1ee8152332171b6940dd2f
+
+
 .. _changelog-v1.6.1-beta.5:
 
 v1.6.1-beta.5 (2026-09-08)
