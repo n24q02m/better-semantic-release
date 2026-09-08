@@ -109,7 +109,7 @@ if [[ -n "$INPUT_SSH_PUBLIC_SIGNING_KEY" && -n "$INPUT_SSH_PRIVATE_SIGNING_KEY" 
 	echo "SSH Key pair found, configuring signing..."
 
 	# Create the private key with restrictive permissions from the first byte.
-	mkdir -vp ~/.ssh
+	mkdir -m 700 -vp ~/.ssh
 	chmod 700 ~/.ssh
 	printf '%b\n' "$INPUT_SSH_PUBLIC_SIGNING_KEY" >>~/.ssh/signing_key.pub
 	cat ~/.ssh/signing_key.pub
@@ -129,8 +129,11 @@ if [[ -n "$INPUT_SSH_PUBLIC_SIGNING_KEY" && -n "$INPUT_SSH_PRIVATE_SIGNING_KEY" 
 		echo >&2 "git_committer_email must be set to use SSH key signing!"
 		exit 1
 	fi
-	touch ~/.ssh/allowed_signers
-	printf '%s %b\n' "$INPUT_GIT_COMMITTER_EMAIL" "$INPUT_SSH_PUBLIC_SIGNING_KEY" >~/.ssh/allowed_signers
+	(
+		umask 077
+		touch ~/.ssh/allowed_signers
+		printf '%s %b\n' "$INPUT_GIT_COMMITTER_EMAIL" "$INPUT_SSH_PUBLIC_SIGNING_KEY" >~/.ssh/allowed_signers
+	)
 
 	# Configure git for signing
 	git config --global gpg.format ssh
