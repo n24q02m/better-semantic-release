@@ -13,7 +13,7 @@ PUBLISH_ACTION = ROOT / "publish-action" / "action.yml"
 REGISTRY_ACTION = ROOT / "registry-action" / "action.yml"
 REGISTRY_SCRIPT = ROOT / "scripts" / "action_pin_registry.py"
 PUBLISHER_DIGEST = (
-    "sha256:49a6993f589830fa5ffcdb8c4bd87415204f30af9f7136fb9ff429d41d485ab7"
+    "sha256:033048f3b11e3985bdc1ec14942efb766796c1011d16fccc9c5812bebd21c80e"
 )
 
 
