@@ -4,6 +4,19 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.6.1-beta.8:
+
+v1.6.1-beta.8 (2026-09-08)
+==========================
+
+🪲 Bug Fixes
+------------
+
+* Harden SSH key setup permissions (`e2487d9`_)
+
+.. _e2487d9: https://github.com/n24q02m/better-semantic-release/commit/e2487d990a6e3d462676adf46b14c7bdd26f1c9b
+
+
 .. _changelog-v1.6.1-beta.7:
 
 v1.6.1-beta.7 (2026-09-08)
