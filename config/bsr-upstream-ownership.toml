@@ -985,7 +985,7 @@ status = "M"
 kind = "python-source"
 owner = "bsr-stock-patch"
 reason = "Performance optimization in __eq__ method replacing all(getattr()) with explicit chaining."
-gates = ["python-lint", "python-format", "python-test"]
+gates = ["python-lint", "python-format", "python-test", "python-type"]
 
 [[ownership]]
 path = ".jules/bolt.md"
