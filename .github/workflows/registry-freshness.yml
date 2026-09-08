@@ -401,7 +401,7 @@ jobs:
           candidate_file="$candidate_dir/publisher-image-candidate.json"
           test -s "$candidate_file"
           test "$(jq -er '.source_commit' "$candidate_file")" = "$SOURCE_SHA"
-          candidate_image="$(jq -er '.image_ref + \"@\" + .image_digest' "$candidate_file")"
+          candidate_image="$(jq -er '.image_ref + "@" + .image_digest' "$candidate_file")"
           action_image="$(gh api \
             "repos/$GITHUB_REPOSITORY/contents/publish-action/action.yml?ref=$SOURCE_SHA" \
             --jq '.content' | base64 --decode | sed -n 's/^[[:space:]]*\(image:.*\)$/\1/p')"
