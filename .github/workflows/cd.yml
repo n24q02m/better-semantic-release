@@ -123,53 +123,6 @@ jobs:
         uses: pypa/gh-action-pypi-publish@ba38be9e461d3875417946c167d0b5f3d385a247 # v1.14.1
 
 
-  # The existing CI App can review the required beta deployment without changing
-  # the environment's reviewer list. Keep this as a separate pre-gate job: jobs
-  # that reference an environment cannot mint credentials until that gate opens.
-  approve-beta-environment:
-    name: Approve beta environment with CI App
-    if: (inputs.operation == 'publisher-image' || (inputs.operation == 'release' && inputs.release_type == 'beta')) && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    permissions:
-      actions: write
-      contents: read
-    steps:
-      - name: Mint a token from the CI GitHub App
-        id: app-token
-        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
-        with:
-          app-id: ${{ vars.CI_APP_ID }}
-          private-key: ${{ secrets.CI_APP_KEY }}
-
-      - name: Approve only this run's beta deployment
-        env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
-          RUN_ID: ${{ github.run_id }}
-        run: |
-          set -euo pipefail
-          for _ in $(seq 1 30); do
-            pending="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID/pending_deployments")"
-            count="$(jq 'length' <<< "$pending")"
-            if [ "$count" -eq 1 ]; then
-              environment_name="$(jq -er '.[0].environment.name' <<< "$pending")"
-              test "$environment_name" = "beta-publish"
-              environment_id="$(jq -er '.[0].environment.id' <<< "$pending")"
-              jq -n --argjson environment_id "$environment_id" \
-                '{environment_ids: [$environment_id], state: "approved", comment: "CI App approval for exact beta workflow run"}' |
-                gh api --method POST \
-                  "repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID/pending_deployments" \
-                  --input -
-              remaining="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID/pending_deployments")"
-              test "$(jq 'length' <<< "$remaining")" -eq 0
-              echo "approved beta-publish for exact workflow run $RUN_ID"
-              exit 0
-            fi
-            test "$count" -eq 0
-            sleep 2
-          done
-          echo "::error::beta deployment did not become uniquely pending for this workflow run"
-          exit 1
-
   # Candidate-only bootstrap. This route is deliberately mutually exclusive
   # with the release job and can only be dispatched from the protected main
   # branch. The existing beta-publish environment retains its branch/reviewer
