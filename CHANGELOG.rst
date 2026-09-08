@@ -4,6 +4,19 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.6.1-beta.2:
+
+v1.6.1-beta.2 (2026-09-08)
+==========================
+
+🪲 Bug Fixes
+------------
+
+* Pin verified beta publisher candidate (`7963c81`_)
+
+.. _7963c81: https://github.com/n24q02m/better-semantic-release/commit/7963c81fa9d5d31ef8493981f5b1de1aa343d32d
+
+
 .. _changelog-v1.6.1-beta.1:
 
 v1.6.1-beta.1 (2026-09-08)
