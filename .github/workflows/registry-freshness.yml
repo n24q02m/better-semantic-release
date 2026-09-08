@@ -392,7 +392,7 @@ jobs:
             exit 1
           }
           candidate_attempt="$(gh run view "$CANDIDATE_RUN_ID" --repo "$GITHUB_REPOSITORY" \
-            --json runAttempt --jq '.runAttempt')"
+            --json attempt --jq '.attempt')"
           artifact_name="publisher-image-candidate-$SOURCE_SHA-$CANDIDATE_RUN_ID-$candidate_attempt"
           candidate_dir="$(mktemp -d)"
           trap 'rm -rf "$candidate_dir"' EXIT
@@ -431,7 +431,7 @@ jobs:
             exit 1
           }
           candidate_attempt="$(gh run view "$CANDIDATE_RUN_ID" --repo "$GITHUB_REPOSITORY" \
-            --json databaseId,runAttempt --jq '.runAttempt')"
+            --json databaseId,attempt --jq '.attempt')"
           dispatched_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           gh api --method POST \
             "repos/$GITHUB_REPOSITORY/actions/workflows/cd.yml/dispatches" \
