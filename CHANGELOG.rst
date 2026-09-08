@@ -4,6 +4,19 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.6.1-beta.4:
+
+v1.6.1-beta.4 (2026-09-08)
+==========================
+
+🪲 Bug Fixes
+------------
+
+* Remove obsolete beta approval helper (`af60433`_)
+
+.. _af60433: https://github.com/n24q02m/better-semantic-release/commit/af604337847c550ae4ea370ec760f25124d3eb26
+
+
 .. _changelog-v1.6.1-beta.3:
 
 v1.6.1-beta.3 (2026-09-08)
