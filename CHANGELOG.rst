@@ -4,6 +4,22 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.6.1-beta.3:
+
+v1.6.1-beta.3 (2026-09-08)
+==========================
+
+🪲 Bug Fixes
+------------
+
+* Read GitHub run attempt field (`da86705`_)
+
+* Use existing CI App for beta environment approval (`b80105a`_)
+
+.. _b80105a: https://github.com/n24q02m/better-semantic-release/commit/b80105a528ae7169f15abc931c2195721abddff6
+.. _da86705: https://github.com/n24q02m/better-semantic-release/commit/da8670547fd7450c10116318fa6d09f2bb93d59f
+
+
 .. _changelog-v1.6.1-beta.2:
 
 v1.6.1-beta.2 (2026-09-08)
