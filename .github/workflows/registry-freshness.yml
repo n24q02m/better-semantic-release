@@ -5,23 +5,29 @@ on:
   workflow_dispatch:
     inputs:
       warn_days:
-        description: Fail when registry expiry is within this many days
+        description: Refresh when registry expiry is within this many days
         required: false
         default: "14"
 
-# Read-only heartbeat. No environment: it deploys nothing, so it never blocks
-# on an approval gate. It fails loudly when the signed action-pin registry
-# needs human attention (source moved without a new generation, or expiry
-# approaching). Fresh issuances still go through the registry-g1 ceremony.
+# Freshness is read-only unless the signed registry actually needs a new
+# generation. Refreshes use the existing beta release, publisher-image, and
+# registry-g1 jobs in cd.yml; they never create a signer, resource, or stable
+# release. A stable release metadata-only commit is explicitly equivalent to
+# the beta-bound source and does not cause a needless version bump.
 concurrency:
   group: registry-freshness
-  cancel-in-progress: true
-
+  cancel-in-progress: false
 jobs:
-  heartbeat:
+  inspect:
+    name: Verify registry freshness
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    outputs:
+      refresh: ${{ steps.inspect.outputs.refresh }}
+      refresh_mode: ${{ steps.inspect.outputs.refresh_mode }}
+      source_sha: ${{ steps.inspect.outputs.source_sha }}
+      release_force: ${{ steps.inspect.outputs.release_force }}
     steps:
       - name: Checkout release-bound source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -31,12 +37,21 @@ jobs:
       - name: Install cosign for registry verification
         uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v3.10.1
 
-      - name: Fresh-load live registry and enforce expiry margin
+      - name: Fresh-load live registry and select refresh route
+        id: inspect
         env:
           GH_TOKEN: ${{ github.token }}
-          WARN_DAYS: ${{ inputs.warn_days }}
+          WARN_DAYS: ${{ inputs.warn_days || '14' }}
         run: |
           set -euo pipefail
+          case "$WARN_DAYS" in
+            ''|*[!0-9]*) echo "::error::warn_days must be a non-negative integer"; exit 1 ;;
+          esac
+          if [ "$WARN_DAYS" -gt 365 ]; then
+            echo "::error::warn_days must be no more than 365"
+            exit 1
+          fi
+
           TAG=$(gh release list --repo "$GITHUB_REPOSITORY" --limit 20 \
             --json tagName,isPrerelease \
             --jq '[.[] | select(.isPrerelease) | .tagName][0]')
@@ -46,9 +61,63 @@ jobs:
           TAG_SHA=$(git rev-list -n 1 "$TAG")
           HEAD_SHA=$(git rev-parse HEAD)
           echo "tag_sha=$TAG_SHA head_sha=$HEAD_SHA"
+          refresh=false
+          refresh_mode=none
+          release_force=
           if [ "$TAG_SHA" != "$HEAD_SHA" ]; then
-            echo "::error::source moved since $TAG — run the publisher-image + registry-g1 ceremony for the new head"
-            exit 1
+            changed_files="$(git diff --name-only "$TAG_SHA" "$HEAD_SHA")"
+            publisher_change=false
+            stable_only=true
+            unknown_drift=false
+            while IFS= read -r path; do
+              case "$path" in
+                action.yml|publish-action/action.yml|registry-action/action.yml|publish-action/Dockerfile|publish-action/main.py|src/semantic_release/bsr/release_publisher.py|scripts/action_pin_registry.py|scripts/repo-bootstrap/verify_readme_sync.py|.github/workflows/cd.yml)
+                  publisher_change=true
+                  stable_only=false
+                  ;;
+                CHANGELOG.rst|pyproject.toml|.github/workflows/registry-freshness.yml) ;;
+                *) stable_only=false; unknown_drift=true ;;
+              esac
+            done <<< "$changed_files"
+            if [ "$unknown_drift" = true ]; then
+              echo "::error::unclassified source drift; registry freshness refuses to infer publisher equivalence"
+              printf '%s\n' "$changed_files"
+              exit 1
+            elif [ "$publisher_change" = true ]; then
+              refresh=true
+              refresh_mode=publisher-change
+              echo "::warning::publisher-bound source moved since $TAG; automatic beta refresh is required"
+              printf '%s\n' "$changed_files"
+            elif [ "$stable_only" = true ] && [ -n "$changed_files" ]; then
+              python3 - "$TAG_SHA" "$HEAD_SHA" <<'PY'
+          import subprocess
+          import sys
+
+          tag_sha, head_sha = sys.argv[1:3]
+          diff = subprocess.check_output(
+              ["git", "diff", "--unified=0", tag_sha, head_sha, "--", "pyproject.toml"],
+              text=True,
+          )
+          changes = [
+              line
+              for line in diff.splitlines()
+              if line[:1] in {"+", "-"} and not line.startswith(("+++", "---"))
+          ]
+          if changes and (len(changes) != 2 or not all(
+              line[1:].startswith('version = "') and line[1:].endswith('"')
+              for line in changes
+          )):
+              raise SystemExit(
+                  "pyproject.toml is not a version-only release metadata change"
+              )
+          print("source_change_class=stable-only-release-metadata")
+          print("source_change_files=CHANGELOG.rst,pyproject.toml")
+          PY
+              echo "source drift is stable-only release metadata; no beta version bump is required"
+            else
+              echo "source drift is the explicitly equivalent freshness workflow; signed registry remains valid"
+              printf '%s\n' "$changed_files"
+            fi
           fi
           rm -rf registry-live && mkdir registry-live
           gh release download "$TAG" --repo "$GITHUB_REPOSITORY" \
@@ -57,26 +126,361 @@ jobs:
           python3 -I -S scripts/action_pin_registry.py load \
             --expected registry-live/bsr-action-registry.json \
             --repository "$GITHUB_REPOSITORY" \
-            --cosign "$(command -v cosign)"
-          python3 - "$WARN_DAYS" <<'PY'
+            --cosign "$(command -v cosign)" \
+            > registry-loader.json
+          test -s registry-loader.json
+          set +e
+          python3 -I -S - "$WARN_DAYS" registry-live/bsr-action-registry.json <<'PY'
           import datetime
           import json
           import os
           import sys
+          from pathlib import Path
 
-          warn_days = int(sys.argv[1])
+          try:
+              warn_days = int(sys.argv[1])
+              record = json.loads(Path(sys.argv[2]).read_text(encoding="utf-8"))
+              expires = datetime.datetime.strptime(
+                  record["expires_at"], "%Y-%m-%dT%H:%M:%SZ"
+              ).replace(tzinfo=datetime.timezone.utc)
+          except (IndexError, KeyError, TypeError, ValueError, OSError) as exc:
+              raise SystemExit("verified registry record metadata is unavailable") from exc
+          now = datetime.datetime.now(tz=datetime.timezone.utc)
           days = (expires - now).total_seconds() / 86400.0
           summary = (
               f"generation={record['generation']} phase={record['phase']} "
               f"tag={record['advertisement']['tag']} days_to_expiry={days:.1f}"
           )
           print(summary)
-          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as fh:
-              fh.write(f"{summary}\n")
+          summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
+          if summary_path:
+              with open(summary_path, "a", encoding="utf-8") as fh:
+                  fh.write(f"{summary}\n")
           if days <= 0:
-              print("::error::registry record EXPIRED — issue a new generation now")
-              sys.exit(1)
+              print("::error::registry record EXPIRED — automatic refresh cannot use an expired consumer record")
+              sys.exit(2)
           if days <= warn_days:
-              print(f"::error::registry expires in {days:.1f} days — issue a new generation")
-              sys.exit(1)
+              print("refresh_required=expiry")
+              sys.exit(10)
           PY
+          expiry_status=$?
+          set -e
+          case "$expiry_status" in
+            0) ;;
+            10)
+              if [ "$refresh_mode" = "none" ]; then
+                refresh=true
+                refresh_mode=expiry
+                release_force=prerelease
+              fi
+              ;;
+            *)
+              exit "$expiry_status"
+              ;;
+          esac
+          if [ "$refresh_mode" = "none" ] && [ "$TAG_SHA" != "$HEAD_SHA" ]; then
+            refresh_mode=stable-only
+          fi
+          {
+            printf 'refresh=%s\n' "$refresh"
+            printf 'refresh_mode=%s\n' "$refresh_mode"
+            printf 'source_sha=%s\n' "$HEAD_SHA"
+            printf 'release_force=%s\n' "$release_force"
+          } >> "$GITHUB_OUTPUT"
+
+  refresh:
+    name: Refresh signed registry through cd.yml
+    needs: inspect
+    if: needs.inspect.outputs.refresh == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - name: Dispatch beta release for publisher source
+        id: release_dispatch
+        if: needs.inspect.outputs.refresh_mode == 'publisher-change' || needs.inspect.outputs.refresh_mode == 'expiry'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ needs.inspect.outputs.source_sha }}
+          RELEASE_FORCE: ${{ needs.inspect.outputs.release_force }}
+        run: |
+          set -euo pipefail
+          current_sha="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')"
+          test "$current_sha" = "$SOURCE_SHA" || {
+            echo "::error::main advanced since freshness inspection; refusing to dispatch release against stale source"
+            exit 1
+          }
+          dispatched_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          dispatch_args=(
+            -f ref=main
+            -f 'inputs[operation]=release'
+            -f 'inputs[release_type]=beta'
+          )
+          if [ -n "$RELEASE_FORCE" ]; then
+            dispatch_args+=(-f "inputs[force]=$RELEASE_FORCE")
+          fi
+          gh api --method POST \
+            "repos/$GITHUB_REPOSITORY/actions/workflows/cd.yml/dispatches" \
+            "${dispatch_args[@]}"
+          echo "dispatched_at=$dispatched_at" >> "$GITHUB_OUTPUT"
+
+      - name: Wait for beta release route
+        id: release_wait
+        if: needs.inspect.outputs.refresh_mode == 'publisher-change' || needs.inspect.outputs.refresh_mode == 'expiry'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ needs.inspect.outputs.source_sha }}
+          DISPATCHED_AT: ${{ steps.release_dispatch.outputs.dispatched_at }}
+        run: |
+          set -euo pipefail
+          for _ in $(seq 1 120); do
+            runs_json="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow cd.yml \
+              --event workflow_dispatch --branch main --limit 20 \
+              --json databaseId,headSha,status,conclusion,createdAt \
+              --jq "[.[] | select(.headSha == \"$SOURCE_SHA\" and .createdAt >= \"$DISPATCHED_AT\")]")"
+            if [ "$(jq 'length' <<< "$runs_json")" -gt 1 ]; then
+              echo "::error::ambiguous release route readback after dispatch"
+              exit 1
+            fi
+            run_json="$(jq 'first' <<< "$runs_json")"
+            if [ "$run_json" != "null" ] && [ -n "$run_json" ]; then
+              run_id="$(jq -er '.databaseId' <<< "$run_json")"
+              status="$(jq -r '.status' <<< "$run_json")"
+              conclusion="$(jq -r '.conclusion // empty' <<< "$run_json")"
+              if [ "$status" = "completed" ]; then
+                test "$conclusion" = "success" || {
+                  echo "::error::existing release route failed: run $run_id ($conclusion)"
+                  exit 1
+                }
+                echo "release_run_id=$run_id" >> "$GITHUB_OUTPUT"
+                break
+              fi
+            fi
+            sleep 15
+          done
+          test -s "$GITHUB_OUTPUT" || {
+            echo "::error::beta release route did not complete within 30 minutes; inspect beta-publish environment and cd.yml"
+            exit 1
+          }
+
+      - name: Resolve release tag at current main
+        id: tag
+        if: needs.inspect.outputs.refresh_mode == 'publisher-change' || needs.inspect.outputs.refresh_mode == 'expiry'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INSPECTED_SHA: ${{ needs.inspect.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          for _ in $(seq 1 40); do
+            main_sha="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')"
+            if [ "$main_sha" != "$INSPECTED_SHA" ]; then
+              gh api "repos/$GITHUB_REPOSITORY/compare/$INSPECTED_SHA...$main_sha" > release-change.json
+              python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          change = json.loads(Path("release-change.json").read_text())
+          if change.get("status") != "ahead" or change.get("ahead_by") != 1:
+              raise SystemExit("main no longer matches the inspected source plus one release commit")
+          for item in change.get("files", []):
+              if item["filename"] == "CHANGELOG.rst":
+                  continue
+              if item["filename"] != "pyproject.toml" or "patch" not in item:
+                  raise SystemExit("non-release source changed after freshness inspection")
+              rows = [
+                  row for row in item["patch"].splitlines()
+                  if row[:1] in {"+", "-"} and not row.startswith(("+++", "---"))
+              ]
+              if len(rows) != 2 or not all(
+                  row[1:].startswith('version = "') and row[1:].endswith('"')
+                  for row in rows
+              ):
+                  raise SystemExit("release commit changed non-version package metadata")
+          PY
+            fi
+            for tag in $(gh release list --repo "$GITHUB_REPOSITORY" --limit 20 \
+              --json tagName,isPrerelease --jq '.[] | select(.isPrerelease) | .tagName'); do
+              tag_ref="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$tag" 2>/dev/null || true)"
+              tag_sha="$(jq -r '.object.sha // empty' <<< "$tag_ref")"
+              if [ "$(jq -r '.object.type // empty' <<< "$tag_ref")" = "tag" ]; then
+                tag_sha="$(gh api "repos/$GITHUB_REPOSITORY/git/tags/$tag_sha" --jq '.object.sha')"
+              fi
+              if [ "$tag_sha" = "$main_sha" ]; then
+                echo "registry_tag=$tag" >> "$GITHUB_OUTPUT"
+                echo "source_sha=$main_sha" >> "$GITHUB_OUTPUT"
+                exit 0
+              fi
+            done
+            sleep 15
+          done
+          echo "::error::beta release completed but no prerelease tag was read back at main; no publisher route dispatched"
+          exit 1
+
+      - name: Dispatch publisher-image route
+        id: publisher_dispatch
+        if: needs.inspect.outputs.refresh_mode == 'publisher-change' || needs.inspect.outputs.refresh_mode == 'expiry'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_SHA: ${{ steps.tag.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          current_sha="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')"
+          test "$current_sha" = "$EXPECTED_SHA" || {
+            echo "::error::main advanced after beta tag readback; refusing publisher-image dispatch"
+            exit 1
+          }
+          dispatched_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          gh api --method POST \
+            "repos/$GITHUB_REPOSITORY/actions/workflows/cd.yml/dispatches" \
+            -f ref=main \
+            -f 'inputs[operation]=publisher-image' \
+            -f 'inputs[release_type]=beta'
+          echo "dispatched_at=$dispatched_at" >> "$GITHUB_OUTPUT"
+
+      - name: Wait for publisher-image route
+        id: publisher_wait
+        if: needs.inspect.outputs.refresh_mode == 'publisher-change' || needs.inspect.outputs.refresh_mode == 'expiry'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ steps.tag.outputs.source_sha }}
+          DISPATCHED_AT: ${{ steps.publisher_dispatch.outputs.dispatched_at }}
+        run: |
+          set -euo pipefail
+          for _ in $(seq 1 120); do
+            runs_json="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow cd.yml \
+              --event workflow_dispatch --branch main --limit 20 \
+              --json databaseId,headSha,status,conclusion,createdAt \
+              --jq "[.[] | select(.headSha == \"$SOURCE_SHA\" and .createdAt >= \"$DISPATCHED_AT\")]")"
+            if [ "$(jq 'length' <<< "$runs_json")" -gt 1 ]; then
+              echo "::error::ambiguous publisher-image route readback after dispatch"
+              exit 1
+            fi
+            run_json="$(jq 'first' <<< "$runs_json")"
+            if [ "$run_json" != "null" ] && [ -n "$run_json" ]; then
+              run_id="$(jq -er '.databaseId' <<< "$run_json")"
+              status="$(jq -r '.status' <<< "$run_json")"
+              conclusion="$(jq -r '.conclusion // empty' <<< "$run_json")"
+              if [ "$status" = "completed" ]; then
+                test "$conclusion" = "success" || {
+                  echo "::error::publisher-image route failed: run $run_id ($conclusion)"
+                  exit 1
+                }
+                echo "publisher_run_id=$run_id" >> "$GITHUB_OUTPUT"
+                break
+              fi
+            fi
+            sleep 15
+          done
+          test -s "$GITHUB_OUTPUT" || {
+            echo "::error::publisher-image route did not complete within 30 minutes; inspect beta-publish environment and cd.yml"
+            exit 1
+          }
+      - name: Verify candidate image pin before registry-g1
+        id: candidate_contract
+        if: needs.inspect.outputs.refresh_mode == 'publisher-change' || needs.inspect.outputs.refresh_mode == 'expiry'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ steps.tag.outputs.source_sha }}
+          CANDIDATE_RUN_ID: ${{ steps.publisher_wait.outputs.publisher_run_id }}
+        run: |
+          set -euo pipefail
+          current_sha="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')"
+          test "$current_sha" = "$SOURCE_SHA" || {
+            echo "::error::main advanced after publisher-image readback; refusing registry-g1 dispatch"
+            exit 1
+          }
+          candidate_attempt="$(gh run view "$CANDIDATE_RUN_ID" --repo "$GITHUB_REPOSITORY" \
+            --json runAttempt --jq '.runAttempt')"
+          artifact_name="publisher-image-candidate-$SOURCE_SHA-$CANDIDATE_RUN_ID-$candidate_attempt"
+          candidate_dir="$(mktemp -d)"
+          trap 'rm -rf "$candidate_dir"' EXIT
+          gh run download "$CANDIDATE_RUN_ID" --repo "$GITHUB_REPOSITORY" \
+            --name "$artifact_name" --dir "$candidate_dir"
+          candidate_file="$candidate_dir/publisher-image-candidate.json"
+          test -s "$candidate_file"
+          test "$(jq -er '.source_commit' "$candidate_file")" = "$SOURCE_SHA"
+          candidate_image="$(jq -er '.image_ref + \"@\" + .image_digest' "$candidate_file")"
+          action_image="$(gh api \
+            "repos/$GITHUB_REPOSITORY/contents/publish-action/action.yml?ref=$SOURCE_SHA" \
+            --jq '.content' | base64 --decode | sed -n 's/^[[:space:]]*\(image:.*\)$/\1/p')"
+          expected_image="image: docker://$candidate_image"
+          test "$action_image" = "$expected_image" || {
+            echo "::error::publisher-image candidate is not pinned by publish-action/action.yml at $SOURCE_SHA"
+            echo "::error::commit the reviewed candidate digest pin before registry-g1; automatic renewal stops here"
+            exit 1
+          }
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+
+
+
+      - name: Dispatch signed registry-g1 route
+        id: registry_dispatch
+        if: (needs.inspect.outputs.refresh_mode == 'publisher-change' || needs.inspect.outputs.refresh_mode == 'expiry') && steps.candidate_contract.outputs.ready == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ steps.tag.outputs.source_sha }}
+          CANDIDATE_RUN_ID: ${{ steps.publisher_wait.outputs.publisher_run_id }}
+          REGISTRY_TAG: ${{ steps.tag.outputs.registry_tag }}
+        run: |
+          set -euo pipefail
+          current_sha="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')"
+          test "$current_sha" = "$SOURCE_SHA" || {
+            echo "::error::main advanced after candidate pin readback; refusing registry-g1 dispatch"
+            exit 1
+          }
+          candidate_attempt="$(gh run view "$CANDIDATE_RUN_ID" --repo "$GITHUB_REPOSITORY" \
+            --json databaseId,runAttempt --jq '.runAttempt')"
+          dispatched_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          gh api --method POST \
+            "repos/$GITHUB_REPOSITORY/actions/workflows/cd.yml/dispatches" \
+            -f ref=main \
+            -f 'inputs[operation]=registry-g1' \
+            -f 'inputs[release_type]=beta' \
+            -f "inputs[registry_tag]=$REGISTRY_TAG" \
+            -f "inputs[candidate_run_id]=$CANDIDATE_RUN_ID" \
+            -f "inputs[candidate_run_attempt]=$candidate_attempt"
+          echo "dispatched_at=$dispatched_at" >> "$GITHUB_OUTPUT"
+      - name: Wait for signed registry-g1 route
+        if: needs.inspect.outputs.refresh_mode == 'publisher-change' || needs.inspect.outputs.refresh_mode == 'expiry'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ steps.tag.outputs.source_sha }}
+          DISPATCHED_AT: ${{ steps.registry_dispatch.outputs.dispatched_at }}
+        run: |
+          set -euo pipefail
+          for _ in $(seq 1 120); do
+            runs_json="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow cd.yml \
+              --event workflow_dispatch --branch main --limit 20 \
+              --json databaseId,headSha,status,conclusion,createdAt \
+              --jq "[.[] | select(.headSha == \"$SOURCE_SHA\" and .createdAt >= \"$DISPATCHED_AT\")]")"
+            if [ "$(jq 'length' <<< "$runs_json")" -gt 1 ]; then
+              echo "::error::ambiguous registry-g1 route readback after dispatch"
+              exit 1
+            fi
+            run_json="$(jq 'first' <<< "$runs_json")"
+            if [ "$run_json" != "null" ] && [ -n "$run_json" ]; then
+              run_id="$(jq -er '.databaseId' <<< "$run_json")"
+              status="$(jq -r '.status' <<< "$run_json")"
+              conclusion="$(jq -r '.conclusion // empty' <<< "$run_json")"
+              if [ "$status" = "completed" ]; then
+                test "$conclusion" = "success" || {
+                  echo "::error::registry-g1 route failed: run $run_id ($conclusion)"
+                  exit 1
+                }
+                echo "signed registry generation published by cd.yml run $run_id"
+                exit 0
+              fi
+            fi
+            sleep 15
+          done
+          echo "::error::registry-g1 route did not complete within 30 minutes; inspect beta-publish environment and cd.yml"
+          exit 1
+
+
+      - name: Report maintenance beta prerequisite
+        if: needs.inspect.outputs.refresh_mode == 'expiry' && steps.tag.outputs.registry_tag == ''
+        run: |
+          echo "::error::forced beta maintenance route completed without a new prerelease tag; no registry-g1 dispatch"
+          echo "Inspect beta-publish approval and semantic-release force=prerelease output; no stable release or same-tag renewal was attempted."
+          exit 1

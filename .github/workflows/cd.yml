@@ -28,6 +28,14 @@ on:
         options:
           - beta
           - stable
+      force:
+        description: Optional beta maintenance release override
+        type: choice
+        required: false
+        default: none
+        options:
+          - none
+          - prerelease
       registry_tag:
         description: Existing beta release tag that will advertise the signed G1 pair
         type: string
@@ -90,7 +98,7 @@ jobs:
           github_token: ${{ steps.app-token.outputs.token }}
           prerelease: ${{ inputs.release_type == 'beta' }}
           prerelease_token: beta
-          build: "true"
+          force: ${{ inputs.release_type == 'beta' && inputs.force == 'prerelease' && 'prerelease' || '' }}
 
       # `semantic-release version` tags and writes the release notes; it does not
       # attach anything. `upload_to_vcs_release = true` is read by
