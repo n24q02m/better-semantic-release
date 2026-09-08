@@ -41,6 +41,7 @@ jobs:
         id: inspect
         env:
           GH_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ github.token }}
           WARN_DAYS: ${{ inputs.warn_days || '14' }}
         run: |
           set -euo pipefail
