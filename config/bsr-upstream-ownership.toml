@@ -978,3 +978,7 @@ kind = "other"
 owner = "bsr-g1-registry"
 reason = "Phase B self-contained composite action for signed remote registry loading."
 gates = ["other"]
+
+[[manifest]]
+path = ".jules/bolt.md"
+owner = "bsr-tests"
