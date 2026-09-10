@@ -979,9 +979,13 @@ owner = "bsr-g1-registry"
 reason = "Phase B self-contained composite action for signed remote registry loading."
 gates = ["other"]
 
-[[manifest]]
+[[ownership]]
 path = ".jules/bolt.md"
+status = "A"
+kind = "other"
 owner = "bsr-tests"
+reason = "Journal file for the performance optimization persona."
+gates = ["other"]
 
 [[ownership]]
 path = "src/semantic_release/version/version.py"
