@@ -982,3 +982,11 @@ gates = ["other"]
 [[manifest]]
 path = ".jules/bolt.md"
 owner = "bsr-tests"
+
+[[ownership]]
+path = "src/semantic_release/version/version.py"
+status = "M"
+kind = "python-source"
+owner = "bsr-stock-patch"
+reason = "Performance optimization."
+gates = ["python-lint", "python-format", "python-type"]
