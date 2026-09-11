@@ -9,6 +9,10 @@
 name: cd
 
 on:
+  push:
+    branches:
+      - staging
+      - main
   workflow_dispatch:
     inputs:
       operation:
@@ -54,13 +58,18 @@ concurrency:
   group: release
   cancel-in-progress: false
 
+env:
+  # Unified release ladder: push to staging = beta, push to main = stable.
+  # workflow_dispatch keeps release_type as an explicit override.
+  RELEASE_TYPE: ${{ github.event_name == 'push' && (github.ref_name == 'staging' && 'beta' || 'stable') || inputs.release_type }}
+
 permissions:
   contents: read
 
 jobs:
   release:
     name: Release
-    if: inputs.operation == 'release'
+    if: github.event_name == 'push' || inputs.operation == 'release'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -68,7 +77,7 @@ jobs:
     # The environment must be provisioned with reviewers and branch policy before dispatch.
     # Without that external settings gate, GitHub must not be used for publication.
     environment:
-      name: ${{ inputs.release_type == 'beta' && 'beta-publish' || 'stable-publish' }}
+      name: ${{ github.event_name == 'push' && (github.ref_name == 'staging' && 'beta-publish' || 'stable-publish') || (inputs.release_type == 'beta' && 'beta-publish' || 'stable-publish') }}
 
     steps:
       - name: Mint a token from the CI GitHub App
@@ -96,7 +105,7 @@ jobs:
         uses: ./
         with:
           github_token: ${{ steps.app-token.outputs.token }}
-          prerelease: ${{ inputs.release_type == 'beta' }}
+          prerelease: ${{ env.RELEASE_TYPE == 'beta' }}
           prerelease_token: beta
           force: ${{ inputs.release_type == 'beta' && inputs.force == 'prerelease' && 'prerelease' || '' }}
 
