@@ -4,6 +4,26 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.6.2:
+
+v1.6.2 (2026-09-11)
+===================
+
+🪲 Bug Fixes
+------------
+
+* Optimize version equality comparison (`PR#147`_, `f3f45a6`_)
+
+⚡ Performance Improvements
+---------------------------
+
+* Optimize Version.__eq__ by replacing all() with explicit chained comparisons (`PR#147`_,
+  `f3f45a6`_)
+
+.. _f3f45a6: https://github.com/n24q02m/better-semantic-release/commit/f3f45a66dc5f407356a17b729add40a642dfb1f7
+.. _PR#147: https://github.com/n24q02m/better-semantic-release/pull/147
+
+
 .. _changelog-v1.6.1:
 
 v1.6.1 (2026-09-11)
