@@ -35,7 +35,9 @@ def test_manual_cd_operations_are_mutually_exclusive_and_gated() -> None:
     for input_name in ("registry_tag", "candidate_run_id", "candidate_run_attempt"):
         assert dispatch["inputs"][input_name]["required"] == "false"
 
-    assert document["jobs"]["release"]["if"] == "inputs.operation == 'release'"
+    assert document["jobs"]["release"]["if"] == (
+        "github.event_name == 'push' || inputs.operation == 'release'"
+    )
     image = document["jobs"]["publisher-image"]
     assert image["if"] == (
         "inputs.operation == 'publisher-image' && github.ref == 'refs/heads/main'"
@@ -73,7 +75,9 @@ def test_manual_cd_operations_are_mutually_exclusive_and_gated() -> None:
 def test_release_route_has_no_image_permissions_or_image_steps() -> None:
     document = _load_workflow()
     release = document["jobs"]["release"]
-    assert release["if"] == "inputs.operation == 'release'"
+    assert release["if"] == (
+        "github.event_name == 'push' || inputs.operation == 'release'"
+    )
     assert release["permissions"] == {"contents": "write", "id-token": "write"}
     assert "packages" not in release.get("permissions", {})
     assert all(

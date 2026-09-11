@@ -12,5 +12,8 @@ def test_release_job_is_bound_to_channel_environment() -> None:
     release_job = document["jobs"]["release"]
 
     assert release_job["environment"]["name"] == (
-        "${{ inputs.release_type == 'beta' && 'beta-publish' || 'stable-publish' }}"
+        "${{ github.event_name == 'push' &&"
+        " (github.ref_name == 'staging' && 'beta-publish' || 'stable-publish')"
+        " || (inputs.release_type == 'beta' && 'beta-publish'"
+        " || 'stable-publish') }}"
     )
