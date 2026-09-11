@@ -35,7 +35,7 @@ def _comparator(
     method: VersionComparator | None = None, *, type_guard: bool = True
 ) -> VersionComparator | Callable[[VersionComparator], VersionComparator]:
     """
-    wrap a `Version` binop method to guard types and try to parse strings into Versions.
+    Wrap a `Version` binop method to guard types and try to parse strings into Versions.
     use `type_guard = False` for `__eq__` and `__neq__` to make them return False if the
     wrong type is used, instead of erroring.
     """
@@ -287,15 +287,12 @@ class Version:
     def __eq__(self, other: Version) -> bool:  # type: ignore[override]
         # https://semver.org/#spec-item-11 -
         # build metadata is not used for comparison
-        return all(
-            getattr(self, attr) == getattr(other, attr)
-            for attr in (
-                "major",
-                "minor",
-                "patch",
-                "prerelease_token",
-                "prerelease_revision",
-            )
+        return (
+            self.major == other.major
+            and self.minor == other.minor
+            and self.patch == other.patch
+            and self.prerelease_token == other.prerelease_token
+            and self.prerelease_revision == other.prerelease_revision
         )
 
     @_comparator(type_guard=False)
