@@ -1,0 +1,5 @@
+🚨 Severity: HIGH
+💡 Vulnerability: The SSH directory (~/.ssh) could be created with insecure permissions or pre-existing weak permissions wouldn't be fixed.
+🎯 Impact: Malicious code running in the same CI environment could potentially read or modify the SSH private signing key due to a Time-of-Check to Time-of-Use race condition.
+🔧 Fix: Used `mkdir -m 700 -p` followed by `chmod 700` to explicitly secure the directory immediately upon creation and fix existing directories.
+✅ Verification: The test suite was run and the script modifications verified.
