@@ -109,7 +109,7 @@ if [[ -n "$INPUT_SSH_PUBLIC_SIGNING_KEY" && -n "$INPUT_SSH_PRIVATE_SIGNING_KEY" 
 	echo "SSH Key pair found, configuring signing..."
 
 	# Create the private key with restrictive permissions from the first byte.
-	mkdir -vp ~/.ssh
+	mkdir -m 700 -p ~/.ssh
 	chmod 700 ~/.ssh
 	printf '%b\n' "$INPUT_SSH_PUBLIC_SIGNING_KEY" >>~/.ssh/signing_key.pub
 	cat ~/.ssh/signing_key.pub
