@@ -1,3 +1,6 @@
 ## 2024-05-23 - Python `__eq__` Performance with `all()` and generator vs Explicit Chaining
 **Learning:** Using `all(getattr(self, attr) == getattr(other, attr) for attr in (...))` in frequently called dunder methods like `__eq__` introduces substantial overhead due to generator initialization, function call overhead for `getattr`, and the iteration process. For `Version.__eq__`, which is heavily relied upon in sorting and comparing version objects (e.g., semantic sorting of git tags), this abstraction can slow down comparisons by ~10x compared to an explicit boolean chain.
 **Action:** Replace `all()` with a generator expression in performance-critical `__eq__` methods with explicit short-circuiting attribute comparisons (`self.major == other.major and self.minor == ...`).
+## 2024-05-23 - Avoid all([...]) with lists to preserve short-circuiting
+**Learning:** Using `all([...])` or `any([...])` with a list literal forces eager evaluation of all items, negating the benefits of short-circuit evaluation. This is an anti-pattern that creates unnecessary overhead by constructing a list and evaluating all expressions even if the first one is False.
+**Action:** Replace `all([...])` and `any([...])` containing explicitly defined lists with explicit boolean short-circuiting (e.g., `cond1 and cond2 and cond3`).
