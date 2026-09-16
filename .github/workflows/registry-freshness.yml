@@ -72,7 +72,7 @@ jobs:
             unknown_drift=false
             while IFS= read -r path; do
               case "$path" in
-                action.yml|publish-action/action.yml|registry-action/action.yml|publish-action/Dockerfile|publish-action/main.py|src/semantic_release/bsr/release_publisher.py|src/semantic_release/version/version.py|scripts/action_pin_registry.py|scripts/repo-bootstrap/verify_readme_sync.py|config/bsr-upstream-ownership.toml|tests/test_publisher_workflow.py|tests/test_release_workflow.py|.github/workflows/cd.yml)
+                action.yml|publish-action/action.yml|registry-action/action.yml|publish-action/Dockerfile|publish-action/main.py|src/semantic_release/bsr/release_publisher.py|src/semantic_release/version/version.py|src/gh_action/action.sh|scripts/action_pin_registry.py|scripts/repo-bootstrap/verify_readme_sync.py|config/bsr-upstream-ownership.toml|tests/test_publisher_workflow.py|tests/test_release_workflow.py|.github/workflows/cd.yml)
                   publisher_change=true
                   stable_only=false
                   ;;
