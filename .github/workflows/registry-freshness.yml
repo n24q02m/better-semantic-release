@@ -72,11 +72,11 @@ jobs:
             unknown_drift=false
             while IFS= read -r path; do
               case "$path" in
-                action.yml|publish-action/action.yml|registry-action/action.yml|publish-action/Dockerfile|publish-action/main.py|src/semantic_release/bsr/release_publisher.py|scripts/action_pin_registry.py|scripts/repo-bootstrap/verify_readme_sync.py|.github/workflows/cd.yml)
+                action.yml|publish-action/action.yml|registry-action/action.yml|publish-action/Dockerfile|publish-action/main.py|src/semantic_release/bsr/release_publisher.py|src/semantic_release/version/version.py|scripts/action_pin_registry.py|scripts/repo-bootstrap/verify_readme_sync.py|config/bsr-upstream-ownership.toml|tests/test_publisher_workflow.py|tests/test_release_workflow.py|.github/workflows/cd.yml)
                   publisher_change=true
                   stable_only=false
                   ;;
-                CHANGELOG.rst|pyproject.toml|.github/workflows/registry-freshness.yml) ;;
+                CHANGELOG.rst|pyproject.toml|.github/workflows/registry-freshness.yml|.jules/*) ;;
                 *) stable_only=false; unknown_drift=true ;;
               esac
             done <<< "$changed_files"
@@ -87,6 +87,7 @@ jobs:
             elif [ "$publisher_change" = true ]; then
               refresh=true
               refresh_mode=publisher-change
+              release_force=prerelease
               echo "::warning::publisher-bound source moved since $TAG; automatic beta refresh is required"
               printf '%s\n' "$changed_files"
             elif [ "$stable_only" = true ] && [ -n "$changed_files" ]; then
