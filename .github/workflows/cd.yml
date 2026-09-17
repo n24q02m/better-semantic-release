@@ -58,10 +58,14 @@ on:
         description: Refresh when registry expiry is within this many days
         type: string
         required: false
+      parent_run_id:
+        description: Run ID of the parent inspect/refresh run that dispatched this run (nested-run discriminator)
+        type: string
+        required: false
         default: "14"
 
 concurrency:
-  group: release-${{ github.event_name == 'workflow_dispatch' && inputs.operation || 'push' }}
+  group: release-${{ github.event_name == 'workflow_dispatch' && inputs.operation || 'push' }}-${{ inputs.parent_run_id || 'top' }}
   cancel-in-progress: false
 
 env:
@@ -1129,6 +1133,7 @@ jobs:
             -f ref=main
             -f 'inputs[operation]=release'
             -f 'inputs[release_type]=beta'
+            -f "inputs[parent_run_id]=$GITHUB_RUN_ID"
           )
           if [ -n "$RELEASE_FORCE" ]; then
             dispatch_args+=(-f "inputs[force]=$RELEASE_FORCE")
