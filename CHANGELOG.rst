@@ -4,6 +4,20 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.6.9:
+
+v1.6.9 (2026-09-17)
+===================
+
+🪲 Bug Fixes
+------------
+
+* **cd**: Pass parent_run_id on publisher-image and registry-g1 dispatches to prevent cascade
+  (`87e9c4f`_)
+
+.. _87e9c4f: https://github.com/n24q02m/better-semantic-release/commit/87e9c4f21c9af4ab300a393e0ea8bf5d45f3e3bd
+
+
 .. _changelog-v1.6.8-beta.3:
 
 v1.6.8-beta.3 (2026-09-17)
