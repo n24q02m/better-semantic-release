@@ -112,7 +112,7 @@ def test_registry_action_is_a_self_contained_remote_loader() -> None:
     )
     installer, loader = action["runs"]["steps"]
     assert installer["uses"] == (
-        "sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6"
+        "sigstore/cosign-installer@7e8b541eb2e61bf99390e1afd4be13a184e9ebc5"
     )
     assert loader["id"] == "load"
     command = loader["run"]
@@ -243,7 +243,7 @@ def test_candidate_job_verifies_provenance_and_exports_exact_handoff() -> None:
     )
     assert provenance["id"] == "provenance"
     assert provenance["uses"] == (
-        "actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be"
+        "actions/attest-build-provenance@520d128f165991a6c774bcb264f323e3d70747f4"
     )
 
     handoff = next(
