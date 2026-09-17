@@ -945,7 +945,7 @@ path = "src/semantic_release/cli/config.py"
 status = "M"
 kind = "python-source"
 owner = "repo-maintainers"
-reason = "Current-main compatibility fix preserves commit-author validation after GitPython removed Actor.name_email_regex."
+reason = "Current-main compatibility fixes: commit-author validation after GitPython removed Actor.name_email_regex; shared RemoteConfig class-default skipped set_default_token env resolution (Field(default_factory=RemoteConfig, validate_default=True))."
 gates = ["python-lint", "python-format", "python-type"]
 
 [[ownership]]
@@ -1043,3 +1043,51 @@ kind = "python-source"
 owner = "bsr-stock-patch"
 reason = "Performance optimization."
 gates = ["python-lint", "python-format", "python-type"]
+
+[[ownership]]
+path = "src/semantic_release/bsr/doctor.py"
+status = "A"
+kind = "python-source"
+owner = "bsr-g3-verify-doctor"
+reason = "Task 3 doctor check catalog: structural checks with fail-closed severities and actionable fixes."
+gates = ["python-lint", "python-format", "python-type"]
+
+[[ownership]]
+path = "src/semantic_release/bsr/preflight.py"
+status = "A"
+kind = "python-source"
+owner = "bsr-g3-verify-doctor"
+reason = "Task 3 preflight state assembly feeding verify and doctor from a single computed release state."
+gates = ["python-lint", "python-format", "python-type"]
+
+[[ownership]]
+path = "src/semantic_release/cli/commands/verify.py"
+status = "A"
+kind = "python-source"
+owner = "bsr-g3-verify-doctor"
+reason = "Task 3 verify command: fail-closed preflight gate; builds runtime directly to bypass cli_context auto-exit."
+gates = ["python-lint", "python-format", "python-type"]
+
+[[ownership]]
+path = "src/semantic_release/cli/commands/doctor.py"
+status = "A"
+kind = "python-source"
+owner = "bsr-g3-verify-doctor"
+reason = "Task 3 doctor command: read-only diagnostics over the same check catalog as verify."
+gates = ["python-lint", "python-format", "python-type"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/test_doctor.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-g3-verify-doctor"
+reason = "Task 3 check-catalog unit coverage: broken fixtures must produce structured findings."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/test_verify_doctor_cli.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-g3-verify-doctor"
+reason = "Task 3 e2e coverage: real broken fixtures fail closed; clean repo exits zero with env-provided token."
+gates = ["python-lint", "python-format", "python-test"]

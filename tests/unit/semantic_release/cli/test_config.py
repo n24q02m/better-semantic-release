@@ -94,6 +94,19 @@ def test_load_hvcs_default_token(
     assert expected_token == raw_config.remote.token
 
 
+def test_hvcs_default_token_applied_without_explicit_remote_section() -> None:
+    """
+    BSR-PATCH regression: RawConfig.remote used a shared class-level default
+    (RemoteConfig() built at import time), so set_default_token never saw the
+    environment when pyproject.toml had no [tool.semantic_release.hvcs] section.
+    The default must now be re-built and re-validated per RawConfig instance.
+    """
+    with mock.patch.dict(os.environ, {"GH_TOKEN": "envtok"}, clear=True):
+        raw_config = RawConfig.model_validate({})
+
+    assert raw_config.remote.token == "envtok"
+
+
 @pytest.mark.parametrize("remote_config", [{"type": "nonexistent"}])
 def test_invalid_hvcs_type(remote_config: dict[str, Any]):
     with pytest.raises(ValidationError) as excinfo:

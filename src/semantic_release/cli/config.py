@@ -380,7 +380,14 @@ class RawConfig(BaseModel):
     major_on_zero: bool = True
     allow_zero_version: bool = False
     repo_dir: Path = Field(default=cast("Path", "."), validate_default=True)
-    remote: RemoteConfig = RemoteConfig()
+    # BSR-PATCH (universal-release-engine Task 3): a shared class-level default
+    # (`RemoteConfig()`) is constructed once at import time, before any env var
+    # exists, so `set_default_token` ran with an empty environment and froze
+    # token=None for every config without an explicit [tool.semantic_release.hvcs]
+    # section -- silently ignoring GH_TOKEN/GITLAB_TOKEN/etc. A fresh
+    # default_factory instance with validate_default=True re-runs the validator
+    # per RawConfig build, when the env is actually readable.
+    remote: RemoteConfig = Field(default_factory=RemoteConfig, validate_default=True)
     no_git_verify: bool = False
     tag_format: str = "v{version}"
     add_partial_tags: bool = False
