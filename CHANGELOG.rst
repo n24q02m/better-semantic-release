@@ -4,6 +4,20 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.6.4:
+
+v1.6.4 (2026-09-17)
+===================
+
+🪲 Bug Fixes
+------------
+
+* **cd**: Registry freshness picks newest prerelease carrying bsr-action-registry.json
+  (v1.6.2-beta.1 lacks assets) (`c414fa2`_)
+
+.. _c414fa2: https://github.com/n24q02m/better-semantic-release/commit/c414fa2fc9c2d3ebefd4bc22c9076ffcd525028a
+
+
 .. _changelog-v1.6.3:
 
 v1.6.3 (2026-09-17)
