@@ -4,6 +4,20 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.6.6-beta.1:
+
+v1.6.6-beta.1 (2026-09-17)
+==========================
+
+🪲 Bug Fixes
+------------
+
+* **cd**: Add parent_run_id input + concurrency discriminator so refresh-dispatched child runs don't
+  deadlock behind parent (`2da1c12`_)
+
+.. _2da1c12: https://github.com/n24q02m/better-semantic-release/commit/2da1c126083911acbe1aea2b557beb8b5b170ff0
+
+
 .. _changelog-v1.6.5:
 
 v1.6.5 (2026-09-17)
