@@ -4,6 +4,20 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.6.7:
+
+v1.6.7 (2026-09-17)
+===================
+
+🪲 Bug Fixes
+------------
+
+* **cd**: Skip refresh job on nested runs (parent_run_id set) to prevent infinite dispatch recursion
+  (`a64d415`_)
+
+.. _a64d415: https://github.com/n24q02m/better-semantic-release/commit/a64d41555a2f0166a04ebc256830f1c3fae5de2f
+
+
 .. _changelog-v1.6.6:
 
 v1.6.6 (2026-09-17)
