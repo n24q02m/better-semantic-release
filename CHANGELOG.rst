@@ -4,6 +4,19 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.6.10:
+
+v1.6.10 (2026-09-17)
+====================
+
+🪲 Bug Fixes
+------------
+
+* **ci**: Drop ownership manifest entries for merged-away workflows (`cd0526c`_)
+
+.. _cd0526c: https://github.com/n24q02m/better-semantic-release/commit/cd0526c3dd8d0092907f12a72f85339907ed032d
+
+
 .. _changelog-v1.6.9-beta.2:
 
 v1.6.9-beta.2 (2026-09-17)
