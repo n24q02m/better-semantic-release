@@ -61,7 +61,7 @@ on:
         default: "14"
 
 concurrency:
-  group: release
+  group: release-${{ github.event_name == 'workflow_dispatch' && inputs.operation || 'push' }}
   cancel-in-progress: false
 
 env:
