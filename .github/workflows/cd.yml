@@ -1108,7 +1108,7 @@ jobs:
   refresh:
     name: Refresh signed registry through cd.yml
     needs: inspect
-    if: needs.inspect.outputs.refresh == 'true'
+    if: needs.inspect.outputs.refresh == 'true' && inputs.parent_run_id == ''
     runs-on: ubuntu-latest
     permissions:
       actions: write
