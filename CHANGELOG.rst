@@ -4,6 +4,19 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.6.3:
+
+v1.6.3 (2026-09-17)
+===================
+
+🪲 Bug Fixes
+------------
+
+* **cd**: Classify consolidated workflow files as no-op drift in registry freshness (`54e754c`_)
+
+.. _54e754c: https://github.com/n24q02m/better-semantic-release/commit/54e754c3aa8ee9a959e48610d12af6446fa7fb90
+
+
 .. _changelog-v1.6.2-beta.1:
 
 v1.6.2-beta.1 (2026-09-16)
