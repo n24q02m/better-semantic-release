@@ -58,11 +58,11 @@ on:
         description: Refresh when registry expiry is within this many days
         type: string
         required: false
+        default: "14"
       parent_run_id:
         description: Run ID of the parent inspect/refresh run that dispatched this run (nested-run discriminator)
         type: string
         required: false
-        default: "14"
 
 concurrency:
   group: release-${{ github.event_name == 'workflow_dispatch' && inputs.operation || 'push' }}-${{ inputs.parent_run_id || 'top' }}
