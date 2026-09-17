@@ -991,7 +991,7 @@ jobs:
                   publisher_change=true
                   stable_only=false
                   ;;
-                CHANGELOG.rst|pyproject.toml|.jules/*|.github/workflows/ci.yml|.github/workflows/bot-governance.yml|.github/workflows/registry-freshness.yml) ;;
+                CHANGELOG.rst|pyproject.toml|.jules/*|.github/workflows/ci.yml) ;;
                 *) stable_only=false; unknown_drift=true ;;
               esac
             done <<< "$changed_files"

@@ -55,13 +55,6 @@ owner = "repo-maintainers"
 reason = "Current fork difference is intentionally retained and declared for ownership accounting."
 gates = ["other"]
 
-[[ownership]]
-path = ".github/workflows/bot-governance.yml"
-status = "A"
-kind = "workflows"
-owner = "ci-governance"
-reason = "Current CI workflow difference is intentionally retained and covered by the ownership gate."
-gates = ["workflows"]
 
 [[ownership]]
 path = ".github/workflows/cd.yml"
@@ -111,13 +104,6 @@ owner = "ci-governance"
 reason = "Current CI workflow difference is intentionally retained and covered by the ownership gate."
 gates = ["workflows"]
 
-[[ownership]]
-path = ".github/workflows/registry-freshness.yml"
-status = "A"
-kind = "workflows"
-owner = "ci-governance"
-reason = "Fork-added registry freshness heartbeat; read-only, covered by the ownership gate."
-gates = ["workflows"]
 
 
 [[ownership]]
