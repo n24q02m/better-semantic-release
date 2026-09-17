@@ -4,6 +4,20 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.6.5:
+
+v1.6.5 (2026-09-17)
+===================
+
+🪲 Bug Fixes
+------------
+
+* **cd**: Key concurrency group by operation to prevent refresh-job deadlock (parent holding
+  'release' group blocks its own dispatched child) (`52c6872`_)
+
+.. _52c6872: https://github.com/n24q02m/better-semantic-release/commit/52c68728af9ddc7f63236f51854013224f5a4fa2
+
+
 .. _changelog-v1.6.4:
 
 v1.6.4 (2026-09-17)
