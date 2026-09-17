@@ -137,6 +137,7 @@ def test_doctor_json_has_all_catalog_codes(
         "PRERELEASE_MISMATCH",
         "HVCS_TOKEN",
         "VERSION_TARGETS",
+        "VERSION_CONSISTENCY",
         "TRUSTED_PUBLISHING",
         "REGISTRY",
     } <= codes

@@ -397,3 +397,90 @@ def check_trusted_publishing(bsr_cfg: BsrConfig) -> CheckResult:
         why="BSR enforces it in the publish command when configured",
         fix="no action required",
     )
+
+
+def check_version_consistency(sources: Sequence[object]) -> CheckResult:
+    """
+    Explicit or bridged version sources must agree on the current version.
+
+    Task 4 Step 4: when the same project version lives in several places
+    (``pyproject.toml``, ``package.json``, a ``VERSION`` file, git tags) and
+    they diverge, the release would stamp from the wrong base. Each source is
+    named with its provenance so the drift is actionable at a glance.
+    """
+    from semantic_release.bsr.version_sources import VersionSource
+
+    if not sources:
+        return CheckResult(
+            code="VERSION_CONSISTENCY",
+            severity=SEVERITY_WARNING,
+            status=STATUS_SKIP,
+            what="no version sources to cross-check",
+        )
+
+    rows: list[tuple[str, str | None]] = []
+    for source in sources:
+        if not isinstance(source, VersionSource):  # pragma: no cover
+            continue
+        prov = source.provenance()
+        label = f"{prov.kind}:{prov.location}"
+        if prov.detail:
+            label = f"{label} ({prov.detail})"
+        try:
+            versions = source.load()
+        except Exception as exc:  # noqa: BLE001 - unreadable source IS the finding
+            rows.append((label, f"unreadable: {exc}"))
+            continue
+        if not versions:
+            rows.append((label, "no version found"))
+            continue
+        rows.append((label, str(max(versions))))
+
+    if not rows:
+        return CheckResult(
+            code="VERSION_CONSISTENCY",
+            severity=SEVERITY_WARNING,
+            status=STATUS_SKIP,
+            what="no version sources to cross-check",
+        )
+
+    readable = [(label, value) for label, value in rows if value and not value.startswith("unreadable:")]
+    missing = [label for label, value in rows if value in {None, "no version found"}]
+    unreadable = [label for label, value in rows if value and value.startswith("unreadable:")]
+
+    if len(readable) >= 2 and len({value for _, value in readable}) > 1:
+        detail = "; ".join(f"{label} -> {value}" for label, value in readable)
+        return CheckResult(
+            code="VERSION_CONSISTENCY",
+            severity=SEVERITY_WARNING,
+            status=STATUS_FAIL,
+            what="version sources disagree on the current version",
+            why=f"{detail}"
+            + (f"; missing: {', '.join(missing)}" if missing else "")
+            + (f"; unreadable: {', '.join(unreadable)}" if unreadable else ""),
+            fix="sync the divergent sources to one version before releasing",
+        )
+
+    if missing or unreadable:
+        problems = [
+            *(f"{label}: no version found" for label in missing),
+            *(f"{label}: unreadable" for label in unreadable),
+        ]
+        agreed = "; ".join(f"{label} -> {value}" for label, value in readable)
+        return CheckResult(
+            code="VERSION_CONSISTENCY",
+            severity=SEVERITY_WARNING,
+            status=STATUS_FAIL,
+            what="one or more version sources carry no version",
+            why="; ".join(problems) + (f"; agreed elsewhere: {agreed}" if agreed else ""),
+            fix="populate or remove the empty sources, or fix their kind/path config",
+        )
+
+    agreed = "; ".join(f"{label} -> {value}" for label, value in readable)
+    return CheckResult(
+        code="VERSION_CONSISTENCY",
+        severity=SEVERITY_WARNING,
+        status=STATUS_PASS,
+        what=f"all {len(readable)} version source(s) agree",
+        why=agreed,
+    )

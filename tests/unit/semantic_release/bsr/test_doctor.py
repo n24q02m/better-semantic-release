@@ -207,3 +207,89 @@ def _translator():
     return VersionTranslator()
 
 
+
+
+def test_check_version_consistency_agrees(tmp_path) -> None:
+    from semantic_release.bsr.doctor import check_version_consistency
+    from semantic_release.bsr.version_sources import (
+        JsonVersionSource,
+        TextVersionSource,
+    )
+
+    (tmp_path / "package.json").write_text('{"version": "1.0.0"}', encoding="utf-8")
+    (tmp_path / "VERSION").write_text("1.0.0\n", encoding="utf-8")
+    result = check_version_consistency(
+        [
+            JsonVersionSource(tmp_path / "package.json", "version"),
+            TextVersionSource(tmp_path / "VERSION", "{version}"),
+        ]
+    )
+    assert result.code == "VERSION_CONSISTENCY"
+    assert result.status == "pass"
+
+
+def test_check_version_consistency_detects_drift(tmp_path) -> None:
+    """
+    Task 4 Step 4: pyproject.toml, package.json, VERSION carrying the same
+    project version must agree; divergence names the drifting sources.
+    """
+    from semantic_release.bsr.doctor import check_version_consistency
+    from semantic_release.bsr.version_sources import (
+        JsonVersionSource,
+        TextVersionSource,
+        TomlVersionSource,
+    )
+
+    (tmp_path / "pyproject.toml").write_text(
+        '[project]\nversion = "1.0.0"\n', encoding="utf-8"
+    )
+    (tmp_path / "package.json").write_text(
+        '{"version": "1.1.0"}', encoding="utf-8"
+    )
+    (tmp_path / "VERSION").write_text("1.0.0\n", encoding="utf-8")
+
+    sources = [
+        TomlVersionSource(tmp_path / "pyproject.toml", "project.version"),
+        JsonVersionSource(tmp_path / "package.json", "version"),
+        TextVersionSource(tmp_path / "VERSION", "{version}"),
+    ]
+    result = check_version_consistency(sources)
+    assert result.code == "VERSION_CONSISTENCY"
+    assert result.severity == "warning"
+    assert result.status == "fail"
+    assert "disagree" in result.what
+    for fragment in ("toml:", "json:", "text:"):
+        assert fragment in result.why
+
+
+def test_check_version_consistency_all_agree(tmp_path) -> None:
+    from semantic_release.bsr.doctor import check_version_consistency
+    from semantic_release.bsr.version_sources import (
+        JsonVersionSource,
+        TextVersionSource,
+    )
+
+    (tmp_path / "package.json").write_text(
+        '{"version": "2.0.0"}', encoding="utf-8"
+    )
+    (tmp_path / "VERSION").write_text("2.0.0\n", encoding="utf-8")
+    result = check_version_consistency(
+        [
+            JsonVersionSource(tmp_path / "package.json", "version"),
+            TextVersionSource(tmp_path / "VERSION", "{version}"),
+        ]
+    )
+    assert result.status == "pass"
+    assert "agree" in result.what
+
+
+def test_check_version_consistency_empty_source(tmp_path) -> None:
+    from semantic_release.bsr.doctor import check_version_consistency
+    from semantic_release.bsr.version_sources import TextVersionSource
+
+    (tmp_path / "VERSION").write_text("not a version\n", encoding="utf-8")
+    result = check_version_consistency(
+        [TextVersionSource(tmp_path / "VERSION", "{version}")]
+    )
+    assert result.status == "fail"
+    assert "no version found" in result.why

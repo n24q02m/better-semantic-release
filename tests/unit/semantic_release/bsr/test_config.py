@@ -301,3 +301,59 @@ def test_invalid_component_path_map_fails_closed(tmp_path: Path) -> None:
 
     with pytest.raises(InvalidConfiguration, match="schema_version"):
         load_bsr_config(cfg_file)
+
+
+def test_loads_version_source_and_target_tables(tmp_path: Path) -> None:
+    cfg_file = tmp_path / "pyproject.toml"
+    cfg_file.write_text(
+        "[tool.semantic_release.bsr]\n"
+        "schema_version = 1\n"
+        "[[tool.semantic_release.bsr.version.sources]]\n"
+        'kind = "json"\n'
+        'path = "package.json"\n'
+        'field = "version"\n'
+        "[[tool.semantic_release.bsr.version.sources]]\n"
+        'kind = "text"\n'
+        'path = "VERSION"\n'
+        'pattern = "{version}"\n'
+        "[[tool.semantic_release.bsr.version.targets]]\n"
+        'kind = "git-tag"\n',
+        encoding="utf-8",
+    )
+    cfg = load_bsr_config(cfg_file)
+    assert cfg.version is not None
+    assert [(s.kind, s.path, s.field) for s in cfg.version.sources] == [
+        ("json", "package.json", "version"),
+        ("text", "VERSION", ""),
+    ]
+    assert cfg.version.sources[1].pattern == "{version}"
+    assert [(t.kind,) for t in cfg.version.targets] == [("git-tag",)]
+
+
+def test_version_unknown_kind_fails_closed(tmp_path: Path) -> None:
+    cfg_file = tmp_path / "pyproject.toml"
+    cfg_file.write_text(
+        "[tool.semantic_release.bsr]\n"
+        "schema_version = 1\n"
+        "[[tool.semantic_release.bsr.version.sources]]\n"
+        'kind = "yaml"\n'
+        'path = "x.yml"\n'
+        'field = "version"\n',
+        encoding="utf-8",
+    )
+    with pytest.raises(InvalidConfiguration, match="kind"):
+        load_bsr_config(cfg_file)
+
+
+def test_version_missing_required_field_fails_closed(tmp_path: Path) -> None:
+    cfg_file = tmp_path / "pyproject.toml"
+    cfg_file.write_text(
+        "[tool.semantic_release.bsr]\n"
+        "schema_version = 1\n"
+        "[[tool.semantic_release.bsr.version.targets]]\n"
+        'kind = "json"\n'
+        'path = "package.json"\n',
+        encoding="utf-8",
+    )
+    with pytest.raises(InvalidConfiguration, match="requires"):
+        load_bsr_config(cfg_file)

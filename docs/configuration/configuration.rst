@@ -1543,3 +1543,52 @@ will be matched and replaced by the new version:
 **Default:** ``[]``
 
 .. _SemVer: https://semver.org/
+
+.. _bsr-version-adapters:
+
+BSR Version Sources and Targets (``[tool.bsr.version]``)
+--------------------------------------------------------
+
+The ``semantic-release`` command reads the current version from *sources* and
+writes the next version to *targets*. By default BSR bridges upstream behavior: git
+tags plus every configured ``version_toml``/``version_variables`` declaration.
+Define ``[tool.semantic_release.bsr.version]`` when you want explicit,
+ecosystem-specific locations instead.
+
+Supported kinds (Task 4): ``git-tag``, ``toml``, ``json``, ``text``.
+
+.. code-block:: toml
+
+    [tool.semantic_release.bsr]
+
+    [[tool.semantic_release.bsr.version.sources]]
+    kind = "git-tag"
+
+    [[tool.semantic_release.bsr.version.sources]]
+    kind = "toml"
+    path = "Cargo.toml"
+    field = "package.version"
+
+    [[tool.semantic_release.bsr.version.targets]]
+    kind = "json"
+    path = "package.json"
+    field = "version"
+
+    [[tool.semantic_release.bsr.version.targets]]
+    kind = "text"
+    path = "VERSION"
+    pattern = "{version}"
+
+Field rules:
+
+- ``git-tag`` takes no extra fields; the tag name uses the configured
+  ``tag_format``.
+- ``toml`` and ``json`` require ``path`` (relative to the repository root) and
+  a dotted ``field`` (e.g. ``project.version``).
+- ``text`` requires ``path`` and ``pattern`` containing the literal
+  ``{version}`` token marking where the version sits.
+
+``semantic-release doctor`` cross-checks all sources (Step 4 of the
+universal-release-engine plan): when ``pyproject.toml``, ``package.json``, and
+a ``VERSION`` file disagree, each drifting source is named with its provenance
+so the mismatch is actionable.

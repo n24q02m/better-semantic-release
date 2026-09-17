@@ -1091,3 +1091,51 @@ kind = "python-test"
 owner = "bsr-g3-verify-doctor"
 reason = "Task 3 e2e coverage: real broken fixtures fail closed; clean repo exits zero with env-provided token."
 gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "src/semantic_release/bsr/version_sources.py"
+status = "A"
+kind = "python-source"
+owner = "bsr-g4-version-adapters"
+reason = "Task 4 source adapters: git-tag/toml/json/text reads with provenance plus declaration bridge."
+gates = ["python-lint", "python-format", "python-type"]
+
+[[ownership]]
+path = "src/semantic_release/bsr/version_targets.py"
+status = "A"
+kind = "python-source"
+owner = "bsr-g4-version-adapters"
+reason = "Task 4 target adapters: preview/apply/touched/validate contract with fail-closed text writes."
+gates = ["python-lint", "python-format", "python-type"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/test_version_sources.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-g4-version-adapters"
+reason = "Task 4 source adapter coverage including bridge defaults and resolution."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/test_version_targets.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-g4-version-adapters"
+reason = "Task 4 target adapter coverage including noop, formatting preservation, and recut guards."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "docs/configuration/configuration.rst"
+status = "M"
+kind = "docs"
+owner = "bsr-g4-version-adapters"
+reason = "Task 4 docs: bsr.version sources/targets reference with field rules and doctor drift behavior."
+gates = ["docs"]
+
+[[ownership]]
+path = "docs/concepts/getting_started.rst"
+status = "M"
+kind = "docs"
+owner = "bsr-g4-version-adapters"
+reason = "Task 4 docs: release recipes for Python/Node/Rust/generic repos."
+gates = ["docs"]

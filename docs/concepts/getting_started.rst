@@ -382,3 +382,22 @@ Configuring CI/CD
 
 PSR is meant to help you release at speed! See our CI/CD Configuration guides under the
 :ref:`automatic` section.
+
+Release Recipes for Non-Python Projects
+---------------------------------------
+
+The same BSR workflow applies to any ecosystem through
+:ref:`bsr-version-adapters`:
+
+- **Python** — ``kind = "toml"``, ``path = "pyproject.toml"``,
+  ``field = "project.version"``.
+- **Node** — ``kind = "json"``, ``path = "package.json"``,
+  ``field = "version"``.
+- **Rust** — ``kind = "toml"``, ``path = "Cargo.toml"``,
+  ``field = "package.version"``.
+- **Generic repo** — ``kind = "text"`` against any file holding a version
+  string, e.g. a ``VERSION`` file with pattern ``{version}``.
+
+Configure one ``source`` per place the version is readable and one ``target``
+per place it must be written; ``semantic-release doctor`` reports drift
+between them by name.

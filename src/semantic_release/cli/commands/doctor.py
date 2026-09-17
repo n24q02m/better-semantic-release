@@ -30,9 +30,11 @@ from semantic_release.bsr.doctor import (
     check_registry_state,
     check_tag_format,
     check_trusted_publishing,
+    check_version_consistency,
     check_version_targets,
 )
 from semantic_release.bsr.preflight import compute_release_state
+from semantic_release.bsr.version_sources import resolve_version_sources
 from semantic_release.cli.config import RuntimeContext
 from semantic_release.errors import MissingGitRemote, NotAReleaseBranch
 
@@ -146,6 +148,15 @@ def doctor(
 
     checks.append(check_hvcs_token(runtime.hvcs_client, needs_release=False))
     checks.append(check_version_targets(runtime, state.previous_version))
+
+    version_sources = resolve_version_sources(
+        repo_dir=runtime.repo_dir,
+        translator=runtime.version_translator,
+        declarations=runtime.version_declarations,
+        source_configs=(_bsr_cfg.version.sources if _bsr_cfg.version else ()),
+    )
+    checks.append(check_version_consistency(version_sources))
+
     checks.append(check_trusted_publishing(_bsr_cfg))
 
     project_name = runtime.project_metadata.get("name", "") or ""
