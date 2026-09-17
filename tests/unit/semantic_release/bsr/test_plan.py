@@ -71,7 +71,12 @@ def test_legacy_document_parity_full_state() -> None:
     """to_legacy_document() == the exact dict the old jsonout code produced."""
     decision = _decision()
     bump_stats = _bump_stats(LevelBump.MINOR)
-    components = [_component("api"), _component("lib", would_release=False, level="NONE", resulting=_version(1, 2, 3))]
+    components = [
+        _component("api"),
+        _component(
+            "lib", would_release=False, level="NONE", resulting=_version(1, 2, 3)
+        ),
+    ]
 
     plan = build_release_plan(
         released=False,
@@ -175,7 +180,11 @@ def test_schema_release() -> None:
         "is_prerelease": False,
         "previous_version": "1.2.3",
         "decision": None,
-        "bump": {"level_bump": "minor", "commit_count": 7, "type_counts": {"feat": 2, "fix": 5}},
+        "bump": {
+            "level_bump": "minor",
+            "commit_count": 7,
+            "type_counts": {"feat": 2, "fix": 5},
+        },
         "components": [],
         "blockers": [],
         "registry": None,
@@ -215,7 +224,9 @@ def test_schema_blocked_release() -> None:
                 remediation="bump the version or resolve the collision",
             ),
         ),
-        registry=RegistryStatus(registry="pypi", reachable=True, detail="collision found"),
+        registry=RegistryStatus(
+            registry="pypi", reachable=True, detail="collision found"
+        ),
     )
     assert plan.is_blocked is True
     doc = plan.to_document()
@@ -242,8 +253,12 @@ def test_schema_monorepo_two_components() -> None:
         decision=None,
         bump_stats=None,
         components=(
-            _component("api", would_release=True, level="MINOR", resulting=_version(1, 3, 0)),
-            _component("lib", would_release=False, level="NONE", resulting=_version(1, 2, 3)),
+            _component(
+                "api", would_release=True, level="MINOR", resulting=_version(1, 3, 0)
+            ),
+            _component(
+                "lib", would_release=False, level="NONE", resulting=_version(1, 2, 3)
+            ),
         ),
     )
     doc = plan.to_document()

@@ -191,7 +191,10 @@ class ReleasePlan(BaseModel):
             "publish_target": (
                 None
                 if self.publish_target is None
-                else {"kind": self.publish_target.kind, "detail": self.publish_target.detail}
+                else {
+                    "kind": self.publish_target.kind,
+                    "detail": self.publish_target.detail,
+                }
             ),
         }
         return doc
@@ -248,7 +251,10 @@ class ReleasePlan(BaseModel):
             lines.append(f"  commits:          {self.bump.commit_count}")
         if self.blockers:
             lines.append("  blockers:")
-            lines.extend(f"    - [{b.code}] {b.message} (fix: {b.remediation})" for b in self.blockers)
+            lines.extend(
+                f"    - [{b.code}] {b.message} (fix: {b.remediation})"
+                for b in self.blockers
+            )
         if self.components:
             lines.append("")
             lines.extend(_component_table(self.components).splitlines())
@@ -269,7 +275,9 @@ class ReleasePlan(BaseModel):
         ]
         if self.components:
             lines.append("")
-            lines.append("| component | would release | level | commits | resulting version |")
+            lines.append(
+                "| component | would release | level | commits | resulting version |"
+            )
             lines.append("| --- | --- | --- | --- | --- |")
             lines.extend(
                 f"| {c.name} | {'yes' if c.would_release else 'no'} | {c.level} "
@@ -280,12 +288,22 @@ class ReleasePlan(BaseModel):
             lines.append("")
             lines.append("### Blockers")
             lines.append("")
-            lines.extend(f"- **{b.code}**: {b.message} — *fix:* {b.remediation}" for b in self.blockers)
+            lines.extend(
+                f"- **{b.code}**: {b.message} — *fix:* {b.remediation}"
+                for b in self.blockers
+            )
         return "\n".join(lines)
 
 
 def _component_table(components: Sequence[ComponentPlanRow]) -> str:
-    headers = ("component", "would-release", "level", "commits", "sample paths", "version")
+    headers = (
+        "component",
+        "would-release",
+        "level",
+        "commits",
+        "sample paths",
+        "version",
+    )
     rows = [
         (
             c.name,
@@ -336,7 +354,9 @@ def build_release_plan(
         normalized_bump = BumpSummary(
             level_bump=bump_stats.level_bump.name.lower(),
             commit_count=(
-                decision.commit_count if decision is not None else bump_stats.commit_count
+                decision.commit_count
+                if decision is not None
+                else bump_stats.commit_count
             ),
             type_counts=dict(bump_stats.type_counts),
         )

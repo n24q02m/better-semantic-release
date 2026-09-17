@@ -373,6 +373,14 @@ reason = "Fork-owned implementation in semantic_release.bsr; covered as a first-
 gates = ["python-lint", "python-format", "python-type"]
 
 [[ownership]]
+path = "src/semantic_release/bsr/plan.py"
+status = "A"
+kind = "python-source"
+owner = "bsr-core"
+reason = "ReleasePlan spine (universal-release-engine Task 1) unifying summary/explain/jsonout projections."
+gates = ["python-lint", "python-format", "python-type"]
+
+[[ownership]]
 path = "src/semantic_release/bsr/messages.py"
 status = "A"
 kind = "python-source"
@@ -434,6 +442,22 @@ status = "M"
 kind = "python-source"
 owner = "bsr-stock-patch"
 reason = "The JSON output option must decorate the stock publish command and its stdout exits."
+gates = ["python-lint", "python-format", "python-type"]
+
+[[ownership]]
+path = "src/semantic_release/cli/commands/main.py"
+status = "M"
+kind = "python-source"
+owner = "bsr-stock-patch"
+reason = "Subcommand registry must expose the fork-owned plan command."
+gates = ["python-lint", "python-format", "python-type"]
+
+[[ownership]]
+path = "src/semantic_release/cli/commands/plan.py"
+status = "A"
+kind = "python-source"
+owner = "bsr-core"
+reason = "Read-only release-plan CLI (universal-release-engine Task 2); offline by default."
 gates = ["python-lint", "python-format", "python-type"]
 
 [[ownership]]
@@ -586,6 +610,38 @@ status = "A"
 kind = "python-test"
 owner = "bsr-tests"
 reason = "Regression or parity coverage for the fork behavior and its stock seams."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/test_compat_golden.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-tests"
+reason = "Locks the universal release engine's legacy behavior contracts before divergence."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/test_plan.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-tests"
+reason = "Golden schema-v1 + legacy-parity coverage for the ReleasePlan spine."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/test_plan_rendering.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-tests"
+reason = "Table/markdown renderer coverage for the ReleasePlan spine."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/test_plan_cli.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-tests"
+reason = "Read-only + determinism contract coverage for the plan command."
 gates = ["python-lint", "python-format", "python-test"]
 
 [[ownership]]

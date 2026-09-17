@@ -23,7 +23,11 @@ def _plan_with_components() -> object:
             _component("lib", would_release=False, level="NONE"),
         ),
         blockers=(
-            Blocker(code="ORPHAN_TAG", message="tag v1.2.3 is orphaned", remediation="re-tag"),
+            Blocker(
+                code="ORPHAN_TAG",
+                message="tag v1.2.3 is orphaned",
+                remediation="re-tag",
+            ),
         ),
     )
 

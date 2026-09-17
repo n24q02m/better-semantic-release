@@ -1,4 +1,5 @@
-"""Golden tests locking the legacy behavior contracts.
+r"""
+Golden tests locking the legacy behavior contracts.
 
 These tests exist so that the universal-release-engine work (ReleasePlan, the
 ``plan``/``verify``/``doctor`` commands, publisher adapters) cannot silently
@@ -52,13 +53,14 @@ def test_action_yml_output_contract() -> None:
     for name in LEGACY_ACTION_OUTPUTS:
         expected = f"${{{{ steps.run.outputs.{name} }}}}"
         actual = outputs[name]["value"]
-        assert actual == expected, (
-            f"output {name!r} wiring changed: expected {expected!r}, got {actual!r}"
-        )
+        assert (
+            actual == expected
+        ), f"output {name!r} wiring changed: expected {expected!r}, got {actual!r}"
 
 
 def test_legacy_config_without_bsr_table_loads_with_defaults(tmp_path: Path) -> None:
-    """A legacy pyproject.toml (no ``[tool.semantic_release.bsr]``) still parses.
+    """
+    A legacy pyproject.toml (no ``[tool.semantic_release.bsr]``) still parses.
 
     The parsed BSR config must be the all-defaults instance -- i.e. every BSR
     feature stays opt-in and no new required key can be introduced at the top
