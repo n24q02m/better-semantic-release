@@ -64,6 +64,59 @@ commit, tag, or push is made. Guards can be opted out of per-repository under th
    :depth: 2
    :local:
 
+Design principles
+=================
+
+better-semantic-release is evolving from a safety-guarded fork into a **release control
+plane** built around three verbs:
+
+``plan`` -- compute and render the release decision (what would be released, for which
+components, and every blocker) as structured data, read-only. ``verify`` -- run the
+safety/policy checks and report pass/fail per check. ``publish`` -- execute the release
+with the same fail-closed guards, reporting structured results.
+
+Non-negotiables for every change to this codebase:
+
+* **No Release-PR machinery.** Reviewability comes from the ``plan`` surface
+  (CLI, JSON, job summaries), never from bot branches, PR labels, or PR state machines.
+* **Drop-in compatibility is the default path.** The ``[tool.semantic_release]`` schema,
+  the existing CLI commands, and the GitHub Action interface must keep working unchanged;
+  new behavior is opt-in under ``[tool.semantic_release.bsr]`` or behind new subcommands.
+* **Universal support via adapter contracts**, not ``if ecosystem == ...`` branches
+  scattered through the core. New version sources, targets, and publishers plug in as
+  adapters; core logic stays ecosystem-agnostic.
+* **Fail closed.** When safety is uncertain (unreachable registry, unknown registry,
+  unverifiable publish state), the tool blocks the release instead of guessing.
+* **New logic lives under** ``src/semantic_release/bsr/*`` where possible, keeping the
+  upstream delta auditable and the future upstream-sync cost low.
+
+Compatibility contract
+======================
+
+The following surfaces are locked; the right-hand column lists the only allowed
+extension direction.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 30 40 30
+
+   * - Surface
+     - Must keep working (locked)
+     - Allowed extension
+   * - ``semantic-release version`` stdout
+     - Bare next-version string on stdout; no added prefixes, suffixes, or JSON
+     - ``--format json`` (already opt-in); new subcommands only
+   * - ``[tool.semantic_release]`` schema
+     - Every existing key parses and behaves identically
+     - New keys under ``[tool.semantic_release.bsr]`` only
+   * - GitHub Action interface
+     - Inputs and outputs (``version``, ``tag``, ``released``, ``commit_sha``, ...)
+       keep their names and semantics
+     - Additional outputs/artifacts may be added; existing ones never renamed
+   * - Dry-run / ``--noop`` behavior
+     - Makes no change, keeps current exit-code semantics
+     - May run additional read-only checks (plan/verify surfaces)
+
 How it differs from upstream
 =============================
 

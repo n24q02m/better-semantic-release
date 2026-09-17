@@ -3,6 +3,13 @@
 schema_version = 1
 baseline = "c74aa3b99de6d9c721f8bd6d2abfa142298b94c9"
 marker = "BSR-PATCH"
+# Delta policy (universal-release-engine, 2026-09-17): active divergence is
+# concentrated under src/semantic_release/bsr/* (and its tests). New modules
+# added by the engine work (plan.py, doctor.py, version_sources.py,
+# version_targets.py, publishers.py, component_graph.py, notes.py, fragments.py,
+# hooks.py, provenance.py) join this inventory as [[ownership]] entries in the
+# same commit that introduces them. Core upstream files are diverged only when
+# unavoidable.
 
 [policy]
 ignored_paths = [".superpowers/"]
