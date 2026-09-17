@@ -1253,7 +1253,8 @@ jobs:
             "repos/$GITHUB_REPOSITORY/actions/workflows/cd.yml/dispatches" \
             -f ref=main \
             -f 'inputs[operation]=publisher-image' \
-            -f 'inputs[release_type]=beta'
+            -f 'inputs[release_type]=beta' \
+            -f "inputs[parent_run_id]=$GITHUB_RUN_ID"
           echo "dispatched_at=$dispatched_at" >> "$GITHUB_OUTPUT"
 
       - name: Wait for publisher-image route
@@ -1357,7 +1358,8 @@ jobs:
             -f 'inputs[release_type]=beta' \
             -f "inputs[registry_tag]=$REGISTRY_TAG" \
             -f "inputs[candidate_run_id]=$CANDIDATE_RUN_ID" \
-            -f "inputs[candidate_run_attempt]=$candidate_attempt"
+            -f "inputs[candidate_run_attempt]=$candidate_attempt" \
+            -f "inputs[parent_run_id]=$GITHUB_RUN_ID"
           echo "dispatched_at=$dispatched_at" >> "$GITHUB_OUTPUT"
       - name: Wait for signed registry-g1 route
         if: needs.inspect.outputs.refresh_mode == 'publisher-change' || needs.inspect.outputs.refresh_mode == 'expiry'
