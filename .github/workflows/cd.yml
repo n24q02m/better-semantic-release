@@ -956,9 +956,17 @@ jobs:
             exit 1
           fi
 
-          TAG=$(gh release list --repo "$GITHUB_REPOSITORY" --limit 20 \
+          TAG=""
+          while IFS= read -r candidate; do
+            if gh release view "$candidate" --repo "$GITHUB_REPOSITORY" \
+              --json assets --jq '.assets[].name' 2>/dev/null \
+              | grep -qx 'bsr-action-registry.json'; then
+              TAG="$candidate"
+              break
+            fi
+          done < <(gh release list --repo "$GITHUB_REPOSITORY" --limit 20 \
             --json tagName,isPrerelease \
-            --jq '[.[] | select(.isPrerelease) | .tagName][0]')
+            --jq '.[] | select(.isPrerelease) | .tagName')
           test -n "$TAG"
           echo "latest beta tag: $TAG"
           git fetch --force origin "refs/tags/$TAG:refs/tags/$TAG"
