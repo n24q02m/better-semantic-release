@@ -4,6 +4,20 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.6.8-beta.1:
+
+v1.6.8-beta.1 (2026-09-17)
+==========================
+
+🪲 Bug Fixes
+------------
+
+* **cd**: Restore warn_days default, remove parent_run_id default so top-level runs get empty string
+  (`95152c9`_)
+
+.. _95152c9: https://github.com/n24q02m/better-semantic-release/commit/95152c9ebbc71ada9b5bc829bf5458d731f0e580
+
+
 .. _changelog-v1.6.7:
 
 v1.6.7 (2026-09-17)
