@@ -392,7 +392,7 @@ gates = ["python-lint", "python-format", "python-type"]
 path = "src/semantic_release/bsr/path_filter.py"
 status = "A"
 kind = "python-source"
-owner = "bsr-core"
+owner = "bsr-stock-patch"
 reason = "Fork-owned implementation in semantic_release.bsr; covered as a first-class BSR addition."
 gates = ["python-lint", "python-format", "python-type"]
 
