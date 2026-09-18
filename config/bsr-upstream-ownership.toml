@@ -1179,3 +1179,27 @@ kind = "python-test"
 owner = "bsr-g6-component-graph"
 reason = "Task 6 graph coverage: parse, cycle rejection, propagation widening and pass-through."
 gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "src/semantic_release/bsr/notes.py"
+status = "A"
+kind = "python-source"
+owner = "bsr-g7-notes-sources"
+reason = "Task 7 notes modes: commits/fragments/hybrid/command with fail-closed manual-notes gating."
+gates = ["python-lint", "python-format", "python-type"]
+
+[[ownership]]
+path = "src/semantic_release/bsr/fragments.py"
+status = "A"
+kind = "python-source"
+owner = "bsr-g7-notes-sources"
+reason = "Task 7 optional newsfragment discovery and rendering."
+gates = ["python-lint", "python-format", "python-type"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/test_notes_modes.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-g7-notes-sources"
+reason = "Task 7 mode-contract coverage: missing sources fail closed, hybrid falls back."
+gates = ["python-lint", "python-format", "python-test"]

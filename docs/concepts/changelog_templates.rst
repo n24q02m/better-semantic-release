@@ -1244,3 +1244,35 @@ __ https://github.com/python-semantic-release/python-semantic-release/tree/maste
     on the `PSR GitHub`__
 
     __ https://github.com/python-semantic-release/python-semantic-release/issues
+
+.. _bsr-notes-modes:
+
+BSR Notes Modes (opt-in)
+------------------------
+
+By default release notes are generated from commits. Repositories that want
+editor-driven notes can opt in through ``[tool.semantic_release.bsr.notes]``.
+Four modes are available:
+
+- ``commits`` (default) -- notes come from commits; no extra workflow.
+- ``fragments`` -- notes come exclusively from newsfragment files dropped in
+  ``changes/`` (``*.md``, ``*.rst``, ``*.txt``). A run with no fragments fails
+  closed instead of shipping an empty section.
+- ``hybrid`` -- fragments are appended to commit-derived notes when present;
+  absence is not an error.
+- ``command`` -- a configured command prints the notes to stdout; a failing
+  command, or empty output (unless ``allow_empty_command_output``), fails the
+  run.
+
+.. code-block:: toml
+
+    [tool.semantic_release.bsr.notes]
+    mode = "hybrid"
+    fragments_dir = "changes"
+    require_manual_notes = "major"
+
+``require_manual_notes`` (``""``, ``"major"``, ``"always"``) is the readability
+lever for large releases: when the next bump is major, the run must produce
+manual notes (fragments or command output) or it fails with an actionable
+error. Version bumps always come from commits regardless of mode -- notes and
+bumping are independent decisions.

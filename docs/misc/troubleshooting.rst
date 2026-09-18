@@ -36,3 +36,25 @@ For example::
 
 .. note::
    The provided GitHub action sets the verbosity level to INFO by default.
+
+BSR notes command failed / produced no release notes
+----------------------------------------------------
+
+``bsr.notes.mode = "fragments"`` or ``"command"`` demand a manual notes source
+for every release. Add a fragment to ``changes/``, fix the configured command,
+switch to ``mode = "hybrid"`` (fragments become optional), or set
+``allow_empty_command_output = true`` if an empty command output is acceptable.
+
+bsr.notes command failed (exit N)
+---------------------------------
+
+The ``[tool.semantic_release.bsr.notes]`` command runs with the repository as
+its working directory; its stderr is surfaced in the error. Run the command
+manually with the same interpreter and environment the release job uses.
+
+Unknown [tool.semantic_release.bsr.notes] fields
+------------------------------------------------
+
+Only ``mode``, ``fragments_dir``, ``command``, ``allow_empty_command_output``
+and ``require_manual_notes`` are recognized. Anything else fails the run --
+typos must not silently disable a release gate.

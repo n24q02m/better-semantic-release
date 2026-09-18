@@ -14,6 +14,7 @@ if TYPE_CHECKING:
 
     from semantic_release.bsr.component_graph import ComponentGraph
     from semantic_release.bsr.component_map import ComponentPathMap
+    from semantic_release.bsr.notes import BsrNotesConfig
 
 
 @dataclass(frozen=True)
@@ -40,6 +41,7 @@ class BsrConfig:
     component_graph: ComponentGraph | None = None
     version: BsrVersionConfig | None = None
     publish: BsrPublishConfig | None = None
+    notes: BsrNotesConfig | None = None
     stable_notes_aggregate: bool = False
     stable_notes_scope: str = "line"  # "line" or "since_stable"
 
@@ -88,9 +90,11 @@ _BSR_FIELDS = {
     "paths",
     "components",
     "component_path_map",
+    "component_graph",
     "stable_notes_scope",
     "version",
     "publish",
+    "notes",
 }
 
 
@@ -371,6 +375,34 @@ def _load_component_graph(bsr: dict, config_path: Path) -> ComponentGraph | None
         ) from exc
 
 
+def _load_notes_config(bsr: dict, config_path: Path) -> BsrNotesConfig | None:
+    """Parse the optional notes table; fail closed on bad entries."""
+    if "notes" not in bsr:
+        return None
+    from semantic_release.bsr.notes import parse_notes_config
+
+    try:
+        return parse_notes_config(bsr["notes"])
+    except InvalidConfiguration as exc:
+        raise InvalidConfiguration(
+            f"{config_path}: invalid [tool.semantic_release.bsr.notes]: {exc}"
+        ) from exc
+
+
+def _load_component_path_map(
+    bsr: dict, config_path: Path
+) -> ComponentPathMap | None:
+    """Parse the optional component_path_map table; fail closed on bad entries."""
+    if "component_path_map" not in bsr:
+        return None
+    try:
+        return parse_component_path_map(bsr["component_path_map"])
+    except (TypeError, ValueError) as exc:
+        raise InvalidConfiguration(
+            f"{config_path}: invalid [tool.semantic_release.bsr.component_path_map]: {exc}"
+        ) from exc
+
+
 def load_bsr_config(config_file: str | os.PathLike[str]) -> BsrConfig:
     """
     Read [tool.semantic_release.bsr] out of the config file.
@@ -400,15 +432,7 @@ def load_bsr_config(config_file: str | os.PathLike[str]) -> BsrConfig:
         )
 
     schema_version = _validate_bsr_table(bsr, config_path)
-    component_path_map = None
-    if "component_path_map" in bsr:
-        try:
-            component_path_map = parse_component_path_map(bsr["component_path_map"])
-        except (TypeError, ValueError) as exc:
-            raise InvalidConfiguration(
-                f"{config_path}: invalid [tool.semantic_release.bsr.component_path_map]: {exc}"
-            ) from exc
-
+    component_path_map = _load_component_path_map(bsr, config_path)
     component_graph = _load_component_graph(bsr, config_path)
 
     try:
@@ -426,6 +450,16 @@ def load_bsr_config(config_file: str | os.PathLike[str]) -> BsrConfig:
         if "publish" in bsr
         else None
     )
+    notes_cfg = None
+    if "notes" in bsr:
+        from semantic_release.bsr.notes import parse_notes_config
+
+        try:
+            notes_cfg = parse_notes_config(bsr["notes"])
+        except InvalidConfiguration as exc:
+            raise InvalidConfiguration(
+                f"{config_path}: invalid [tool.semantic_release.bsr.notes]: {exc}"
+            ) from exc
 
     return BsrConfig(
         schema_version=schema_version,
@@ -442,6 +476,7 @@ def load_bsr_config(config_file: str | os.PathLike[str]) -> BsrConfig:
         component_graph=component_graph,
         version=version_cfg,
         publish=publish_cfg,
+        notes=notes_cfg,
         stable_notes_aggregate=bsr.get("stable_notes_aggregate", False),
         stable_notes_scope=bsr.get("stable_notes_scope", "line"),
     )
