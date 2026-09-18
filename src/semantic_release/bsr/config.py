@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     import os
     from collections.abc import Mapping
 
+    from semantic_release.bsr.component_graph import ComponentGraph
     from semantic_release.bsr.component_map import ComponentPathMap
 
 
@@ -36,6 +37,7 @@ class BsrConfig:
     summary: bool = False
     components: tuple[BsrComponent, ...] = ()
     component_path_map: ComponentPathMap | None = None
+    component_graph: ComponentGraph | None = None
     version: BsrVersionConfig | None = None
     publish: BsrPublishConfig | None = None
     stable_notes_aggregate: bool = False
@@ -355,6 +357,20 @@ def _validate_bsr_table(bsr: Mapping[str, object], config_path: Path) -> int:
     return schema_version
 
 
+def _load_component_graph(bsr: dict, config_path: Path) -> ComponentGraph | None:
+    """Parse the optional component_graph list; fail closed on bad entries."""
+    if "component_graph" not in bsr:
+        return None
+    from semantic_release.bsr.component_graph import build_component_graph
+
+    try:
+        return build_component_graph(bsr["component_graph"])
+    except InvalidConfiguration as exc:
+        raise InvalidConfiguration(
+            f"{config_path}: invalid [tool.semantic_release.bsr.component_graph]: {exc}"
+        ) from exc
+
+
 def load_bsr_config(config_file: str | os.PathLike[str]) -> BsrConfig:
     """
     Read [tool.semantic_release.bsr] out of the config file.
@@ -393,6 +409,8 @@ def load_bsr_config(config_file: str | os.PathLike[str]) -> BsrConfig:
                 f"{config_path}: invalid [tool.semantic_release.bsr.component_path_map]: {exc}"
             ) from exc
 
+    component_graph = _load_component_graph(bsr, config_path)
+
     try:
         components = _parse_components(bsr.get("components", []))
     except (TypeError, ValueError) as exc:
@@ -421,6 +439,7 @@ def load_bsr_config(config_file: str | os.PathLike[str]) -> BsrConfig:
         summary=bsr.get("summary", False),
         components=components,
         component_path_map=component_path_map,
+        component_graph=component_graph,
         version=version_cfg,
         publish=publish_cfg,
         stable_notes_aggregate=bsr.get("stable_notes_aggregate", False),

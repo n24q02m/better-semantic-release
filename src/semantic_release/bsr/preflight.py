@@ -140,6 +140,7 @@ def compute_release_state(
                 major_on_zero=runtime.major_on_zero,
                 allow_zero_version=runtime.allow_zero_version,
                 component_path_map=bsr_cfg.component_path_map,
+                component_graph=bsr_cfg.component_graph,
             )
 
     return ReleaseState(
