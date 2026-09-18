@@ -54,7 +54,9 @@ def _build_repo(
     repo.index.commit("feat: initial", author=_AUTHOR, committer=_AUTHOR)
     repo.create_tag("v0.1.0")
     if remote:
-        repo.create_remote("origin", "https://github.com/example-owner/example-repo.git")
+        repo.create_remote(
+            "origin", "https://github.com/example-owner/example-repo.git"
+        )
     if garbage_tags:
         repo.create_tag("v1")
         repo.create_tag("v1.0")

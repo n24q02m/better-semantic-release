@@ -110,9 +110,7 @@ def assess_publish_readiness(
     if credential_var is None:
         return ReadinessResult(ready=True, supports_provenance=provenance)
     if env.get(credential_var):
-        return ReadinessResult(
-            ready=True, supports_provenance=provenance
-        )
+        return ReadinessResult(ready=True, supports_provenance=provenance)
     return ReadinessResult(
         ready=False,
         supports_provenance=provenance,
@@ -120,4 +118,9 @@ def assess_publish_readiness(
     )
 
 
-__all__ = ["PUBLISH_KINDS", "ReadinessResult", "assess_publish_readiness", "supports_provenance"]
+__all__ = [
+    "PUBLISH_KINDS",
+    "ReadinessResult",
+    "assess_publish_readiness",
+    "supports_provenance",
+]

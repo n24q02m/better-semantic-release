@@ -26,7 +26,9 @@ V = Version.parse
 
 def test_json_target_writes_and_preserves_indent(tmp_path: Path) -> None:
     package_json = tmp_path / "package.json"
-    package_json.write_text('{\n  "name": "x",\n  "version": "0.1.0"\n}\n', encoding="utf-8")
+    package_json.write_text(
+        '{\n  "name": "x",\n  "version": "0.1.0"\n}\n', encoding="utf-8"
+    )
     target = JsonVersionTarget(package_json, "version", tmp_path)
     touched = target.apply(V("1.2.3"))
     assert touched == package_json
@@ -43,9 +45,12 @@ def test_json_target_nested_field(tmp_path: Path) -> None:
     )
     target = JsonVersionTarget(package_json, "packages.core.version", tmp_path)
     target.apply(V("2.0.0"))
-    assert json.loads(package_json.read_text(encoding="utf-8"))["packages"]["core"][
-        "version"
-    ] == "2.0.0"
+    assert (
+        json.loads(package_json.read_text(encoding="utf-8"))["packages"]["core"][
+            "version"
+        ]
+        == "2.0.0"
+    )
 
 
 def test_json_target_noop_does_not_write(tmp_path: Path) -> None:
@@ -58,9 +63,7 @@ def test_json_target_noop_does_not_write(tmp_path: Path) -> None:
 
 def test_toml_target_bridge_writes_field(tmp_path: Path) -> None:
     pyproject = tmp_path / "pyproject.toml"
-    pyproject.write_text(
-        '[project]\nname = "x"\nversion = "0.1.0"\n', encoding="utf-8"
-    )
+    pyproject.write_text('[project]\nname = "x"\nversion = "0.1.0"\n', encoding="utf-8")
     target = TomlVersionTarget(pyproject, "project.version", tmp_path)
     touched = target.apply(V("1.2.3"))
     assert touched == pyproject
@@ -100,9 +103,7 @@ def test_git_tag_target_creates_and_refuses_recut(tmp_path: Path) -> None:
     repo.index.add(["f.txt"])
     repo.index.commit("feat: one")
 
-    target = GitTagVersionTarget(
-        tmp_path, VersionTranslator(tag_format="v{version}")
-    )
+    target = GitTagVersionTarget(tmp_path, VersionTranslator(tag_format="v{version}"))
     assert target.preview(V("1.0.0")) == "would create git tag 'v1.0.0' at HEAD"
     assert target.touched_files() == []
     target.apply(V("1.0.0"))
@@ -128,9 +129,7 @@ def test_resolve_explicit_targets(tmp_path: Path) -> None:
         translator=VersionTranslator(tag_format="v{version}"),
         target_configs=[
             BsrVersionTargetConfig(kind="git-tag"),
-            BsrVersionTargetConfig(
-                kind="json", path="package.json", field="version"
-            ),
+            BsrVersionTargetConfig(kind="json", path="package.json", field="version"),
         ],
     )
     assert len(targets) == 2

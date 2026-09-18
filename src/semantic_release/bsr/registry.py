@@ -44,7 +44,9 @@ class ProbeTarget:
     registry_url: str = ""
 
 
-def _http_status(url: str, timeout: float, extra_headers: dict[str, str] | None = None) -> int | None:
+def _http_status(
+    url: str, timeout: float, extra_headers: dict[str, str] | None = None
+) -> int | None:
     """
     HTTP GET a URL and return its status code.
 

@@ -226,9 +226,7 @@ def test_run_bsr_publishers_helper_wiring(tmp_path, monkeypatch) -> None:
     )
     cli_ctx = SimpleNamespace(runtime_ctx=runtime)
     cfg = SimpleNamespace(
-        probe=SimpleNamespace(
-            kind="pypi", repo="", url_template="", registry_url=""
-        ),
+        probe=SimpleNamespace(kind="pypi", repo="", url_template="", registry_url=""),
         publishers=(BsrPublishCommandConfig(kind="none"),),
     )
     failed = _run_bsr_publishers(cli_ctx, cfg, tag="v1.2.3", noop=False)
@@ -256,4 +254,6 @@ def test_run_bsr_publishers_helper_bad_tag_fails_closed(tmp_path) -> None:
         publishers=(BsrPublishCommandConfig(kind="none"),),
     )
     with pytest.raises(InvalidConfiguration, match="does not match tag format"):
-        _run_bsr_publishers(SimpleNamespace(runtime_ctx=runtime), cfg, tag="1.2.3", noop=False)
+        _run_bsr_publishers(
+            SimpleNamespace(runtime_ctx=runtime), cfg, tag="1.2.3", noop=False
+        )

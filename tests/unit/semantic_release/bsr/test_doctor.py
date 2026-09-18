@@ -164,9 +164,7 @@ def test_report_blocked_and_warning_counts() -> None:
     assert report.warning_count == 1
 
     blocked = DoctorReport(
-        checks=(
-            CheckResult(code="A", severity="blocker", status="fail", what="w"),
-        )
+        checks=(CheckResult(code="A", severity="blocker", status="fail", what="w"),)
     )
     assert blocked.blocked is True
 
@@ -207,8 +205,6 @@ def _translator():
     return VersionTranslator()
 
 
-
-
 def test_check_version_consistency_agrees(tmp_path) -> None:
     from semantic_release.bsr.doctor import check_version_consistency
     from semantic_release.bsr.version_sources import (
@@ -243,9 +239,7 @@ def test_check_version_consistency_detects_drift(tmp_path) -> None:
     (tmp_path / "pyproject.toml").write_text(
         '[project]\nversion = "1.0.0"\n', encoding="utf-8"
     )
-    (tmp_path / "package.json").write_text(
-        '{"version": "1.1.0"}', encoding="utf-8"
-    )
+    (tmp_path / "package.json").write_text('{"version": "1.1.0"}', encoding="utf-8")
     (tmp_path / "VERSION").write_text("1.0.0\n", encoding="utf-8")
 
     sources = [
@@ -269,9 +263,7 @@ def test_check_version_consistency_all_agree(tmp_path) -> None:
         TextVersionSource,
     )
 
-    (tmp_path / "package.json").write_text(
-        '{"version": "2.0.0"}', encoding="utf-8"
-    )
+    (tmp_path / "package.json").write_text('{"version": "2.0.0"}', encoding="utf-8")
     (tmp_path / "VERSION").write_text("2.0.0\n", encoding="utf-8")
     result = check_version_consistency(
         [

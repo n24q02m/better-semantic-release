@@ -165,7 +165,11 @@ def _parse_version_entry(
         "field": raw.get("field", ""),
         "pattern": raw.get("pattern", ""),
     }
-    return BsrVersionSourceConfig(**fields) if is_source else BsrVersionTargetConfig(**fields)
+    return (
+        BsrVersionSourceConfig(**fields)
+        if is_source
+        else BsrVersionTargetConfig(**fields)
+    )
 
 
 def _parse_version_list(
@@ -176,7 +180,9 @@ def _parse_version_list(
             f"{config_path}: bsr.version.{label} must be an array of tables"
         )
     entries = [
-        _parse_version_entry(raw, f"bsr.version.{label}[{index}]", config_path, is_source)
+        _parse_version_entry(
+            raw, f"bsr.version.{label}[{index}]", config_path, is_source
+        )
         for index, raw in enumerate(raw_list)
     ]
     if is_source:
@@ -225,16 +231,36 @@ def _parse_version_tables(version: object, config_path: Path) -> BsrVersionConfi
             f"{config_path}: unknown [tool.semantic_release.bsr.version] fields: "
             + ", ".join(sorted(unknown))
         )
-    sources = _parse_version_list(version.get("sources", []), "sources", config_path, True)
-    targets = _parse_version_list(version.get("targets", []), "targets", config_path, False)
+    sources = _parse_version_list(
+        version.get("sources", []), "sources", config_path, True
+    )
+    targets = _parse_version_list(
+        version.get("targets", []), "targets", config_path, False
+    )
     return BsrVersionConfig(
         sources=tuple(sources),  # type: ignore[arg-type]
         targets=tuple(targets),  # type: ignore[arg-type]
     )
 
 
-_PUBLISH_PROBE_KINDS = {"none", "pypi", "npm", "crates", "oci", "github-release", "http"}
-_PUBLISH_PUBLISHER_KINDS = {"none", "github-release", "pypi", "npm", "crates", "oci", "shell"}
+_PUBLISH_PROBE_KINDS = {
+    "none",
+    "pypi",
+    "npm",
+    "crates",
+    "oci",
+    "github-release",
+    "http",
+}
+_PUBLISH_PUBLISHER_KINDS = {
+    "none",
+    "github-release",
+    "pypi",
+    "npm",
+    "crates",
+    "oci",
+    "shell",
+}
 
 
 def _parse_publish_tables(publish: object, config_path: Path) -> BsrPublishConfig:
@@ -294,7 +320,8 @@ def _parse_publisher_entries(
         unknown = set(raw) - {"kind", "name", "command", "manifest_path", "workspace"}
         if unknown:
             raise InvalidConfiguration(
-                f"{config_path}: {label} has unknown fields: " + ", ".join(sorted(unknown))
+                f"{config_path}: {label} has unknown fields: "
+                + ", ".join(sorted(unknown))
             )
         kind = raw.get("kind")
         if kind not in _PUBLISH_PUBLISHER_KINDS:
@@ -391,9 +418,7 @@ def _load_notes_config(bsr: dict, config_path: Path) -> BsrNotesConfig | None:
         ) from exc
 
 
-def _load_component_path_map(
-    bsr: dict, config_path: Path
-) -> ComponentPathMap | None:
+def _load_component_path_map(bsr: dict, config_path: Path) -> ComponentPathMap | None:
     """Parse the optional component_path_map table; fail closed on bad entries."""
     if "component_path_map" not in bsr:
         return None
@@ -443,14 +468,10 @@ def load_bsr_config(config_file: str | os.PathLike[str]) -> BsrConfig:
         raise InvalidConfiguration(f"{config_path}: {exc}") from exc
 
     version_cfg = (
-        _parse_version_tables(bsr["version"], config_path)
-        if "version" in bsr
-        else None
+        _parse_version_tables(bsr["version"], config_path) if "version" in bsr else None
     )
     publish_cfg = (
-        _parse_publish_tables(bsr["publish"], config_path)
-        if "publish" in bsr
-        else None
+        _parse_publish_tables(bsr["publish"], config_path) if "publish" in bsr else None
     )
     notes_cfg = _load_notes_config(bsr, config_path)
 

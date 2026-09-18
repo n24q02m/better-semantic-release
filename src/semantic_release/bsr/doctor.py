@@ -25,7 +25,6 @@ from semantic_release.bsr.guards import resolve_registry
 from semantic_release.bsr.registry import ProbeResult, probe_registry
 
 if TYPE_CHECKING:  # pragma: no cover
-
     from git import Repo as GitRepo
 
     from semantic_release.bsr.config import BsrConfig
@@ -75,7 +74,9 @@ class DoctorReport:
 
     @property
     def warning_count(self) -> int:
-        return sum(1 for c in self.checks if c.failed() and c.severity == SEVERITY_WARNING)
+        return sum(
+            1 for c in self.checks if c.failed() and c.severity == SEVERITY_WARNING
+        )
 
     def to_document(self) -> dict:
         return {
@@ -444,9 +445,15 @@ def check_version_consistency(sources: Sequence[object]) -> CheckResult:
             what="no version sources to cross-check",
         )
 
-    readable = [(label, value) for label, value in rows if value and not value.startswith("unreadable:")]
+    readable = [
+        (label, value)
+        for label, value in rows
+        if value and not value.startswith("unreadable:")
+    ]
     missing = [label for label, value in rows if value in {None, "no version found"}]
-    unreadable = [label for label, value in rows if value and value.startswith("unreadable:")]
+    unreadable = [
+        label for label, value in rows if value and value.startswith("unreadable:")
+    ]
 
     if len(readable) >= 2 and len({value for _, value in readable}) > 1:
         detail = "; ".join(f"{label} -> {value}" for label, value in readable)
@@ -472,7 +479,8 @@ def check_version_consistency(sources: Sequence[object]) -> CheckResult:
             severity=SEVERITY_WARNING,
             status=STATUS_FAIL,
             what="one or more version sources carry no version",
-            why="; ".join(problems) + (f"; agreed elsewhere: {agreed}" if agreed else ""),
+            why="; ".join(problems)
+            + (f"; agreed elsewhere: {agreed}" if agreed else ""),
             fix="populate or remove the empty sources, or fix their kind/path config",
         )
 

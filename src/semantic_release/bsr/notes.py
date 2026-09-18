@@ -93,9 +93,7 @@ def parse_notes_config(raw: object) -> BsrNotesConfig:
     else:
         raise InvalidConfiguration("bsr.notes.command must be a list")
     if mode == MODE_COMMAND and not command:
-        raise InvalidConfiguration(
-            "bsr.notes.mode='command' needs bsr.notes.command"
-        )
+        raise InvalidConfiguration("bsr.notes.mode='command' needs bsr.notes.command")
     require = str(raw.get("require_manual_notes", ""))
     if require not in REQUIRE_WHEN:
         raise InvalidConfiguration(
@@ -105,9 +103,7 @@ def parse_notes_config(raw: object) -> BsrNotesConfig:
         mode=mode,
         fragments_dir=str(raw.get("fragments_dir", "changes")),
         command=command,
-        allow_empty_command_output=bool(
-            raw.get("allow_empty_command_output", False)
-        ),
+        allow_empty_command_output=bool(raw.get("allow_empty_command_output", False)),
         require_manual_notes=require,
     )
 
@@ -140,9 +136,7 @@ def collect_manual_notes(
     text = ""
 
     if notes_config.wants_fragments:
-        fragments = collect_fragments(
-            Path(repo_dir) / notes_config.fragments_dir
-        )
+        fragments = collect_fragments(Path(repo_dir) / notes_config.fragments_dir)
         text = render_fragments(fragments)
 
     if notes_config.mode == MODE_COMMAND:

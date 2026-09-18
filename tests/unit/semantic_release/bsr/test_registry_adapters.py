@@ -71,9 +71,7 @@ def test_github_release_probes_the_tag_not_the_version(
         seen["url"] = url
         return 200
 
-    monkeypatch.setattr(
-        "semantic_release.bsr.registry._http_status", fake_status
-    )
+    monkeypatch.setattr("semantic_release.bsr.registry._http_status", fake_status)
     result = probe_registry(
         "github-release", "demo", "1.2.3", tag="v1.2.3", repo="acme/widgets"
     )
@@ -97,7 +95,9 @@ def test_http_template_formats_name_and_version(
 
     monkeypatch.setattr(
         "semantic_release.bsr.registry._http_status",
-        lambda url, timeout, extra_headers=None: fake_status(url, timeout, extra_headers),
+        lambda url, timeout, extra_headers=None: fake_status(
+            url, timeout, extra_headers
+        ),
     )
     result = probe_registry(
         "http",
@@ -119,11 +119,11 @@ def test_oci_probe_sends_accept_header(monkeypatch: pytest.MonkeyPatch) -> None:
 
     monkeypatch.setattr(
         "semantic_release.bsr.registry._http_status",
-        lambda url, timeout, extra_headers=None: fake_status(url, timeout, extra_headers),
+        lambda url, timeout, extra_headers=None: fake_status(
+            url, timeout, extra_headers
+        ),
     )
-    result = probe_registry(
-        "oci", "demo/app", "v1.0.0", registry_url="ghcr.io"
-    )
+    result = probe_registry("oci", "demo/app", "v1.0.0", registry_url="ghcr.io")
     assert result is ProbeResult.FREE
     assert captured["url"] == "https://ghcr.io/v2/demo/app/manifests/v1.0.0"
     assert "oci" in str(captured["headers"])

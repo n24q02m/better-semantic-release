@@ -45,9 +45,7 @@ class ComponentGraph:
 
     def dependents_of(self, name: str) -> tuple[str, ...]:
         """Components that directly depend on ``name`` (stable order)."""
-        return tuple(
-            node.name for node in self.nodes if name in node.depends_on
-        )
+        return tuple(node.name for node in self.nodes if name in node.depends_on)
 
 
 def _normalize_names(names: Iterable[str], field: str) -> tuple[str, ...]:
@@ -60,14 +58,10 @@ def _normalize_names(names: Iterable[str], field: str) -> tuple[str, ...]:
     return tuple(seen)
 
 
-def _parse_graph_entry(
-    entry: object, index: int, names: set[str]
-) -> ComponentNode:
+def _parse_graph_entry(entry: object, index: int, names: set[str]) -> ComponentNode:
     """Parse and validate one component_graph table entry."""
     if not isinstance(entry, Mapping):
-        raise InvalidConfiguration(
-            f"component graph: entry {index} must be a table"
-        )
+        raise InvalidConfiguration(f"component graph: entry {index} must be a table")
     raw_name = entry.get("name")
     if not isinstance(raw_name, str) or not raw_name.strip():
         raise InvalidConfiguration(
@@ -75,9 +69,7 @@ def _parse_graph_entry(
         )
     name = raw_name.strip()
     if name in names:
-        raise InvalidConfiguration(
-            f"component graph: duplicate component {name!r}"
-        )
+        raise InvalidConfiguration(f"component graph: duplicate component {name!r}")
     raw_deps = entry.get("depends_on", ())
     if isinstance(raw_deps, str):
         deps: tuple[str, ...] = (raw_deps,)

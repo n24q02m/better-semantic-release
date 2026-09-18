@@ -61,9 +61,7 @@ def parse_hooks(raw: object) -> tuple[HookSpec, ...]:
     seen: dict[str, int] = {}
     for index, entry in enumerate(raw):
         if not isinstance(entry, Mapping):
-            raise InvalidConfiguration(
-                f"bsr.hooks entry {index} must be a table"
-            )
+            raise InvalidConfiguration(f"bsr.hooks entry {index} must be a table")
         point = str(entry.get("point", ""))
         if point not in HOOK_POINTS:
             raise InvalidConfiguration(

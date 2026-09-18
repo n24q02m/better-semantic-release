@@ -134,17 +134,13 @@ def doctor(
     import re  # noqa: PLC0415
 
     active_cfg = next(
-        (
-            cfg
-            for cfg in raw.branches.values()
-            if re.search(cfg.match, active)
-        ),
+        (cfg for cfg in raw.branches.values() if re.search(cfg.match, active)),
         None,
     )
-    active_prerelease = active_cfg.prerelease if active_cfg is not None else runtime.prerelease
-    checks.append(
-        check_prerelease_consistency(active_prerelease, state.new_version)
+    active_prerelease = (
+        active_cfg.prerelease if active_cfg is not None else runtime.prerelease
     )
+    checks.append(check_prerelease_consistency(active_prerelease, state.new_version))
 
     checks.append(check_hvcs_token(runtime.hvcs_client, needs_release=False))
     checks.append(check_version_targets(runtime, state.previous_version))

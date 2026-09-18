@@ -152,9 +152,7 @@ class ShellPublisher:
             return PublishOutcome(
                 OUTCOME_RETRYABLE, f"{self.name}: exited {_EX_TEMPFAIL} (tempfail)"
             )
-        return PublishOutcome(
-            OUTCOME_FAILED, f"{self.name}: exited {exit_code}"
-        )
+        return PublishOutcome(OUTCOME_FAILED, f"{self.name}: exited {exit_code}")
 
 
 class GithubReleasePublisher:
@@ -201,7 +199,9 @@ class GithubReleasePublisher:
         except Exception as exc:  # noqa: BLE001 - provider errors are value-safe
             detail = str(getattr(exc, "code", "") or exc)
             return PublishOutcome(OUTCOME_FAILED, f"{self.name}: {detail}")
-        return PublishOutcome(OUTCOME_ATTEMPTED, f"{self.name}: release {version} reconciled")
+        return PublishOutcome(
+            OUTCOME_ATTEMPTED, f"{self.name}: release {version} reconciled"
+        )
 
 
 def build_publishers(

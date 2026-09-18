@@ -46,7 +46,9 @@ def test_missing_credentials_entirely_not_ready() -> None:
 
 
 def test_crates_ready_with_token() -> None:
-    result = assess_publish_readiness("crates", environment={"CARGO_REGISTRY_TOKEN": "t"})
+    result = assess_publish_readiness(
+        "crates", environment={"CARGO_REGISTRY_TOKEN": "t"}
+    )
     assert result.ready is True
 
 

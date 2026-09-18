@@ -52,17 +52,13 @@ def test_git_tag_source_loads_versions(tagged_repo: Path) -> None:
 
 def test_git_tag_source_empty_repo(tmp_path: Path) -> None:
     Repo.init(tmp_path, initial_branch="main")
-    source = GitTagVersionSource(
-        tmp_path, VersionTranslator(tag_format="v{version}")
-    )
+    source = GitTagVersionSource(tmp_path, VersionTranslator(tag_format="v{version}"))
     assert source.load() == set()
 
 
 def test_toml_source_reads_dotted_field(tmp_path: Path) -> None:
     pyproject = tmp_path / "pyproject.toml"
-    pyproject.write_text(
-        '[project]\nname = "x"\nversion = "3.4.5"\n', encoding="utf-8"
-    )
+    pyproject.write_text('[project]\nname = "x"\nversion = "3.4.5"\n', encoding="utf-8")
     source = TomlVersionSource(pyproject, "project.version")
     assert {str(v) for v in source.load()} == {"3.4.5"}
     prov = source.provenance()
@@ -80,9 +76,7 @@ def test_toml_source_missing_field_or_file(tmp_path: Path) -> None:
 
 def test_json_source_reads_dotted_field(tmp_path: Path) -> None:
     package_json = tmp_path / "package.json"
-    package_json.write_text(
-        '{"name": "x", "version": "0.9.0"}', encoding="utf-8"
-    )
+    package_json.write_text('{"name": "x", "version": "0.9.0"}', encoding="utf-8")
     source = JsonVersionSource(package_json, "version")
     assert {str(v) for v in source.load()} == {"0.9.0"}
 
@@ -112,9 +106,7 @@ def test_text_source_no_match(tmp_path: Path) -> None:
 def test_resolve_explicit_sources_over_bridge_default(
     tmp_path: Path, tagged_repo: Path
 ) -> None:
-    (tagged_repo / "package.json").write_text(
-        '{"version": "5.5.5"}', encoding="utf-8"
-    )
+    (tagged_repo / "package.json").write_text('{"version": "5.5.5"}', encoding="utf-8")
     from semantic_release.bsr.config import BsrVersionSourceConfig
 
     sources = resolve_version_sources(

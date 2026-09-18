@@ -127,7 +127,9 @@ class TomlVersionSource:
         return {version} if version else set()
 
     def provenance(self) -> VersionProvenance:
-        return VersionProvenance(kind="toml", location=str(self._path), detail=self._field)
+        return VersionProvenance(
+            kind="toml", location=str(self._path), detail=self._field
+        )
 
 
 class JsonVersionSource:
@@ -152,7 +154,9 @@ class JsonVersionSource:
         return {version} if version else set()
 
     def provenance(self) -> VersionProvenance:
-        return VersionProvenance(kind="json", location=str(self._path), detail=self._field)
+        return VersionProvenance(
+            kind="json", location=str(self._path), detail=self._field
+        )
 
 
 class TextVersionSource:
@@ -181,7 +185,9 @@ class TextVersionSource:
         return found
 
     def provenance(self) -> VersionProvenance:
-        return VersionProvenance(kind="text", location=str(self._path), detail=self._pattern)
+        return VersionProvenance(
+            kind="text", location=str(self._path), detail=self._pattern
+        )
 
 
 class DeclarationVersionSource:
@@ -239,21 +245,27 @@ def resolve_version_sources(
             elif config.kind == "toml":
                 sources.append(
                     TomlVersionSource(
-                        config.path if Path(config.path).is_absolute() else Path(repo_dir) / config.path,
+                        config.path
+                        if Path(config.path).is_absolute()
+                        else Path(repo_dir) / config.path,
                         config.field,
                     )
                 )
             elif config.kind == "json":
                 sources.append(
                     JsonVersionSource(
-                        config.path if Path(config.path).is_absolute() else Path(repo_dir) / config.path,
+                        config.path
+                        if Path(config.path).is_absolute()
+                        else Path(repo_dir) / config.path,
                         config.field,
                     )
                 )
             elif config.kind == "text":
                 sources.append(
                     TextVersionSource(
-                        config.path if Path(config.path).is_absolute() else Path(repo_dir) / config.path,
+                        config.path
+                        if Path(config.path).is_absolute()
+                        else Path(repo_dir) / config.path,
                         config.pattern,
                     )
                 )

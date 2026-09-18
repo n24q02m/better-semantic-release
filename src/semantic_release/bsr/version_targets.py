@@ -40,9 +40,7 @@ class VersionTarget(Protocol):
 
     def preview(self, new_version: Version) -> str: ...
 
-    def apply(
-        self, new_version: Version, noop: bool = False
-    ) -> Path | None:
+    def apply(self, new_version: Version, noop: bool = False) -> Path | None:
         """Write the version (or report what would happen); return the touched path."""
         ...
 
@@ -161,7 +159,9 @@ class JsonVersionTarget:
         parent[parts[-1]] = str(new_version)
         indent = _detect_indent(raw)
         trailing = "\n" if raw.endswith("\n") else ""
-        self._path.write_text(json.dumps(doc, indent=indent) + trailing, encoding="utf-8")
+        self._path.write_text(
+            json.dumps(doc, indent=indent) + trailing, encoding="utf-8"
+        )
 
     def apply(self, new_version: Version, noop: bool = False) -> Path | None:
         if noop:
@@ -204,7 +204,9 @@ class TextVersionTarget:
         return build_version_pattern_regex(self._pattern)
 
     def preview(self, new_version: Version) -> str:
-        return f"would stamp {self._path} with {new_version} (pattern {self._pattern!r})"
+        return (
+            f"would stamp {self._path} with {new_version} (pattern {self._pattern!r})"
+        )
 
     def apply(self, new_version: Version, noop: bool = False) -> Path | None:
         if not self._path.exists():
@@ -227,7 +229,11 @@ class TextVersionTarget:
             group_start, group_end = match.span("version")
             text = match.group(0)
             offset = group_start - match.start()
-            return text[:offset] + str(new_version) + text[offset + (group_end - group_start) :]
+            return (
+                text[:offset]
+                + str(new_version)
+                + text[offset + (group_end - group_start) :]
+            )
 
         updated = regex.sub(_swap, raw)
         if updated != raw:
@@ -253,7 +259,6 @@ class DeclarationVersionTarget:
 
     def preview(self, new_version: Version) -> str:
         return f"would update {type(self._declaration).__name__} to {new_version}"
-
 
     def apply(self, new_version: Version, noop: bool = False) -> Path | None:
         return self._declaration.update_file_w_version(new_version, noop=noop)
@@ -287,21 +292,17 @@ def resolve_version_targets(
             if config.kind == "git-tag":
                 targets.append(GitTagVersionTarget(repo_dir, translator))
             elif config.kind == "toml":
-                targets.append(
-                    TomlVersionTarget(config.path, config.field, repo_dir)
-                )
+                targets.append(TomlVersionTarget(config.path, config.field, repo_dir))
             elif config.kind == "json":
-                targets.append(
-                    JsonVersionTarget(config.path, config.field, repo_dir)
-                )
+                targets.append(JsonVersionTarget(config.path, config.field, repo_dir))
             elif config.kind == "text":
-                targets.append(
-                    TextVersionTarget(config.path, config.pattern, repo_dir)
-                )
+                targets.append(TextVersionTarget(config.path, config.pattern, repo_dir))
         return targets
 
     if declarations is not None:
-        targets.extend(DeclarationVersionTarget(declaration) for declaration in declarations)
+        targets.extend(
+            DeclarationVersionTarget(declaration) for declaration in declarations
+        )
     return targets
 
 
