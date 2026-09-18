@@ -4,6 +4,44 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.7.0:
+
+v1.7.0 (2026-09-18)
+===================
+
+✨ Features
+-----------
+
+* Add fail-closed verify and doctor preflight commands (`PR#157`_, `a9952e2`_)
+
+* Add read-only release planning command (`PR#157`_, `a9952e2`_)
+
+* Add universal version source and target adapters (`PR#157`_, `a9952e2`_)
+
+* Document bsr core principles and lock compatibility boundaries (`PR#157`_, `a9952e2`_)
+
+* Document cross-ecosystem release recipes and fork maintenance boundaries (`PR#157`_, `a9952e2`_)
+
+* Formalize release planning around a structured ReleasePlan (`PR#157`_, `a9952e2`_)
+
+* Universal release engine (ReleasePlan spine, adapters, hooks, recipes) (`PR#157`_, `a9952e2`_)
+
+* Universal-release-engine task 5 - registry probe adapters + typed publisher adapters (`PR#157`_,
+  `a9952e2`_)
+
+* Universal-release-engine task 6 - monorepo component dependency graph with fail-closed propagation
+  (`PR#157`_, `a9952e2`_)
+
+* Universal-release-engine task 7 - notes source modes with fail-closed manual-notes gating
+  (`PR#157`_, `a9952e2`_)
+
+* Universal-release-engine task 8 - finite hooks, publish readiness probe, gated CI recipe
+  (`PR#157`_, `a9952e2`_)
+
+.. _a9952e2: https://github.com/n24q02m/better-semantic-release/commit/a9952e2183626610c73930aa816892031d8b0229
+.. _PR#157: https://github.com/n24q02m/better-semantic-release/pull/157
+
+
 .. _changelog-v1.6.10-beta.1:
 
 v1.6.10-beta.1 (2026-09-17)
