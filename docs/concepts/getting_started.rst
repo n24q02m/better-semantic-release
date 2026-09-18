@@ -401,3 +401,14 @@ The same BSR workflow applies to any ecosystem through
 Configure one ``source`` per place the version is readable and one ``target``
 per place it must be written; ``semantic-release doctor`` reports drift
 between them by name.
+
+
+.. _bsr-hooks-getting-started:
+
+BSR hooks (opt-in)
+------------------
+
+BSR exposes five hook points: ``pre_plan``, ``post_plan``, ``pre_verify``,
+``pre_publish`` and ``post_publish``. Hooks are plain commands from your
+repository config; the first non-zero exit blocks the release run. See
+:ref:`bsr-gated-release` for the full gated recipe.

@@ -42,6 +42,7 @@ class BsrConfig:
     version: BsrVersionConfig | None = None
     publish: BsrPublishConfig | None = None
     notes: BsrNotesConfig | None = None
+    hooks: tuple = ()
     stable_notes_aggregate: bool = False
     stable_notes_scope: str = "line"  # "line" or "since_stable"
 
@@ -95,6 +96,7 @@ _BSR_FIELDS = {
     "version",
     "publish",
     "notes",
+    "hooks",
 }
 
 
@@ -450,15 +452,17 @@ def load_bsr_config(config_file: str | os.PathLike[str]) -> BsrConfig:
         if "publish" in bsr
         else None
     )
-    notes_cfg = None
-    if "notes" in bsr:
-        from semantic_release.bsr.notes import parse_notes_config
+    notes_cfg = _load_notes_config(bsr, config_path)
+
+    hooks_cfg: tuple = ()
+    if "hooks" in bsr:
+        from semantic_release.bsr.hooks import parse_hooks
 
         try:
-            notes_cfg = parse_notes_config(bsr["notes"])
+            hooks_cfg = parse_hooks(bsr["hooks"])
         except InvalidConfiguration as exc:
             raise InvalidConfiguration(
-                f"{config_path}: invalid [tool.semantic_release.bsr.notes]: {exc}"
+                f"{config_path}: invalid [tool.semantic_release.bsr.hooks]: {exc}"
             ) from exc
 
     return BsrConfig(
@@ -477,6 +481,7 @@ def load_bsr_config(config_file: str | os.PathLike[str]) -> BsrConfig:
         version=version_cfg,
         publish=publish_cfg,
         notes=notes_cfg,
+        hooks=hooks_cfg,
         stable_notes_aggregate=bsr.get("stable_notes_aggregate", False),
         stable_notes_scope=bsr.get("stable_notes_scope", "line"),
     )

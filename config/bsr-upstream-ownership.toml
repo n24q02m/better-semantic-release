@@ -1203,3 +1203,67 @@ kind = "python-test"
 owner = "bsr-g7-notes-sources"
 reason = "Task 7 mode-contract coverage: missing sources fail closed, hybrid falls back."
 gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "src/semantic_release/bsr/hooks.py"
+status = "A"
+kind = "python-source"
+owner = "bsr-g8-hooks-provenance"
+reason = "Task 8 finite hook points with fail-closed gating"
+gates = ["python-lint", "python-format", "python-type"]
+
+[[ownership]]
+path = "src/semantic_release/bsr/provenance.py"
+status = "A"
+kind = "python-source"
+owner = "bsr-g8-hooks-provenance"
+reason = "Task 8 publish readiness / trusted-publishing probe"
+gates = ["python-lint", "python-format", "python-type"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/test_hooks.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-g8-hooks-provenance"
+reason = "Task 8 hook point coverage"
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/test_provenance.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-g8-hooks-provenance"
+reason = "Task 8 readiness coverage"
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/e2e/test_gated_ci_recipe.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-g8-hooks-provenance"
+reason = "Task 8 gated recipe end to end"
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "docs/concepts/changelog_templates.rst"
+status = "M"
+kind = "docs"
+owner = "bsr-g7-notes-sources"
+reason = "Task 7 notes-modes opt-in documentation appended to the changelog templates guide."
+gates = ["docs"]
+
+[[ownership]]
+path = "docs/misc/troubleshooting.rst"
+status = "M"
+kind = "docs"
+owner = "bsr-g7-notes-sources"
+reason = "Task 7 troubleshooting entry for manual-notes fail-closed behavior."
+gates = ["docs"]
+
+[[ownership]]
+path = "tests/e2e/test_fragments_workflow.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-g7-notes-sources"
+reason = "Task 7 fragment workflow e2e-lite coverage: discovery to rendered notes."
+gates = ["python-lint", "python-format", "python-test"]
