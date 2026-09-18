@@ -1267,3 +1267,67 @@ kind = "python-test"
 owner = "bsr-g7-notes-sources"
 reason = "Task 7 fragment workflow e2e-lite coverage: discovery to rendered notes."
 gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "docs/recipes/index.rst"
+status = "A"
+kind = "docs"
+owner = "bsr-g9-docs-examples"
+reason = "Task 9 recipes index."
+gates = ["docs"]
+
+[[ownership]]
+path = "docs/recipes/python_package.rst"
+status = "A"
+kind = "docs"
+owner = "bsr-g9-docs-examples"
+reason = "Task 9 Python recipe."
+gates = ["docs"]
+
+[[ownership]]
+path = "docs/recipes/node_package.rst"
+status = "A"
+kind = "docs"
+owner = "bsr-g9-docs-examples"
+reason = "Task 9 Node recipe."
+gates = ["docs"]
+
+[[ownership]]
+path = "docs/recipes/rust_crate.rst"
+status = "A"
+kind = "docs"
+owner = "bsr-g9-docs-examples"
+reason = "Task 9 Rust recipe."
+gates = ["docs"]
+
+[[ownership]]
+path = "docs/recipes/generic_repo.rst"
+status = "A"
+kind = "docs"
+owner = "bsr-g9-docs-examples"
+reason = "Task 9 generic repository recipe."
+gates = ["docs"]
+
+[[ownership]]
+path = "docs/recipes/migration.rst"
+status = "A"
+kind = "docs"
+owner = "bsr-g9-docs-examples"
+reason = "Task 9 upstream PSR migration guide."
+gates = ["docs"]
+
+[[ownership]]
+path = "docs/recipes/maintenance.rst"
+status = "A"
+kind = "docs"
+owner = "bsr-g9-docs-examples"
+reason = "Task 9 fork maintenance guide."
+gates = ["docs"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/test_recipes_docs.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-g9-docs-examples"
+reason = "Task 9 fixture validation: every recipe TOML block must parse."
+gates = ["python-lint", "python-format", "python-test"]

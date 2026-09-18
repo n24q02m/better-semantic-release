@@ -75,6 +75,7 @@ Documentation Contents
    Concepts <concepts/index>
    CLI <api/commands>
    configuration/index
+   Release recipes <recipes/index>
    upgrading/index
    misc/troubleshooting
    API <api/modules/modules>

@@ -58,7 +58,9 @@ requires pointing the ``uses:`` line at the fork:
 
 On top of that, the fork adds release-safety guards that run automatically before any
 commit, tag, or push is made. Guards can be opted out of per-repository under the
-``[tool.semantic_release.bsr]`` table in ``pyproject.toml``.
+``[tool.semantic_release.bsr]`` table in ``pyproject.toml``. Cross-ecosystem
+starting points (Python, Node, Rust, generic repos) live in
+``docs/recipes/``.
 
 .. contents:: Table of contents
    :depth: 2
