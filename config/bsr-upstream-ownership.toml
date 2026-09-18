@@ -1139,3 +1139,27 @@ kind = "docs"
 owner = "bsr-g4-version-adapters"
 reason = "Task 4 docs: release recipes for Python/Node/Rust/generic repos."
 gates = ["docs"]
+
+[[ownership]]
+path = "src/semantic_release/bsr/publishers.py"
+status = "A"
+kind = "python-source"
+owner = "bsr-g5-publish-adapters"
+reason = "Task 5 publisher adapters: typed outcome contract, probe-gated shell presets, and manifest bridge."
+gates = ["python-lint", "python-format", "python-type"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/test_publishers.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-g5-publish-adapters"
+reason = "Task 5 outcome-contract coverage: attempted/skipped/exists/failed/retryable paths."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/test_registry_adapters.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-g5-publish-adapters"
+reason = "Task 5 probe adapter coverage: per-kind classification and fail-closed required fields."
+gates = ["python-lint", "python-format", "python-test"]

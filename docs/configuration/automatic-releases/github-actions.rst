@@ -1123,3 +1123,31 @@ Publish Action.
           if: steps.release-submod-2.outputs.released == 'true'
           with:
             packages-dir: ${{ format('{}/dist', env.SUBMODULE_2_DIR) }}
+
+.. _bsr-publish-adapters:
+
+BSR Publisher Adapters (opt-in)
+-------------------------------
+
+The stock ``publish`` command uploads distributions to the VCS release, exactly
+as before -- no workflow changes are required. Repositories that also publish
+to package registries can opt in through
+``[tool.semantic_release.bsr.publish]``:
+
+.. code-block:: toml
+
+    [tool.semantic_release.bsr.publish.probe]
+    kind = "pypi"  # none|pypi|npm|crates|oci|github-release|http
+
+    [[tool.semantic_release.bsr.publish.publishers]]
+    kind = "pypi"  # preset: twine upload; override with `command = [...]`
+
+    [[tool.semantic_release.bsr.publish.publishers]]
+    kind = "shell"
+    name = "docs"
+    command = ["./scripts/publish-docs.sh"]
+
+Each publisher reports a typed outcome (``attempted``, ``skipped``,
+``already-exists``, ``failed``, ``retryable``); the command exits non-zero when
+any publisher fails. A probe that returns an ambiguous state skips
+registry-backed publishers instead of publishing blind.
