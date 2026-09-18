@@ -43,7 +43,11 @@ if TYPE_CHECKING:
 
 FORMAT_TABLE = "table"
 FORMAT_JSON = "json"
-SCHEMA_VERSION = 1
+
+# Single source of truth for the JSON documents lives in `bsr.plan`; the
+# legacy re-export below keeps `jsonout.SCHEMA_VERSION` importable for
+# existing consumers.
+from semantic_release.bsr.plan import SCHEMA_VERSION, build_release_plan  # noqa: E402
 
 
 def add_format_option(command: Any) -> Any:
@@ -81,36 +85,23 @@ def build_version_document(
     bump_stats: BumpStats | None,
     components: Sequence[ComponentPlan],
 ) -> dict[str, Any]:
-    """Assemble the `version` command's JSON document."""
-    return {
-        "schema_version": SCHEMA_VERSION,
-        "released": released,
-        "version": version,
-        "tag": tag,
-        "is_prerelease": _is_prerelease(version),
-        "previous_version": previous_version,
-        "reason": decision.reason if decision is not None else None,
-        "commit_count": (
-            decision.commit_count
-            if decision is not None
-            else (bump_stats.commit_count if bump_stats is not None else 0)
-        ),
-        "level_bump": (
-            bump_stats.level_bump.name.lower() if bump_stats is not None else None
-        ),
-        "type_counts": dict(bump_stats.type_counts) if bump_stats is not None else {},
-        "components": [
-            {
-                "name": c.name,
-                "would_release": c.would_release,
-                "level": c.level,
-                "commit_count": c.commit_count,
-                "sample_paths": list(c.sample_paths),
-                "resulting_version": str(c.resulting_version),
-            }
-            for c in components
-        ],
-    }
+    """
+    Assemble the `version` command's JSON document.
+
+    Delegates to the `ReleasePlan` spine (`bsr.plan`); the emitted layout is
+    locked to the historical shape by the parity unit test, so legacy JSON
+    consumers are unaffected by the spine's existence.
+    """
+    plan = build_release_plan(
+        released=released,
+        version=version,
+        tag=tag,
+        previous_version=previous_version,
+        decision=decision,
+        bump_stats=bump_stats,
+        components=components,
+    )
+    return plan.to_legacy_document()
 
 
 def resolve_dist_assets(dist_glob_patterns: Sequence[str]) -> list[str]:

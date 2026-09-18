@@ -3,6 +3,13 @@
 schema_version = 1
 baseline = "c74aa3b99de6d9c721f8bd6d2abfa142298b94c9"
 marker = "BSR-PATCH"
+# Delta policy (universal-release-engine, 2026-09-17): active divergence is
+# concentrated under src/semantic_release/bsr/* (and its tests). New modules
+# added by the engine work (plan.py, doctor.py, version_sources.py,
+# version_targets.py, publishers.py, component_graph.py, notes.py, fragments.py,
+# hooks.py, provenance.py) join this inventory as [[ownership]] entries in the
+# same commit that introduces them. Core upstream files are diverged only when
+# unavoidable.
 
 [policy]
 ignored_paths = [".superpowers/"]
@@ -366,6 +373,14 @@ reason = "Fork-owned implementation in semantic_release.bsr; covered as a first-
 gates = ["python-lint", "python-format", "python-type"]
 
 [[ownership]]
+path = "src/semantic_release/bsr/plan.py"
+status = "A"
+kind = "python-source"
+owner = "bsr-core"
+reason = "ReleasePlan spine (universal-release-engine Task 1) unifying summary/explain/jsonout projections."
+gates = ["python-lint", "python-format", "python-type"]
+
+[[ownership]]
 path = "src/semantic_release/bsr/messages.py"
 status = "A"
 kind = "python-source"
@@ -427,6 +442,22 @@ status = "M"
 kind = "python-source"
 owner = "bsr-stock-patch"
 reason = "The JSON output option must decorate the stock publish command and its stdout exits."
+gates = ["python-lint", "python-format", "python-type"]
+
+[[ownership]]
+path = "src/semantic_release/cli/commands/main.py"
+status = "M"
+kind = "python-source"
+owner = "bsr-stock-patch"
+reason = "Subcommand registry must expose the fork-owned plan command."
+gates = ["python-lint", "python-format", "python-type"]
+
+[[ownership]]
+path = "src/semantic_release/cli/commands/plan.py"
+status = "A"
+kind = "python-source"
+owner = "bsr-core"
+reason = "Read-only release-plan CLI (universal-release-engine Task 2); offline by default."
 gates = ["python-lint", "python-format", "python-type"]
 
 [[ownership]]
@@ -579,6 +610,38 @@ status = "A"
 kind = "python-test"
 owner = "bsr-tests"
 reason = "Regression or parity coverage for the fork behavior and its stock seams."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/test_compat_golden.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-tests"
+reason = "Locks the universal release engine's legacy behavior contracts before divergence."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/test_plan.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-tests"
+reason = "Golden schema-v1 + legacy-parity coverage for the ReleasePlan spine."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/test_plan_rendering.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-tests"
+reason = "Table/markdown renderer coverage for the ReleasePlan spine."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/test_plan_cli.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-tests"
+reason = "Read-only + determinism contract coverage for the plan command."
 gates = ["python-lint", "python-format", "python-test"]
 
 [[ownership]]
@@ -882,7 +945,7 @@ path = "src/semantic_release/cli/config.py"
 status = "M"
 kind = "python-source"
 owner = "repo-maintainers"
-reason = "Current-main compatibility fix preserves commit-author validation after GitPython removed Actor.name_email_regex."
+reason = "Current-main compatibility fixes: commit-author validation after GitPython removed Actor.name_email_regex; shared RemoteConfig class-default skipped set_default_token env resolution (Field(default_factory=RemoteConfig, validate_default=True))."
 gates = ["python-lint", "python-format", "python-type"]
 
 [[ownership]]
@@ -980,3 +1043,291 @@ kind = "python-source"
 owner = "bsr-stock-patch"
 reason = "Performance optimization."
 gates = ["python-lint", "python-format", "python-type"]
+
+[[ownership]]
+path = "src/semantic_release/bsr/doctor.py"
+status = "A"
+kind = "python-source"
+owner = "bsr-g3-verify-doctor"
+reason = "Task 3 doctor check catalog: structural checks with fail-closed severities and actionable fixes."
+gates = ["python-lint", "python-format", "python-type"]
+
+[[ownership]]
+path = "src/semantic_release/bsr/preflight.py"
+status = "A"
+kind = "python-source"
+owner = "bsr-g3-verify-doctor"
+reason = "Task 3 preflight state assembly feeding verify and doctor from a single computed release state."
+gates = ["python-lint", "python-format", "python-type"]
+
+[[ownership]]
+path = "src/semantic_release/cli/commands/verify.py"
+status = "A"
+kind = "python-source"
+owner = "bsr-g3-verify-doctor"
+reason = "Task 3 verify command: fail-closed preflight gate; builds runtime directly to bypass cli_context auto-exit."
+gates = ["python-lint", "python-format", "python-type"]
+
+[[ownership]]
+path = "src/semantic_release/cli/commands/doctor.py"
+status = "A"
+kind = "python-source"
+owner = "bsr-g3-verify-doctor"
+reason = "Task 3 doctor command: read-only diagnostics over the same check catalog as verify."
+gates = ["python-lint", "python-format", "python-type"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/test_doctor.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-g3-verify-doctor"
+reason = "Task 3 check-catalog unit coverage: broken fixtures must produce structured findings."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/test_verify_doctor_cli.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-g3-verify-doctor"
+reason = "Task 3 e2e coverage: real broken fixtures fail closed; clean repo exits zero with env-provided token."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "src/semantic_release/bsr/version_sources.py"
+status = "A"
+kind = "python-source"
+owner = "bsr-g4-version-adapters"
+reason = "Task 4 source adapters: git-tag/toml/json/text reads with provenance plus declaration bridge."
+gates = ["python-lint", "python-format", "python-type"]
+
+[[ownership]]
+path = "src/semantic_release/bsr/version_targets.py"
+status = "A"
+kind = "python-source"
+owner = "bsr-g4-version-adapters"
+reason = "Task 4 target adapters: preview/apply/touched/validate contract with fail-closed text writes."
+gates = ["python-lint", "python-format", "python-type"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/test_version_sources.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-g4-version-adapters"
+reason = "Task 4 source adapter coverage including bridge defaults and resolution."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/test_version_targets.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-g4-version-adapters"
+reason = "Task 4 target adapter coverage including noop, formatting preservation, and recut guards."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "docs/configuration/configuration.rst"
+status = "M"
+kind = "docs"
+owner = "bsr-g4-version-adapters"
+reason = "Task 4 docs: bsr.version sources/targets reference with field rules and doctor drift behavior."
+gates = ["docs"]
+
+[[ownership]]
+path = "docs/concepts/getting_started.rst"
+status = "M"
+kind = "docs"
+owner = "bsr-g4-version-adapters"
+reason = "Task 4 docs: release recipes for Python/Node/Rust/generic repos."
+gates = ["docs"]
+
+[[ownership]]
+path = "src/semantic_release/bsr/publishers.py"
+status = "A"
+kind = "python-source"
+owner = "bsr-g5-publish-adapters"
+reason = "Task 5 publisher adapters: typed outcome contract, probe-gated shell presets, and manifest bridge."
+gates = ["python-lint", "python-format", "python-type"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/test_publishers.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-g5-publish-adapters"
+reason = "Task 5 outcome-contract coverage: attempted/skipped/exists/failed/retryable paths."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/test_registry_adapters.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-g5-publish-adapters"
+reason = "Task 5 probe adapter coverage: per-kind classification and fail-closed required fields."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "src/semantic_release/bsr/component_graph.py"
+status = "A"
+kind = "python-source"
+owner = "bsr-g6-component-graph"
+reason = "Task 6 monorepo-lite: dependency graph with fail-closed cycle checks and release propagation."
+gates = ["python-lint", "python-format", "python-type"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/test_component_graph.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-g6-component-graph"
+reason = "Task 6 graph coverage: parse, cycle rejection, propagation widening and pass-through."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "src/semantic_release/bsr/notes.py"
+status = "A"
+kind = "python-source"
+owner = "bsr-g7-notes-sources"
+reason = "Task 7 notes modes: commits/fragments/hybrid/command with fail-closed manual-notes gating."
+gates = ["python-lint", "python-format", "python-type"]
+
+[[ownership]]
+path = "src/semantic_release/bsr/fragments.py"
+status = "A"
+kind = "python-source"
+owner = "bsr-g7-notes-sources"
+reason = "Task 7 optional newsfragment discovery and rendering."
+gates = ["python-lint", "python-format", "python-type"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/test_notes_modes.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-g7-notes-sources"
+reason = "Task 7 mode-contract coverage: missing sources fail closed, hybrid falls back."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "src/semantic_release/bsr/hooks.py"
+status = "A"
+kind = "python-source"
+owner = "bsr-g8-hooks-provenance"
+reason = "Task 8 finite hook points with fail-closed gating"
+gates = ["python-lint", "python-format", "python-type"]
+
+[[ownership]]
+path = "src/semantic_release/bsr/provenance.py"
+status = "A"
+kind = "python-source"
+owner = "bsr-g8-hooks-provenance"
+reason = "Task 8 publish readiness / trusted-publishing probe"
+gates = ["python-lint", "python-format", "python-type"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/test_hooks.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-g8-hooks-provenance"
+reason = "Task 8 hook point coverage"
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/test_provenance.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-g8-hooks-provenance"
+reason = "Task 8 readiness coverage"
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/e2e/test_gated_ci_recipe.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-g8-hooks-provenance"
+reason = "Task 8 gated recipe end to end"
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "docs/concepts/changelog_templates.rst"
+status = "M"
+kind = "docs"
+owner = "bsr-g7-notes-sources"
+reason = "Task 7 notes-modes opt-in documentation appended to the changelog templates guide."
+gates = ["docs"]
+
+[[ownership]]
+path = "docs/misc/troubleshooting.rst"
+status = "M"
+kind = "docs"
+owner = "bsr-g7-notes-sources"
+reason = "Task 7 troubleshooting entry for manual-notes fail-closed behavior."
+gates = ["docs"]
+
+[[ownership]]
+path = "tests/e2e/test_fragments_workflow.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-g7-notes-sources"
+reason = "Task 7 fragment workflow e2e-lite coverage: discovery to rendered notes."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "docs/recipes/index.rst"
+status = "A"
+kind = "docs"
+owner = "bsr-g9-docs-examples"
+reason = "Task 9 recipes index."
+gates = ["docs"]
+
+[[ownership]]
+path = "docs/recipes/python_package.rst"
+status = "A"
+kind = "docs"
+owner = "bsr-g9-docs-examples"
+reason = "Task 9 Python recipe."
+gates = ["docs"]
+
+[[ownership]]
+path = "docs/recipes/node_package.rst"
+status = "A"
+kind = "docs"
+owner = "bsr-g9-docs-examples"
+reason = "Task 9 Node recipe."
+gates = ["docs"]
+
+[[ownership]]
+path = "docs/recipes/rust_crate.rst"
+status = "A"
+kind = "docs"
+owner = "bsr-g9-docs-examples"
+reason = "Task 9 Rust recipe."
+gates = ["docs"]
+
+[[ownership]]
+path = "docs/recipes/generic_repo.rst"
+status = "A"
+kind = "docs"
+owner = "bsr-g9-docs-examples"
+reason = "Task 9 generic repository recipe."
+gates = ["docs"]
+
+[[ownership]]
+path = "docs/recipes/migration.rst"
+status = "A"
+kind = "docs"
+owner = "bsr-g9-docs-examples"
+reason = "Task 9 upstream PSR migration guide."
+gates = ["docs"]
+
+[[ownership]]
+path = "docs/recipes/maintenance.rst"
+status = "A"
+kind = "docs"
+owner = "bsr-g9-docs-examples"
+reason = "Task 9 fork maintenance guide."
+gates = ["docs"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/test_recipes_docs.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-g9-docs-examples"
+reason = "Task 9 fixture validation: every recipe TOML block must parse."
+gates = ["python-lint", "python-format", "python-test"]

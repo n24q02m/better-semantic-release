@@ -301,3 +301,100 @@ def test_invalid_component_path_map_fails_closed(tmp_path: Path) -> None:
 
     with pytest.raises(InvalidConfiguration, match="schema_version"):
         load_bsr_config(cfg_file)
+
+
+def test_loads_version_source_and_target_tables(tmp_path: Path) -> None:
+    cfg_file = tmp_path / "pyproject.toml"
+    cfg_file.write_text(
+        "[tool.semantic_release.bsr]\n"
+        "schema_version = 1\n"
+        "[[tool.semantic_release.bsr.version.sources]]\n"
+        'kind = "json"\n'
+        'path = "package.json"\n'
+        'field = "version"\n'
+        "[[tool.semantic_release.bsr.version.sources]]\n"
+        'kind = "text"\n'
+        'path = "VERSION"\n'
+        'pattern = "{version}"\n'
+        "[[tool.semantic_release.bsr.version.targets]]\n"
+        'kind = "git-tag"\n',
+        encoding="utf-8",
+    )
+    cfg = load_bsr_config(cfg_file)
+    assert cfg.version is not None
+    assert [(s.kind, s.path, s.field) for s in cfg.version.sources] == [
+        ("json", "package.json", "version"),
+        ("text", "VERSION", ""),
+    ]
+    assert cfg.version.sources[1].pattern == "{version}"
+    assert [(t.kind,) for t in cfg.version.targets] == [("git-tag",)]
+
+
+def test_version_unknown_kind_fails_closed(tmp_path: Path) -> None:
+    cfg_file = tmp_path / "pyproject.toml"
+    cfg_file.write_text(
+        "[tool.semantic_release.bsr]\n"
+        "schema_version = 1\n"
+        "[[tool.semantic_release.bsr.version.sources]]\n"
+        'kind = "yaml"\n'
+        'path = "x.yml"\n'
+        'field = "version"\n',
+        encoding="utf-8",
+    )
+    with pytest.raises(InvalidConfiguration, match="kind"):
+        load_bsr_config(cfg_file)
+
+
+def test_version_missing_required_field_fails_closed(tmp_path: Path) -> None:
+    cfg_file = tmp_path / "pyproject.toml"
+    cfg_file.write_text(
+        "[tool.semantic_release.bsr]\n"
+        "schema_version = 1\n"
+        "[[tool.semantic_release.bsr.version.targets]]\n"
+        'kind = "json"\n'
+        'path = "package.json"\n',
+        encoding="utf-8",
+    )
+    with pytest.raises(InvalidConfiguration, match="requires"):
+        load_bsr_config(cfg_file)
+
+
+def test_loads_publish_probe_and_publishers(tmp_path: Path) -> None:
+    cfg_file = tmp_path / "pyproject.toml"
+    cfg_file.write_text(
+        "[tool.semantic_release.bsr]\n"
+        "schema_version = 1\n"
+        "[tool.semantic_release.bsr.publish.probe]\n"
+        'kind = "github-release"\n'
+        'repo = "acme/widgets"\n'
+        "[[tool.semantic_release.bsr.publish.publishers]]\n"
+        'kind = "shell"\n'
+        'name = "docs"\n'
+        'command = ["./scripts/publish-docs.sh"]\n'
+        "[[tool.semantic_release.bsr.publish.publishers]]\n"
+        'kind = "github-release"\n'
+        'manifest_path = "dist/manifest.json"\n'
+        'workspace = ".bsr"\n',
+        encoding="utf-8",
+    )
+    cfg = load_bsr_config(cfg_file)
+    assert cfg.publish is not None
+    assert cfg.publish.probe is not None
+    assert cfg.publish.probe.kind == "github-release"
+    assert cfg.publish.probe.repo == "acme/widgets"
+    kinds = [p.kind for p in cfg.publish.publishers]
+    assert kinds == ["shell", "github-release"]
+    assert cfg.publish.publishers[0].command == ("./scripts/publish-docs.sh",)
+
+
+def test_publish_unknown_probe_kind_fails_closed(tmp_path: Path) -> None:
+    cfg_file = tmp_path / "pyproject.toml"
+    cfg_file.write_text(
+        "[tool.semantic_release.bsr]\n"
+        "schema_version = 1\n"
+        "[tool.semantic_release.bsr.publish.probe]\n"
+        'kind = "gemfury"\n',
+        encoding="utf-8",
+    )
+    with pytest.raises(InvalidConfiguration, match="probe.kind"):
+        load_bsr_config(cfg_file)

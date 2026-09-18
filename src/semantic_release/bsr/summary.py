@@ -14,9 +14,10 @@ effects, never persisted.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING
 
+from semantic_release.bsr.component_graph import propagate_releases
 from semantic_release.bsr.component_map import map_paths
 from semantic_release.bsr.config import BsrComponent
 from semantic_release.bsr.path_filter import filter_commits_by_paths
@@ -28,6 +29,7 @@ if TYPE_CHECKING:
     from git.objects.commit import Commit
     from git.repo.base import Repo
 
+    from semantic_release.bsr.component_graph import ComponentGraph
     from semantic_release.bsr.component_map import ComponentPathMap
     from semantic_release.bsr.config import BsrConfig
     from semantic_release.commit_parser import (
@@ -201,9 +203,10 @@ def build_summary(
     major_on_zero: bool,
     allow_zero_version: bool,
     component_path_map: ComponentPathMap | None = None,
+    component_graph: ComponentGraph | None = None,
 ) -> tuple[ComponentPlan, ...]:
     """Build the full per-component release plan, one row per `components` entry."""
-    return tuple(
+    plans = tuple(
         build_component_plan(
             component,
             repo=repo,
@@ -219,6 +222,19 @@ def build_summary(
             ),
         )
         for component in components
+    )
+    if component_graph is None:
+        return plans
+    # Task 6 dependency widening: a component whose dependency releases also
+    # releases, even with no own commits. Row facts (level, commit_count)
+    # stay truthful about the component's own changes.
+    changed = tuple(plan.name for plan in plans if plan.would_release)
+    widened = set(propagate_releases(changed, component_graph))
+    return tuple(
+        replace(plan, would_release=True)
+        if not plan.would_release and plan.name in widened
+        else plan
+        for plan in plans
     )
 
 

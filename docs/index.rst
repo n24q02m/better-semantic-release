@@ -21,6 +21,19 @@ This project was originally inspired by the `semantic-release`_ project for Java
 by *Stephan Bönnemann*, but the codebases have significantly deviated since then, as
 PSR as driven towards the goal of providing flexible changelogs and simple initial setup.
 
+.. note:: **better-semantic-release design principles**
+
+   This fork is being built as a release control plane around three verbs --
+   ``plan`` (read-only structured release decision), ``verify`` (safety/policy
+   checks), and ``publish`` (guarded execution). Reviewability comes from the
+   ``plan`` surface, never from Release-PR machinery. Drop-in compatibility is
+   the default path: existing ``[tool.semantic_release]`` configs, CLI commands,
+   and the GitHub Action interface keep working unchanged; new behavior is
+   opt-in under ``[tool.semantic_release.bsr]`` or behind new subcommands.
+   Universal (multi-language) support is delivered through adapter contracts,
+   and every safety failure is fail-closed. See the "Design principles" and
+   "Compatibility contract" sections of the project README for the full text.
+
 .. include:: concepts/installation.rst
 
 Read more about the setup and configuration in our :ref:`Getting Started Guide <inline-getting-started-guide>`.
@@ -62,6 +75,7 @@ Documentation Contents
    Concepts <concepts/index>
    CLI <api/commands>
    configuration/index
+   Release recipes <recipes/index>
    upgrading/index
    misc/troubleshooting
    API <api/modules/modules>

@@ -1123,3 +1123,72 @@ Publish Action.
           if: steps.release-submod-2.outputs.released == 'true'
           with:
             packages-dir: ${{ format('{}/dist', env.SUBMODULE_2_DIR) }}
+
+.. _bsr-publish-adapters:
+
+BSR Publisher Adapters (opt-in)
+-------------------------------
+
+The stock ``publish`` command uploads distributions to the VCS release, exactly
+as before -- no workflow changes are required. Repositories that also publish
+to package registries can opt in through
+``[tool.semantic_release.bsr.publish]``:
+
+.. code-block:: toml
+
+    [tool.semantic_release.bsr.publish.probe]
+    kind = "pypi"  # none|pypi|npm|crates|oci|github-release|http
+
+    [[tool.semantic_release.bsr.publish.publishers]]
+    kind = "pypi"  # preset: twine upload; override with `command = [...]`
+
+    [[tool.semantic_release.bsr.publish.publishers]]
+    kind = "shell"
+    name = "docs"
+    command = ["./scripts/publish-docs.sh"]
+
+Each publisher reports a typed outcome (``attempted``, ``skipped``,
+``already-exists``, ``failed``, ``retryable``); the command exits non-zero when
+any publisher fails. A probe that returns an ambiguous state skips
+registry-backed publishers instead of publishing blind.
+
+.. _bsr-gated-release:
+
+Gated release with BSR (plan → verify → approve → publish)
+----------------------------------------------------------
+
+BSR intentionally does not build a Release PR state machine. Instead it gives
+you five finite hook points and a readiness probe, so a gated flow in GitHub
+Actions looks like this:
+
+1. ``semantic-release plan`` — compute the release plan from history
+   (hooks: ``pre_plan``/``post_plan``).
+2. Upload the plan as a workflow artifact / write the job summary.
+3. ``semantic-release verify`` — gates: guards, ownership manifest, path
+   filter, and any configured ``pre_verify`` hooks.
+4. Manual or environment approval *outside* BSR (GitHub environment
+   protection rules).
+5. ``semantic-release publish`` — with ``pre_publish``/``post_publish``
+   hooks and the publish-readiness probe.
+
+Hook surface is deliberately finite. A non-zero hook exit blocks the run
+(fail closed). Configure hooks under::
+
+    [[tool.semantic_release.bsr.hooks]]
+    point = "pre_verify"
+    command = ["./scripts/check-release-env.sh"]
+
+Publish readiness (trusted publishing) ---------------------------------
+
+Before a publish step runs, ask BSR whether the environment matches the
+target's expected posture. PyPI and npm support provenance attestations and
+are expected to run with trusted publishing (OIDC); a legacy password/token
+environment is reported not-ready with a migration detail::
+
+    from semantic_release.bsr.provenance import assess_publish_readiness
+
+    readiness = assess_publish_readiness("pypi")
+    if not readiness.ready:
+        raise SystemExit(f"not ready to publish: {readiness.detail}")
+
+The probe never mutates anything; it fails closed on unknown kinds.

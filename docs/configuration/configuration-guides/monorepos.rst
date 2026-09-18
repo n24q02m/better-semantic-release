@@ -407,3 +407,28 @@ That's it! This example demonstrates how to set up a monorepo with shared change
 .. seealso::
 
     - Advanced Example Monorepo: `codejedi365/psr-monorepo-poweralpha <https://github.com/codejedi365/psr-monorepo-poweralpha>`_
+
+.. _bsr-component-dependencies:
+
+Component Dependencies (opt-in)
+-------------------------------
+
+By default each component releases only when its own paths change. Repositories
+where components consume each other can declare dependency edges under
+``[tool.semantic_release.bsr]``:
+
+.. code-block:: toml
+
+    [[tool.semantic_release.bsr.component_graph]]
+    name = "app"
+    depends_on = ["core"]
+
+    [[tool.semantic_release.bsr.component_graph]]
+    name = "sdk"
+    depends_on = ["core"]
+
+When the summary table is rendered (``bsr.summary``), a component that
+transitively depends on a releasing component is widened to ``would_release =
+yes`` even without own commits. The graph must be acyclic and every
+``depends_on`` entry must reference a declared component; violations fail the
+run closed with an actionable configuration error.

@@ -12,7 +12,9 @@ if TYPE_CHECKING:
     import os
     from collections.abc import Mapping
 
+    from semantic_release.bsr.component_graph import ComponentGraph
     from semantic_release.bsr.component_map import ComponentPathMap
+    from semantic_release.bsr.notes import BsrNotesConfig
 
 
 @dataclass(frozen=True)
@@ -36,6 +38,11 @@ class BsrConfig:
     summary: bool = False
     components: tuple[BsrComponent, ...] = ()
     component_path_map: ComponentPathMap | None = None
+    component_graph: ComponentGraph | None = None
+    version: BsrVersionConfig | None = None
+    publish: BsrPublishConfig | None = None
+    notes: BsrNotesConfig | None = None
+    hooks: tuple = ()
     stable_notes_aggregate: bool = False
     stable_notes_scope: str = "line"  # "line" or "since_stable"
 
@@ -84,8 +91,261 @@ _BSR_FIELDS = {
     "paths",
     "components",
     "component_path_map",
+    "component_graph",
     "stable_notes_scope",
+    "version",
+    "publish",
+    "notes",
+    "hooks",
 }
+
+
+@dataclass(frozen=True)
+class BsrVersionSourceConfig:
+    """One explicit version source from ``[tool.bsr.version.sources]``."""
+
+    kind: str  # "git-tag" | "toml" | "json" | "text"
+    path: str = ""  # toml/json/text
+    field: str = ""  # toml/json dotted key
+    pattern: str = ""  # text, with a literal {version} token
+
+
+@dataclass(frozen=True)
+class BsrVersionTargetConfig:
+    """One explicit version target from ``[tool.bsr.version.targets]``."""
+
+    kind: str  # "git-tag" | "toml" | "json" | "text"
+    path: str = ""  # toml/json/text
+    field: str = ""  # toml/json dotted key
+    pattern: str = ""  # text, with a literal {version} token
+
+
+@dataclass(frozen=True)
+class BsrVersionConfig:
+    """``[tool.bsr.version]``: explicit source/target adapters (Task 4)."""
+
+    sources: tuple[BsrVersionSourceConfig, ...] = ()
+    targets: tuple[BsrVersionTargetConfig, ...] = ()
+
+
+_SOURCE_KINDS = {"git-tag", "toml", "json", "text"}
+_SOURCE_REQUIRED = {
+    "git-tag": set(),
+    "toml": {"path", "field"},
+    "json": {"path", "field"},
+    "text": {"path", "pattern"},
+}
+
+
+def _parse_version_entry(
+    raw: object, label: str, config_path: Path, is_source: bool
+) -> BsrVersionSourceConfig | BsrVersionTargetConfig:
+    if not isinstance(raw, dict):
+        raise InvalidConfiguration(f"{config_path}: {label} must be a table")
+    unknown = set(raw) - {"kind", "path", "field", "pattern"}
+    if unknown:
+        raise InvalidConfiguration(
+            f"{config_path}: {label} has unknown fields: " + ", ".join(sorted(unknown))
+        )
+    kind = raw.get("kind")
+    if kind not in _SOURCE_KINDS:
+        raise InvalidConfiguration(
+            f"{config_path}: {label}.kind must be one of: "
+            + ", ".join(sorted(_SOURCE_KINDS))
+        )
+    missing = _SOURCE_REQUIRED[kind] - set(raw)
+    if missing:
+        raise InvalidConfiguration(
+            f"{config_path}: {label} (kind {kind!r}) requires "
+            + ", ".join(sorted(missing))
+        )
+    fields = {
+        "kind": kind,
+        "path": raw.get("path", ""),
+        "field": raw.get("field", ""),
+        "pattern": raw.get("pattern", ""),
+    }
+    return (
+        BsrVersionSourceConfig(**fields)
+        if is_source
+        else BsrVersionTargetConfig(**fields)
+    )
+
+
+def _parse_version_list(
+    raw_list: object, label: str, config_path: Path, is_source: bool
+) -> list[BsrVersionSourceConfig] | list[BsrVersionTargetConfig]:
+    if not isinstance(raw_list, list):
+        raise InvalidConfiguration(
+            f"{config_path}: bsr.version.{label} must be an array of tables"
+        )
+    entries = [
+        _parse_version_entry(
+            raw, f"bsr.version.{label}[{index}]", config_path, is_source
+        )
+        for index, raw in enumerate(raw_list)
+    ]
+    if is_source:
+        return [entry for entry in entries if isinstance(entry, BsrVersionSourceConfig)]
+    return [entry for entry in entries if isinstance(entry, BsrVersionTargetConfig)]
+
+
+@dataclass(frozen=True)
+class BsrPublishProbeConfig:
+    """Registry probe for the publish gate (Task 5)."""
+
+    kind: str  # none|pypi|npm|crates|oci|github-release|http
+    repo: str = ""  # github-release: "owner/repo"
+    url_template: str = ""  # http: template with {name}/{version}
+    registry_url: str = ""  # oci: registry host
+
+
+@dataclass(frozen=True)
+class BsrPublishCommandConfig:
+    """One publisher step (Task 5)."""
+
+    kind: str  # none|github-release|pypi|npm|crates|oci|shell
+    name: str = ""  # display label; defaults to kind
+    command: tuple[str, ...] = ()  # explicit argv; presets exist for pypi/npm/crates
+    manifest_path: str = ""  # github-release: staged manifest
+    workspace: str = ""  # github-release: workspace dir
+
+
+@dataclass(frozen=True)
+class BsrPublishConfig:
+    """``[tool.bsr.publish]``: probe + publisher adapters, opt-in."""
+
+    probe: BsrPublishProbeConfig | None = None
+    publishers: tuple[BsrPublishCommandConfig, ...] = ()
+
+
+def _parse_version_tables(version: object, config_path: Path) -> BsrVersionConfig:
+    """Parse ``[tool.bsr.version]`` sources/targets; unknown kinds fail closed."""
+    if not isinstance(version, dict):
+        raise InvalidConfiguration(
+            f"{config_path}: [tool.semantic_release.bsr.version] must be a table"
+        )
+    unknown = set(version) - {"sources", "targets"}
+    if unknown:
+        raise InvalidConfiguration(
+            f"{config_path}: unknown [tool.semantic_release.bsr.version] fields: "
+            + ", ".join(sorted(unknown))
+        )
+    sources = _parse_version_list(
+        version.get("sources", []), "sources", config_path, True
+    )
+    targets = _parse_version_list(
+        version.get("targets", []), "targets", config_path, False
+    )
+    return BsrVersionConfig(
+        sources=tuple(sources),  # type: ignore[arg-type]
+        targets=tuple(targets),  # type: ignore[arg-type]
+    )
+
+
+_PUBLISH_PROBE_KINDS = {
+    "none",
+    "pypi",
+    "npm",
+    "crates",
+    "oci",
+    "github-release",
+    "http",
+}
+_PUBLISH_PUBLISHER_KINDS = {
+    "none",
+    "github-release",
+    "pypi",
+    "npm",
+    "crates",
+    "oci",
+    "shell",
+}
+
+
+def _parse_publish_tables(publish: object, config_path: Path) -> BsrPublishConfig:
+    if not isinstance(publish, dict):
+        raise InvalidConfiguration(
+            f"{config_path}: [tool.semantic_release.bsr.publish] must be a table"
+        )
+    unknown = set(publish) - {"probe", "publishers"}
+    if unknown:
+        raise InvalidConfiguration(
+            f"{config_path}: unknown [tool.semantic_release.bsr.publish] fields: "
+            + ", ".join(sorted(unknown))
+        )
+
+    probe: BsrPublishProbeConfig | None = None
+    raw_probe = publish.get("probe")
+    if raw_probe is not None:
+        if not isinstance(raw_probe, dict):
+            raise InvalidConfiguration(
+                f"{config_path}: bsr.publish.probe must be a table"
+            )
+        unknown = set(raw_probe) - {"kind", "repo", "url_template", "registry_url"}
+        if unknown:
+            raise InvalidConfiguration(
+                f"{config_path}: bsr.publish.probe has unknown fields: "
+                + ", ".join(sorted(unknown))
+            )
+        kind = raw_probe.get("kind")
+        if kind not in _PUBLISH_PROBE_KINDS:
+            raise InvalidConfiguration(
+                f"{config_path}: bsr.publish.probe.kind must be one of: "
+                + ", ".join(sorted(_PUBLISH_PROBE_KINDS))
+            )
+        probe = BsrPublishProbeConfig(
+            kind=kind,
+            repo=raw_probe.get("repo", ""),
+            url_template=raw_probe.get("url_template", ""),
+            registry_url=raw_probe.get("registry_url", ""),
+        )
+
+    publishers = _parse_publisher_entries(publish.get("publishers", []), config_path)
+    return BsrPublishConfig(probe=probe, publishers=tuple(publishers))
+
+
+def _parse_publisher_entries(
+    raw_publishers: object, config_path: Path
+) -> list[BsrPublishCommandConfig]:
+    if not isinstance(raw_publishers, list):
+        raise InvalidConfiguration(
+            f"{config_path}: bsr.publish.publishers must be an array of tables"
+        )
+    publishers: list[BsrPublishCommandConfig] = []
+    for index, raw in enumerate(raw_publishers):
+        label = f"bsr.publish.publishers[{index}]"
+        if not isinstance(raw, dict):
+            raise InvalidConfiguration(f"{config_path}: {label} must be a table")
+        unknown = set(raw) - {"kind", "name", "command", "manifest_path", "workspace"}
+        if unknown:
+            raise InvalidConfiguration(
+                f"{config_path}: {label} has unknown fields: "
+                + ", ".join(sorted(unknown))
+            )
+        kind = raw.get("kind")
+        if kind not in _PUBLISH_PUBLISHER_KINDS:
+            raise InvalidConfiguration(
+                f"{config_path}: {label}.kind must be one of: "
+                + ", ".join(sorted(_PUBLISH_PUBLISHER_KINDS))
+            )
+        raw_command = raw.get("command", [])
+        if not isinstance(raw_command, list) or not all(
+            isinstance(part, str) for part in raw_command
+        ):
+            raise InvalidConfiguration(
+                f"{config_path}: {label}.command must be an array of strings"
+            )
+        publishers.append(
+            BsrPublishCommandConfig(
+                kind=kind,
+                name=raw.get("name", ""),
+                command=tuple(raw_command),
+                manifest_path=raw.get("manifest_path", ""),
+                workspace=raw.get("workspace", ""),
+            )
+        )
+    return publishers
 
 
 def _validate_bsr_table(bsr: Mapping[str, object], config_path: Path) -> int:
@@ -130,6 +390,46 @@ def _validate_bsr_table(bsr: Mapping[str, object], config_path: Path) -> int:
     return schema_version
 
 
+def _load_component_graph(bsr: dict, config_path: Path) -> ComponentGraph | None:
+    """Parse the optional component_graph list; fail closed on bad entries."""
+    if "component_graph" not in bsr:
+        return None
+    from semantic_release.bsr.component_graph import build_component_graph
+
+    try:
+        return build_component_graph(bsr["component_graph"])
+    except InvalidConfiguration as exc:
+        raise InvalidConfiguration(
+            f"{config_path}: invalid [tool.semantic_release.bsr.component_graph]: {exc}"
+        ) from exc
+
+
+def _load_notes_config(bsr: dict, config_path: Path) -> BsrNotesConfig | None:
+    """Parse the optional notes table; fail closed on bad entries."""
+    if "notes" not in bsr:
+        return None
+    from semantic_release.bsr.notes import parse_notes_config
+
+    try:
+        return parse_notes_config(bsr["notes"])
+    except InvalidConfiguration as exc:
+        raise InvalidConfiguration(
+            f"{config_path}: invalid [tool.semantic_release.bsr.notes]: {exc}"
+        ) from exc
+
+
+def _load_component_path_map(bsr: dict, config_path: Path) -> ComponentPathMap | None:
+    """Parse the optional component_path_map table; fail closed on bad entries."""
+    if "component_path_map" not in bsr:
+        return None
+    try:
+        return parse_component_path_map(bsr["component_path_map"])
+    except (TypeError, ValueError) as exc:
+        raise InvalidConfiguration(
+            f"{config_path}: invalid [tool.semantic_release.bsr.component_path_map]: {exc}"
+        ) from exc
+
+
 def load_bsr_config(config_file: str | os.PathLike[str]) -> BsrConfig:
     """
     Read [tool.semantic_release.bsr] out of the config file.
@@ -159,19 +459,32 @@ def load_bsr_config(config_file: str | os.PathLike[str]) -> BsrConfig:
         )
 
     schema_version = _validate_bsr_table(bsr, config_path)
-    component_path_map = None
-    if "component_path_map" in bsr:
-        try:
-            component_path_map = parse_component_path_map(bsr["component_path_map"])
-        except (TypeError, ValueError) as exc:
-            raise InvalidConfiguration(
-                f"{config_path}: invalid [tool.semantic_release.bsr.component_path_map]: {exc}"
-            ) from exc
+    component_path_map = _load_component_path_map(bsr, config_path)
+    component_graph = _load_component_graph(bsr, config_path)
 
     try:
         components = _parse_components(bsr.get("components", []))
     except (TypeError, ValueError) as exc:
         raise InvalidConfiguration(f"{config_path}: {exc}") from exc
+
+    version_cfg = (
+        _parse_version_tables(bsr["version"], config_path) if "version" in bsr else None
+    )
+    publish_cfg = (
+        _parse_publish_tables(bsr["publish"], config_path) if "publish" in bsr else None
+    )
+    notes_cfg = _load_notes_config(bsr, config_path)
+
+    hooks_cfg: tuple = ()
+    if "hooks" in bsr:
+        from semantic_release.bsr.hooks import parse_hooks
+
+        try:
+            hooks_cfg = parse_hooks(bsr["hooks"])
+        except InvalidConfiguration as exc:
+            raise InvalidConfiguration(
+                f"{config_path}: invalid [tool.semantic_release.bsr.hooks]: {exc}"
+            ) from exc
 
     return BsrConfig(
         schema_version=schema_version,
@@ -185,6 +498,11 @@ def load_bsr_config(config_file: str | os.PathLike[str]) -> BsrConfig:
         summary=bsr.get("summary", False),
         components=components,
         component_path_map=component_path_map,
+        component_graph=component_graph,
+        version=version_cfg,
+        publish=publish_cfg,
+        notes=notes_cfg,
+        hooks=hooks_cfg,
         stable_notes_aggregate=bsr.get("stable_notes_aggregate", False),
         stable_notes_scope=bsr.get("stable_notes_scope", "line"),
     )

@@ -39,6 +39,9 @@ class Cli(click.Group):
         # SUBCMD_FUNCTION_NAME => MODULE_WITH_FUNCTION
         CHANGELOG = f"{__package__}.changelog"
         GENERATE_CONFIG = f"{__package__}.generate_config"
+        PLAN = f"{__package__}.plan"
+        VERIFY = f"{__package__}.verify"
+        DOCTOR = f"{__package__}.doctor"
         VERSION = f"{__package__}.version"
         PUBLISH = f"{__package__}.publish"
 

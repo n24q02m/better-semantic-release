@@ -2,14 +2,18 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+if TYPE_CHECKING:
+    from semantic_release.bsr.config import BsrPublishConfig
+
 import click
 from git import Repo
 from rich.markup import escape
 
 # BSR-PATCH: machine-readable output (better-semantic-release)
 from semantic_release.bsr import jsonout
+from semantic_release.bsr.config import load_bsr_config
 from semantic_release.cli.util import noop_report, rprint
-from semantic_release.errors import AssetUploadError
+from semantic_release.errors import AssetUploadError, InvalidConfiguration
 from semantic_release.globals import logger
 from semantic_release.hvcs.remote_hvcs_base import RemoteHvcsBase
 from semantic_release.version.algorithm import tags_and_versions
@@ -42,6 +46,42 @@ def publish_distributions(
     logger.info("Uploading distributions to release")
     for pattern in dist_glob_patterns:
         hvcs_client.upload_dists(tag=tag, dist_glob=pattern)  # type: ignore[attr-defined]
+
+
+def _run_bsr_publishers(
+    cli_ctx: CliContextObj, publish_cfg: BsrPublishConfig, *, tag: str, noop: bool
+) -> bool:
+    """Run opt-in BSR publisher adapters; return True when any failed."""
+    from semantic_release.bsr.publishers import build_publishers, run_publishers
+    from semantic_release.bsr.registry import probe_registry
+
+    runtime = cli_ctx.runtime_ctx
+    if runtime is None:  # publish command always materializes runtime first
+        raise InvalidConfiguration("bsr publish adapters: runtime context unavailable")
+    version = runtime.version_translator.from_tag(tag)
+    if version is None:
+        raise InvalidConfiguration(
+            f"bsr publish adapters: tag {tag!r} does not match tag format "
+            f"{runtime.version_translator.tag_format!r}"
+        )
+
+    probe_result = None
+    if publish_cfg.probe is not None:
+        pcfg = publish_cfg.probe
+        probe_result = probe_registry(
+            pcfg.kind,
+            str(runtime.project_metadata.get("name", "")),
+            str(version),
+            tag=tag,
+            repo=pcfg.repo,
+            url_template=pcfg.url_template,
+            registry_url=pcfg.registry_url,
+        )
+    publishers = build_publishers(publish_cfg.publishers, repo_dir=runtime.repo_dir)
+    outcomes = run_publishers(publishers, str(version), probe=probe_result, noop=noop)
+    for outcome in outcomes:
+        rprint(f":bell: [bsr publish] {outcome.state}: {escape(outcome.detail)}")
+    return any(outcome.state in {"failed", "retryable"} for outcome in outcomes)
 
 
 @click.command(
@@ -148,4 +188,20 @@ def publish(
         _json_state["published"] = True
     except AssetUploadError as err:
         rprint(f":x: [bold red]{escape(str(err))}[/bold red]")
+        ctx.exit(1)
+
+    # BSR-PATCH (universal-release-engine Task 5): opt-in publisher adapters.
+    # Only active when [tool.bsr.publish] is configured; existing users and the
+    # stock action.yml surface never hit this path.
+    bsr_cfg = load_bsr_config(cli_ctx.global_opts.config_file)
+    if (
+        bsr_cfg.publish is not None
+        and bsr_cfg.publish.publishers
+        and _run_bsr_publishers(
+            cli_ctx,
+            bsr_cfg.publish,
+            tag=tag,
+            noop=runtime.global_cli_options.noop,
+        )
+    ):
         ctx.exit(1)

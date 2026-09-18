@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from semantic_release.version.translator import VersionTranslator
     from semantic_release.version.version import Version
 
-_VALID_REGISTRIES = {"pypi", "npm", "none"}
+_VALID_REGISTRIES = {"none", "pypi", "npm", "crates", "oci", "github-release", "http"}
 
 
 def resolve_registry(bsr_config: BsrConfig, project_name: str) -> str:
@@ -25,7 +25,9 @@ def resolve_registry(bsr_config: BsrConfig, project_name: str) -> str:
         return "pypi" if project_name else "none"
     raise BsrGuardError(
         f"better-semantic-release guard: invalid [tool.semantic_release.bsr] registry "
-        f"'{bsr_config.registry}'. Use one of: pypi, npm, none."
+        f"'{bsr_config.registry}'. Use one of: "
+        + ", ".join(sorted(_VALID_REGISTRIES))
+        + "."
     )
 
 
