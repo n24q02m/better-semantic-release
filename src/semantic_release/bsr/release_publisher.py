@@ -345,10 +345,17 @@ def _validate_tag(value: Any) -> str:
         or ".." in tag
         or "@{" in tag
         or "\\" in tag
-        or any(char in tag for char in '~^:?*["')
-        or any(not part or part.startswith(".") for part in tag.split("/"))
     ):
         raise ManifestError("manifest tag")
+
+    for char in '~^:?*["':
+        if char in tag:
+            raise ManifestError("manifest tag")
+
+    for part in tag.split("/"):
+        if not part or part.startswith("."):
+            raise ManifestError("manifest tag")
+
     return tag
 
 
