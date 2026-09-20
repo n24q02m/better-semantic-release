@@ -1338,3 +1338,4 @@ status = "M"
 kind = "journal"
 owner = "bsr-tests"
 reason = "Journal"
+gates = ["other"]
