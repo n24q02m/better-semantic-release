@@ -70,10 +70,10 @@ def commit_touches_paths(commit: Commit, paths: tuple[str, ...]) -> bool:
 
     exact_paths = frozenset(normalized_paths)
     descendant_prefixes = tuple(f"{prefix}/" for prefix in normalized_paths)
-    return any(
-        changed_path in exact_paths or changed_path.startswith(descendant_prefixes)
-        for changed_path in normalized_changed_paths
-    )
+    for changed_path in normalized_changed_paths:
+        if changed_path in exact_paths or changed_path.startswith(descendant_prefixes):
+            return True
+    return False
 
 
 def filter_commits_by_paths(
