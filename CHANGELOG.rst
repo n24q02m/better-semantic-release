@@ -4,6 +4,31 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.7.1:
+
+v1.7.1 (2026-09-21)
+===================
+
+🪲 Bug Fixes
+------------
+
+* Set explicit secure permissions for allowed_signers (`PR#159`_, `38ece85`_)
+
+* **deps**: Update python:3.13-slim-bookworm Docker digest to ed86c82 (`PR#155`_, `0b0fe6c`_)
+
+⚡ Performance Improvements
+---------------------------
+
+* Optimize commit path filtering (`PR#156`_, `2d06cab`_)
+
+.. _0b0fe6c: https://github.com/n24q02m/better-semantic-release/commit/0b0fe6c8d46033d10820f08f30bd4f945c58c556
+.. _2d06cab: https://github.com/n24q02m/better-semantic-release/commit/2d06cab8de184df43fbd0e5b7dbc548625f30298
+.. _38ece85: https://github.com/n24q02m/better-semantic-release/commit/38ece85b516190dfe56ed6a729d2b42e0397a119
+.. _PR#155: https://github.com/n24q02m/better-semantic-release/pull/155
+.. _PR#156: https://github.com/n24q02m/better-semantic-release/pull/156
+.. _PR#159: https://github.com/n24q02m/better-semantic-release/pull/159
+
+
 .. _changelog-v1.7.0:
 
 v1.7.0 (2026-09-18)
