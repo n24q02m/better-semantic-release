@@ -130,6 +130,7 @@ if [[ -n "$INPUT_SSH_PUBLIC_SIGNING_KEY" && -n "$INPUT_SSH_PRIVATE_SIGNING_KEY" 
 		exit 1
 	fi
 	touch ~/.ssh/allowed_signers
+	chmod 600 ~/.ssh/allowed_signers
 	printf '%s %b\n' "$INPUT_GIT_COMMITTER_EMAIL" "$INPUT_SSH_PUBLIC_SIGNING_KEY" >~/.ssh/allowed_signers
 
 	# Configure git for signing
