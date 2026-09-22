@@ -129,9 +129,10 @@ if [[ -n "$INPUT_SSH_PUBLIC_SIGNING_KEY" && -n "$INPUT_SSH_PRIVATE_SIGNING_KEY" 
 		echo >&2 "git_committer_email must be set to use SSH key signing!"
 		exit 1
 	fi
-	touch ~/.ssh/allowed_signers
-	chmod 600 ~/.ssh/allowed_signers
-	printf '%s %b\n' "$INPUT_GIT_COMMITTER_EMAIL" "$INPUT_SSH_PUBLIC_SIGNING_KEY" >~/.ssh/allowed_signers
+	(
+		umask 077
+		printf '%s %b\n' "$INPUT_GIT_COMMITTER_EMAIL" "$INPUT_SSH_PUBLIC_SIGNING_KEY" >~/.ssh/allowed_signers
+	)
 
 	# Configure git for signing
 	git config --global gpg.format ssh
