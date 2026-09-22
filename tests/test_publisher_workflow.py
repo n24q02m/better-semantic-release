@@ -243,7 +243,7 @@ def test_candidate_job_verifies_provenance_and_exports_exact_handoff() -> None:
     )
     assert provenance["id"] == "provenance"
     assert provenance["uses"] == (
-        "actions/attest-build-provenance@520d128f165991a6c774bcb264f323e3d70747f4"
+        "actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be"
     )
 
     handoff = next(
