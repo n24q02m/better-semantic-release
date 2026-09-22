@@ -1332,10 +1332,3 @@ owner = "bsr-g9-docs-examples"
 reason = "Task 9 fixture validation: every recipe TOML block must parse."
 gates = ["python-lint", "python-format", "python-test"]
 
-[[ownership]]
-path = "src/semantic_release/bsr/release_publisher.py"
-status = "M"
-kind = "python-source"
-owner = "bsr-stock-patch"
-reason = "Performance optimization: eliminate generator expressions in string validation."
-gates = ["python-lint", "python-format", "python-type"]
