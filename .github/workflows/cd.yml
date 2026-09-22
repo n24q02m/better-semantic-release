@@ -132,14 +132,14 @@ jobs:
       # than $GITHUB_ENV precisely so it cannot leak into this container.
       - name: Attach the built distributions to the GitHub release
         if: steps.release.outputs.released == 'true'
-        uses: python-semantic-release/publish-action@5a5718ce47b892ef699f2972dae122297771d641 # v10.6.1
+        uses: python-semantic-release/publish-action@6d89e2de8d40ecb3717316ecbbf15a6fa8ea9039 # v10.6.2
         with:
           github_token: ${{ steps.app-token.outputs.token }}
           tag: ${{ steps.release.outputs.tag }}
 
       - name: Publish to PyPI (trusted publishing, OIDC)
         if: steps.release.outputs.released == 'true'
-        uses: pypa/gh-action-pypi-publish@ba38be9e461d3875417946c167d0b5f3d385a247 # v1.14.1
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
 
 
 
@@ -302,7 +302,7 @@ jobs:
 
       - name: Attest candidate image provenance
         id: provenance
-        uses: actions/attest-build-provenance@520d128f165991a6c774bcb264f323e3d70747f4 # v2.2.0
+        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2.4.0
         with:
           subject-name: ${{ steps.image.outputs.subject_name }}
           subject-digest: ${{ steps.image.outputs.subject_digest }}
