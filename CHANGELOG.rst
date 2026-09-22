@@ -4,6 +4,23 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.7.2:
+
+v1.7.2 (2026-09-22)
+===================
+
+🪲 Bug Fixes
+------------
+
+* **deps**: Keep click <8.5 ceiling — CliRunner mix_stderr removed in 8.2 breaks 52 tests
+  (`PR#163`_, `badab5a`_)
+
+* **deps**: Update non-major dependencies (`PR#163`_, `badab5a`_)
+
+.. _badab5a: https://github.com/n24q02m/better-semantic-release/commit/badab5ab3df7577b758a30c09c77a74c53a161de
+.. _PR#163: https://github.com/n24q02m/better-semantic-release/pull/163
+
+
 .. _changelog-v1.7.1:
 
 v1.7.1 (2026-09-21)
