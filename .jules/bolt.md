@@ -7,3 +7,7 @@
 ## 2024-05-23 - Python `any()` Generator Overhead in Performance-Critical Loops
 **Learning:** Using `any(cond(x) for x in iterable)` introduces generator overhead. In performance-critical paths like commit path filtering where this runs for thousands of commits and paths, this overhead becomes a bottleneck. Replacing it with an explicit `for` loop and boolean short-circuiting (`if cond(x): return True`) provides a ~7x speedup for large iterables.
 **Action:** Replace `any()` with generator expressions in performance-critical loops with explicit `for` loops to eliminate generator overhead.
+
+## 2024-05-23 - Avoid any() generator expressions in string validation
+**Learning:** Using `any(condition(x) for x in iterable)` for string validation (e.g. checking for invalid characters or evaluating parts of a path) introduces generator overhead. In a hot path, this can slow down execution significantly (e.g., ~1.8x slower in `_validate_tag`).
+**Action:** Replace `any()` containing generator expressions with explicit `for` loops that use explicit boolean short-circuiting to eliminate generator overhead.

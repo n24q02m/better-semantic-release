@@ -1331,3 +1331,4 @@ kind = "python-test"
 owner = "bsr-g9-docs-examples"
 reason = "Task 9 fixture validation: every recipe TOML block must parse."
 gates = ["python-lint", "python-format", "python-test"]
+
