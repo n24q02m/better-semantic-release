@@ -304,8 +304,8 @@ gates = ["other"]
 path = "src/gh_action/action.sh"
 status = "M"
 kind = "other"
-owner = "repo-maintainers"
-reason = "Current fork difference is intentionally retained and declared for ownership accounting."
+owner = "bsr-stock-patch"
+reason = "Current fork difference + removed security vulnerability leaking SSH private key sha256sum to GitHub Actions logs"
 gates = ["other"]
 
 [[ownership]]

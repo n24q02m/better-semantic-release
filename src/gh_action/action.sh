@@ -112,13 +112,10 @@ if [[ -n "$INPUT_SSH_PUBLIC_SIGNING_KEY" && -n "$INPUT_SSH_PRIVATE_SIGNING_KEY" 
 	mkdir -m 700 -p ~/.ssh
 	chmod 700 ~/.ssh
 	printf '%b\n' "$INPUT_SSH_PUBLIC_SIGNING_KEY" >>~/.ssh/signing_key.pub
-	cat ~/.ssh/signing_key.pub
 	(
 		umask 077
 		printf '%b\n' "$INPUT_SSH_PRIVATE_SIGNING_KEY" >~/.ssh/signing_key
 	)
-	# DO NOT CAT private key for security reasons
-	sha256sum ~/.ssh/signing_key
 
 	# Enable ssh-agent & add signing key
 	eval "$(ssh-agent -s)"
