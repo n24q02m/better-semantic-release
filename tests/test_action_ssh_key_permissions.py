@@ -76,7 +76,6 @@ def test_action_creates_private_ssh_key_with_restrictive_mode(tmp_path: Path) ->
     }
     wrapper = f"""
 git() {{ return 0; }}
-sha256sum() {{ return 0; }}
 ssh-agent() {{
     printf '%s\\n' \
         'SSH_AUTH_SOCK=/tmp/fake; export SSH_AUTH_SOCK;' \

@@ -118,7 +118,6 @@ if [[ -n "$INPUT_SSH_PUBLIC_SIGNING_KEY" && -n "$INPUT_SSH_PRIVATE_SIGNING_KEY" 
 		printf '%b\n' "$INPUT_SSH_PRIVATE_SIGNING_KEY" >~/.ssh/signing_key
 	)
 	# DO NOT CAT private key for security reasons
-	sha256sum ~/.ssh/signing_key
 
 	# Enable ssh-agent & add signing key
 	eval "$(ssh-agent -s)"
