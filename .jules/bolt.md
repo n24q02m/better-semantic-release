@@ -11,3 +11,6 @@
 ## 2024-05-23 - Avoid any() generator expressions in string validation
 **Learning:** Using `any(condition(x) for x in iterable)` for string validation (e.g. checking for invalid characters or evaluating parts of a path) introduces generator overhead. In a hot path, this can slow down execution significantly (e.g., ~1.8x slower in `_validate_tag`).
 **Action:** Replace `any()` containing generator expressions with explicit `for` loops that use explicit boolean short-circuiting to eliminate generator overhead.
+## 2024-05-23 - Python `any((...))` vs Boolean Short-Circuiting in Hot Paths
+**Learning:** Using `any((cond1, cond2))` forces the Python interpreter to evaluate both `cond1` and `cond2` completely before passing them as a tuple to `any()`. This negates short-circuiting and creates unnecessary tuple instantiation overhead. This is a severe anti-pattern when the second condition is an expensive function call (like `validate_types_in_sequence`) and the first condition frequently hits.
+**Action:** Replace `any((cond1, cond2))` with explicit boolean short-circuiting (`cond1 or cond2`) to preserve lazy evaluation and eliminate instantiation overhead.

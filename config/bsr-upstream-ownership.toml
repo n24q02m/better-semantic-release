@@ -1332,3 +1332,10 @@ owner = "bsr-g9-docs-examples"
 reason = "Task 9 fixture validation: every recipe TOML block must parse."
 gates = ["python-lint", "python-format", "python-test"]
 
+
+[[ownership]]
+path = ".jules/bolt.md"
+status = "M"
+kind = "journal"
+owner = "bsr-tests"
+reason = "Updates to bolt journal for any vs explicit boolean short-circuiting learning"
