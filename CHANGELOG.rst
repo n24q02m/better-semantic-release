@@ -4,6 +4,19 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.7.3:
+
+v1.7.3 (2026-09-24)
+===================
+
+🪲 Bug Fixes
+------------
+
+* Drop duplicate .jules/bolt.md ownership entry (already tracked as A) (`fa2f875`_)
+
+.. _fa2f875: https://github.com/n24q02m/better-semantic-release/commit/fa2f87524acba82b9704b6d101b1b83cd8c6dbd5
+
+
 .. _changelog-v1.7.2:
 
 v1.7.2 (2026-09-22)
