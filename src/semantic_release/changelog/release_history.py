@@ -137,18 +137,13 @@ class ReleaseHistory:
             # it is usually one, but we split a commit if a squashed merge is detected
             parse_results = commit_parser.parse(commit)
 
-            if not any(
-                (
-                    isinstance(parse_results, (ParseError, ParsedCommit)),
-                    (
-                        (
-                            isinstance(parse_results, list)
-                            or type(parse_results) == tuple
-                        )
-                        and validate_types_in_sequence(
-                            parse_results, (ParseError, ParsedCommit)
-                        )
-                    ),
+            if not (
+                isinstance(parse_results, (ParseError, ParsedCommit))
+                or (
+                    (isinstance(parse_results, list) or type(parse_results) == tuple)
+                    and validate_types_in_sequence(
+                        parse_results, (ParseError, ParsedCommit)
+                    )
                 )
             ):
                 raise TypeError("Unexpected type returned from commit_parser.parse")
