@@ -4,6 +4,20 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.7.4:
+
+v1.7.4 (2026-09-25)
+===================
+
+⚡ Performance Improvements
+---------------------------
+
+* Replace any() generator with explicit boolean chain in PublishLimits (`PR#171`_, `fee7d94`_)
+
+.. _fee7d94: https://github.com/n24q02m/better-semantic-release/commit/fee7d94892c6c09b6954d7cc05d4572317dd38cc
+.. _PR#171: https://github.com/n24q02m/better-semantic-release/pull/171
+
+
 .. _changelog-v1.7.3:
 
 v1.7.3 (2026-09-24)
