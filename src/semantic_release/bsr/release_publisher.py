@@ -137,17 +137,14 @@ class PublishLimits:
     timeout_seconds: float = 20.0
 
     def __post_init__(self) -> None:
-        if any(
-            value <= 0
-            for value in (
-                self.max_manifest_bytes,
-                self.max_file_bytes,
-                self.max_response_bytes,
-                self.max_pages,
-                self.asset_page_size,
-                self.max_tag_depth,
-                self.max_redirects,
-            )
+        if (
+            self.max_manifest_bytes <= 0
+            or self.max_file_bytes <= 0
+            or self.max_response_bytes <= 0
+            or self.max_pages <= 0
+            or self.asset_page_size <= 0
+            or self.max_tag_depth <= 0
+            or self.max_redirects <= 0
         ):
             raise ValueError("publisher limits must be positive")
         if self.timeout_seconds <= 0:
