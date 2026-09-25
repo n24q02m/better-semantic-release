@@ -14,3 +14,6 @@
 ## 2024-05-23 - Python `any((...))` vs Boolean Short-Circuiting in Hot Paths
 **Learning:** Using `any((cond1, cond2))` forces the Python interpreter to evaluate both `cond1` and `cond2` completely before passing them as a tuple to `any()`. This negates short-circuiting and creates unnecessary tuple instantiation overhead. This is a severe anti-pattern when the second condition is an expensive function call (like `validate_types_in_sequence`) and the first condition frequently hits.
 **Action:** Replace `any((cond1, cond2))` with explicit boolean short-circuiting (`cond1 or cond2`) to preserve lazy evaluation and eliminate instantiation overhead.
+## 2024-05-23 - Python `any()` Generator Overhead in Dataclass Initialization
+**Learning:** Using `any()` with a generator expression in dataclass `__post_init__` logic introduces unnecessary generator initialization overhead. For validations involving a fixed number of attributes, an explicit boolean chain (e.g., `self.attr1 <= 0 or self.attr2 <= 0`) is significantly faster.
+**Action:** Replace `any()` containing generator expressions for multiple attribute checks with explicit boolean short-circuiting to eliminate generator overhead.
