@@ -75,6 +75,10 @@ def check_tag_race(
     try:
         with Repo(str(repo_dir)) as repo:
             output = repo.git.ls_remote(remote_name)
+            if not isinstance(output, str):
+                raise ValueError(
+                    f"unexpected ls_remote output type {type(output).__name__}"
+                )
             refs = _parse_ls_remote(output)
     except (GitCommandError, ValueError) as exc:
         raise TagRaceGuardError(
