@@ -179,6 +179,7 @@ def test_schema_release() -> None:
         "tag": "v1.3.0",
         "is_prerelease": False,
         "previous_version": "1.2.3",
+        "head_sha": None,
         "decision": None,
         "bump": {
             "level_bump": "minor",
