@@ -22,7 +22,7 @@ consume the SAME computation — the three commands must never drift.
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Sequence
 
 import click
 from git import Repo
@@ -39,6 +39,7 @@ from semantic_release.bsr.plan import Blocker, build_release_plan
 from semantic_release.bsr.preflight import compute_release_state
 
 if TYPE_CHECKING:  # pragma: no cover
+    from semantic_release.bsr.summary import ComponentPlan
     from semantic_release.cli.cli_context import CliContextObj
 
 FORMAT_TABLE = "table"
@@ -49,6 +50,34 @@ FORMAT_JSON = "json"
 # (which only escalates the orphaned-history case). ORPHAN without the guard
 # enabled is a real danger signal, so it is NOT in this set.
 _BENIGN_NO_RELEASE_REASONS = {"NO_QUALIFYING_COMMITS", "ALREADY_RELEASED_NOOP"}
+
+
+def _resolve_component_filter(
+    components: Sequence[ComponentPlan], component_filter: tuple[str, ...]
+) -> Sequence[ComponentPlan]:
+    """
+    W1.5: subset selection for ``plan --component <name>`` (repeatable).
+
+    Filters the component rows before any rendering; a repository without a
+    component map (or an unknown name) degrades into a clean usage error
+    rather than a silently empty plan.
+    """
+    if not component_filter:
+        return components
+    if not components:
+        raise click.UsageError(
+            "--component requires a monorepo component map "
+            "([tool.semantic_release.bsr.components]); this repository "
+            "configures none."
+        )
+    known = [c.name for c in components]
+    unknown = sorted(set(component_filter) - set(known))
+    if unknown:
+        raise click.UsageError(
+            f"unknown component(s): {', '.join(unknown)}; "
+            f"configured components: {', '.join(known)}"
+        )
+    return tuple(c for c in components if c.name in component_filter)
 
 
 def _emit_plan(doc: Any, output_format: str, write_path: str | None) -> None:
@@ -106,6 +135,17 @@ def _emit_plan(doc: Any, output_format: str, write_path: str | None) -> None:
     default=False,
     help="Exit non-zero when the plan is blocked (guard trips recorded as blockers).",
 )
+@click.option(
+    "--component",
+    "component_filter",
+    multiple=True,
+    help=(
+        "Render only the named component(s) from the monorepo component map "
+        "(repeatable). Requires a configured component map; unknown names are "
+        "a usage error. With --strict, the exit code reflects the filtered "
+        "subset: it fails when none of the selected components would release."
+    ),
+)
 @click.pass_obj
 def plan(
     cli_ctx: CliContextObj,
@@ -113,6 +153,7 @@ def plan(
     write_path: str | None = None,
     check_registry: bool = False,
     strict: bool = False,
+    component_filter: tuple[str, ...] = (),
 ) -> None:
     """
     Compute the release plan for the current repository state, read-only.
@@ -141,6 +182,9 @@ def plan(
         # Unborn HEAD (no commits yet): no drift anchor, stays null.
         _head_sha = None
 
+    # W1.5: subset rendering; the filter resolves before any rendering.
+    plan_components = _resolve_component_filter(state.components, component_filter)
+
     _plan_state: dict[str, Any] = {
         "released": False,
         "version": str(state.new_version),
@@ -149,7 +193,7 @@ def plan(
         "head_sha": _head_sha,
         "decision": state.decision,
         "bump_stats": state.bump_stats,
-        "components": state.components,
+        "components": plan_components,
         "blockers": (),
         "registry": None,
     }
@@ -225,5 +269,9 @@ def plan(
         state.decision is not None
         and state.decision.reason not in _BENIGN_NO_RELEASE_REASONS
     )
+    if strict and component_filter and not blocked:
+        # W1.5: --strict on a filtered subset also fails when none of the
+        # selected components would release (per-component CI gating).
+        blocked = not any(c.would_release for c in plan_components)
     if strict and blocked:
         ctx.exit(1)
