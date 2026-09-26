@@ -246,9 +246,7 @@ def test_changelog_default_output_golden(
     """The default changelog template output is byte-exact on a legacy fixture."""
     proj = _build_release_fixture(tmp_path, monkeypatch)
     full_sha = str(Repo(str(proj)).head.commit.hexsha)
-    result = get_cli_runner().invoke(
-        main, ["changelog"], env=_CLI_ENV
-    )
+    result = get_cli_runner().invoke(main, ["changelog"], env=_CLI_ENV)
     assert result.exit_code == 0
     content = (proj / "CHANGELOG.md").read_text(encoding="utf-8").replace("\r\n", "\n")
     expected = "\n".join(_GOLDEN_CHANGELOG_LINES) + "\n"
