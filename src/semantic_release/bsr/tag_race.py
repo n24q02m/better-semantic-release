@@ -40,9 +40,7 @@ class TagRaceGuardError(Exception):
 def _parse_ls_remote(output: object) -> dict[str, str]:
     """Parse `git ls-remote` output into {refname: sha} (peel lines dropped)."""
     if not isinstance(output, str):
-        raise TypeError(
-            f"unexpected ls_remote output type {type(output).__name__}"
-        )
+        raise TypeError(f"unexpected ls_remote output type {type(output).__name__}")
     refs: dict[str, str] = {}
     for raw_line in output.splitlines():
         line = raw_line.strip()
