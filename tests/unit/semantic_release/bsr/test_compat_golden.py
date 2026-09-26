@@ -136,6 +136,14 @@ _FIXTURE_AUTHOR = Actor("demo", "demo@example.com")
 _DEFAULT_BSR_TABLE = "[tool.semantic_release.bsr]\nschema_version = 1\n"
 
 
+_CLI_ENV = {
+    # hvcs/github.py prefers GITHUB_REPOSITORY over the remote URL for
+    # commit links; pin it so dev and CI render identical changelog URLs.
+    "GITHUB_TOKEN": "test-token",
+    "GITHUB_REPOSITORY": "example-owner/example-repo",
+}
+
+
 def _build_release_fixture(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -239,7 +247,7 @@ def test_changelog_default_output_golden(
     proj = _build_release_fixture(tmp_path, monkeypatch)
     full_sha = str(Repo(str(proj)).head.commit.hexsha)
     result = get_cli_runner().invoke(
-        main, ["changelog"], env={"GITHUB_TOKEN": "test-token"}
+        main, ["changelog"], env=_CLI_ENV
     )
     assert result.exit_code == 0
     content = (proj / "CHANGELOG.md").read_text(encoding="utf-8").replace("\r\n", "\n")
@@ -258,7 +266,7 @@ def _version_json_and_changelog(proj: Path) -> tuple[str, str]:
         env={"GITHUB_TOKEN": "test-token"},
     )
     assert json_result.exit_code == 0
-    cl_result = runner.invoke(main, ["changelog"], env={"GITHUB_TOKEN": "test-token"})
+    cl_result = runner.invoke(main, ["changelog"], env=_CLI_ENV)
     assert cl_result.exit_code == 0
     changelog = (
         (proj / "CHANGELOG.md").read_text(encoding="utf-8").replace("\r\n", "\n")
