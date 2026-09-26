@@ -4,6 +4,20 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.9.0:
+
+v1.9.0 (2026-09-26)
+===================
+
+✨ Features
+-----------
+
+* Publish plan schema contract with byte-exact render goldens (W1.3) (`PR#175`_, `dc21769`_)
+
+.. _dc21769: https://github.com/n24q02m/better-semantic-release/commit/dc217690e923a13b33bb72af5ed570d0a061cfdc
+.. _PR#175: https://github.com/n24q02m/better-semantic-release/pull/175
+
+
 .. _changelog-v1.8.0:
 
 v1.8.0 (2026-09-26)
