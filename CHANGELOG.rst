@@ -4,6 +4,27 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.12.0:
+
+v1.12.0 (2026-09-26)
+====================
+
+✨ Features
+-----------
+
+* Block release on tag-race or concurrent-runner drift (W1.6) (`PR#179`_, `34840ee`_)
+
+🪲 Bug Fixes
+------------
+
+* **ownership**: Narrow ls_remote output type fail-closed before parsing (`PR#179`_, `34840ee`_)
+
+* **ownership**: Register W1.6 tag-race modules in upstream manifest (`PR#179`_, `34840ee`_)
+
+.. _34840ee: https://github.com/n24q02m/better-semantic-release/commit/34840eecf310047c7cca1f7dd1d94996bd66ac8a
+.. _PR#179: https://github.com/n24q02m/better-semantic-release/pull/179
+
+
 .. _changelog-v1.11.0:
 
 v1.11.0 (2026-09-26)
