@@ -4,6 +4,20 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.7.5:
+
+v1.7.5 (2026-09-26)
+===================
+
+🪲 Bug Fixes
+------------
+
+* **deps**: Migrate CLI test runner for click 8.2+ and allow click 8.5 (`PR#173`_, `b16c22d`_)
+
+.. _b16c22d: https://github.com/n24q02m/better-semantic-release/commit/b16c22dcb600026513657889c4af0a4266c12f18
+.. _PR#173: https://github.com/n24q02m/better-semantic-release/pull/173
+
+
 .. _changelog-v1.7.4:
 
 v1.7.4 (2026-09-25)
