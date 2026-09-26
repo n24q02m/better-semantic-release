@@ -30,6 +30,7 @@ Field                       Type                         Meaning
 ``tag``                     ``str | null``               The VCS tag ``version`` would produce (config-defined prefix); ``null`` when no release is planned.
 ``is_prerelease``           ``bool``                     ``version`` carries a pre-release segment (``-`` before any ``+`` metadata).
 ``previous_version``        ``str | null``               The most recent released version; ``null`` on an unreleased repository.
+``head_sha``                ``str | null``               HEAD commit the plan was computed from; ``null`` only on a repository with no commits. Consumed by the ``verify --plan`` / ``publish --plan`` drift checks.
 ``decision``                ``object | null``            Why no release happens (see below). ``null`` when ``released`` is ``true`` or on the forced-level path.
 ``bump``                    ``object | null``            Aggregated commit-scan statistics (see below).
 ``components``              ``array``                    Per-component rows for a monorepo component map; empty when not configured.
