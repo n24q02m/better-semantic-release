@@ -245,6 +245,14 @@ reason = "Current fork documentation difference is intentionally retained and co
 gates = ["docs"]
 
 [[ownership]]
+path = "docs/api/plan-schema.rst"
+status = "A"
+kind = "docs"
+owner = "bsr-core"
+reason = "W1.3 public schema contract for the plan JSON document (field reference, stability promise, schema_version rule)."
+gates = ["docs"]
+
+[[ownership]]
 path = "docs/index.rst"
 status = "M"
 kind = "docs"

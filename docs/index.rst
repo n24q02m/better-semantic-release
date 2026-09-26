@@ -74,6 +74,7 @@ Documentation Contents
    What's New <misc/psr_changelog>
    Concepts <concepts/index>
    CLI <api/commands>
+   Release plan schema <api/plan-schema>
    configuration/index
    Release recipes <recipes/index>
    upgrading/index
