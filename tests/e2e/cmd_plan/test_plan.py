@@ -126,13 +126,37 @@ def test_plan_write_artifact(
     plan_file = proj / "release-plan.md"
     result = _run_plan(run_cli, "--format", "markdown", "--write", str(plan_file))
     assert result.exit_code == 0
-    content = plan_file.read_text(encoding="utf-8")
-    assert "## Release plan" in content
-    # The artifact mirrors stdout (rendered plan plus trailing newline).
-    assert (
-        content.replace("\r\n", "\n").strip()
-        == str(result.stdout).replace("\r\n", "\n").strip()
-    )
+    # Byte-exact artifact golden (W1.3): the artifact is the rendered markdown
+    # plus the trailing newline, and stdout carries the same bytes. (The
+    # artifact is written in text mode, so newlines are normalised for the
+    # platform before comparing.)
+    content = plan_file.read_text(encoding="utf-8").replace("\r\n", "\n")
+    stdout = str(result.stdout).replace("\r\n", "\n")
+    assert content == _GOLDEN_MARKDOWN_ARTIFACT
+    assert stdout == _GOLDEN_MARKDOWN_ARTIFACT
+
+
+def test_plan_write_artifact_table_bytes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, run_cli: RunCliFn
+) -> None:
+    proj = _build_repo(tmp_path, monkeypatch)
+    plan_file = proj / "release-plan.txt"
+    result = _run_plan(run_cli, "--format", "table", "--write", str(plan_file))
+    assert result.exit_code == 0
+    content = plan_file.read_text(encoding="utf-8").replace("\r\n", "\n")
+    stdout = str(result.stdout).replace("\r\n", "\n")
+    assert content == _GOLDEN_TABLE_ARTIFACT
+    assert stdout == _GOLDEN_TABLE_ARTIFACT
+
+
+def test_plan_json_stdout_bytes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, run_cli: RunCliFn
+) -> None:
+    """The `--format json` stdout is byte-exact against the schema-v1 serialization."""
+    _build_repo(tmp_path, monkeypatch)
+    stdout = str(_run_plan(run_cli, "--format", "json").stdout)
+    assert stdout == _GOLDEN_JSON_STDOUT
+    assert isinstance(json.loads(stdout), dict)
 
 
 def test_plan_format_parity(
@@ -161,3 +185,60 @@ def test_plan_strict_exit_codes(
     # Blocked (orphan guard) => exit 1 under --strict.
     _build_orphan_repo(tmp_path, monkeypatch)
     assert _run_plan(run_cli, "--strict").exit_code == 1
+
+
+# ---------------------------------------------------------------------------
+# W1.3 byte-exact goldens for the default release fixture (v0.1.0 -> 0.2.0).
+# Each string is the rendered plan plus the trailing newline; stdout and the
+# `--write` artifact must both carry exactly these bytes.
+
+
+_GOLDEN_TABLE_ARTIFACT_LINES = [
+    "better-semantic-release release plan",
+    "  released:         yes",
+    "  version:          0.2.0",
+    "  tag:              v0.2.0",
+    "  previous version: 0.1.0",
+    "  reason:           -",
+    "  level bump:       minor",
+    "  commits:          1",
+    "",
+]
+_GOLDEN_TABLE_ARTIFACT = "\n".join(_GOLDEN_TABLE_ARTIFACT_LINES)
+
+_GOLDEN_MARKDOWN_ARTIFACT_LINES = [
+    "## Release plan",
+    "",
+    "| field | value |",
+    "| --- | --- |",
+    "| released | yes |",
+    "| version | `0.2.0` |",
+    "| tag | `v0.2.0` |",
+    "| previous version | `0.1.0` |",
+    "| reason | - |",
+    "",
+]
+_GOLDEN_MARKDOWN_ARTIFACT = "\n".join(_GOLDEN_MARKDOWN_ARTIFACT_LINES)
+
+_GOLDEN_JSON_STDOUT = """\
+{
+  "schema_version": 1,
+  "released": true,
+  "version": "0.2.0",
+  "tag": "v0.2.0",
+  "is_prerelease": false,
+  "previous_version": "0.1.0",
+  "decision": null,
+  "bump": {
+    "level_bump": "minor",
+    "commit_count": 1,
+    "type_counts": {
+      "features": 1
+    }
+  },
+  "components": [],
+  "blockers": [],
+  "registry": null,
+  "publish_target": null
+}
+"""
