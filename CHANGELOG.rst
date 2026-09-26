@@ -4,6 +4,20 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.11.0:
+
+v1.11.0 (2026-09-26)
+====================
+
+✨ Features
+-----------
+
+* Filter plan subset with repeatable plan --component flag (W1.5) (`PR#178`_, `50029ad`_)
+
+.. _50029ad: https://github.com/n24q02m/better-semantic-release/commit/50029ad2780ec924c2185afad333ec4d08ff65fd
+.. _PR#178: https://github.com/n24q02m/better-semantic-release/pull/178
+
+
 .. _changelog-v1.10.1:
 
 v1.10.1 (2026-09-26)
