@@ -1331,3 +1331,51 @@ kind = "python-test"
 owner = "bsr-g9-docs-examples"
 reason = "Task 9 fixture validation: every recipe TOML block must parse."
 gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/e2e/cmd_plan/__init__.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-tests"
+reason = "W1.2 end-to-end coverage package for the read-only plan command."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/e2e/cmd_plan/test_plan.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-tests"
+reason = "W1.2 end-to-end plan coverage: release, no-release, orphan blocked, --write artifact, format parity, strict exit codes."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/e2e/cmd_verify/__init__.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-tests"
+reason = "W1.2 end-to-end coverage package for the fail-closed verify gate."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/e2e/cmd_verify/test_verify.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-tests"
+reason = "W1.2 end-to-end verify coverage: clean pass, orphan tag fail-closed, offline registry SKIP."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/e2e/cmd_doctor/__init__.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-tests"
+reason = "W1.2 end-to-end coverage package for the doctor diagnostics report."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/e2e/cmd_doctor/test_doctor.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-tests"
+reason = "W1.2 end-to-end doctor coverage: report rendering in all formats plus strict exit codes on a broken fixture."
+gates = ["python-lint", "python-format", "python-test"]
