@@ -4,6 +4,20 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.10.1:
+
+v1.10.1 (2026-09-26)
+====================
+
+🪲 Bug Fixes
+------------
+
+* **test**: Pin GITHUB_REPOSITORY in compat changelog goldens (W1.7) (`PR#177`_, `9509d74`_)
+
+.. _9509d74: https://github.com/n24q02m/better-semantic-release/commit/9509d74e6a03093b75eff69f7404c5cb9b778e73
+.. _PR#177: https://github.com/n24q02m/better-semantic-release/pull/177
+
+
 .. _changelog-v1.10.0:
 
 v1.10.0 (2026-09-26)
