@@ -245,3 +245,123 @@ _GOLDEN_JSON_STDOUT = """\
   "publish_target": null
 }
 """
+
+
+def _build_monorepo_repo(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    components: tuple[tuple[str, str], ...] = (
+        ("api", "apps/api"),
+        ("web", "apps/web"),
+    ),
+    last_commit: str = "feat: api endpoint",
+    last_file: str | None = None,
+) -> Path:
+    """
+    A monorepo released once at `v0.1.0` with a component map; the pending
+    commit touches only the FIRST component's file by default, so that
+    component would release while the others would not (W1.5).
+    """
+    proj = tmp_path / "monorepo"
+    components_toml = "".join(
+        f'[[tool.semantic_release.bsr.components]]\nname = "{name}"\n'
+        f'paths = ["{path}"]\n'
+        for name, path in components
+    )
+    _write(
+        proj / "pyproject.toml",
+        '[project]\nname = "demo"\nversion = "0.1.0"\n\n'
+        "[tool.semantic_release]\nallow_zero_version = true\n"
+        "[tool.semantic_release.bsr]\nschema_version = 1\nsummary = true\n"
+        + components_toml,
+    )
+    component_files = {name: f"{path}/{name}.py" for name, path in components}
+    for file in component_files.values():
+        _write(proj / file, f"print({file!r})\n")
+    repo = Repo.init(proj, initial_branch="main")
+    repo.index.add(["pyproject.toml", *sorted(component_files.values())])
+    repo.index.commit("feat: initial", author=_AUTHOR, committer=_AUTHOR)
+    repo.create_tag("v0.1.0")
+    repo.create_remote("origin", "https://github.com/example-owner/example-repo.git")
+
+    pending = last_file or component_files[components[0][0]]
+    _write(proj / pending, "print('changed')\n")
+    repo.index.add([pending])
+    repo.index.commit(last_commit, author=_AUTHOR, committer=_AUTHOR)
+
+    monkeypatch.chdir(proj)
+    return proj
+
+
+def test_plan_component_filter_single(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, run_cli: RunCliFn
+) -> None:
+    _build_monorepo_repo(tmp_path, monkeypatch)
+    result = _run_plan(run_cli, "--format", "json", "--component", "api")
+    assert result.exit_code == 0
+    doc = json.loads(str(result.stdout))
+    assert [c["name"] for c in doc["components"]] == ["api"]
+    assert doc["components"][0]["would_release"] is True
+
+    table = str(_run_plan(run_cli, "--component", "api").stdout)
+    assert "api" in table
+    assert "web" not in table
+
+
+def test_plan_component_filter_repeatable(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, run_cli: RunCliFn
+) -> None:
+    _build_monorepo_repo(tmp_path, monkeypatch)
+    result = _run_plan(
+        run_cli, "--format", "json", "--component", "web", "--component", "api"
+    )
+    assert result.exit_code == 0
+    doc = json.loads(str(result.stdout))
+    # Rows stay in configured-map order regardless of flag order.
+    assert [c["name"] for c in doc["components"]] == ["api", "web"]
+
+
+def test_plan_component_filter_strict_subset(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, run_cli: RunCliFn
+) -> None:
+    _build_monorepo_repo(tmp_path, monkeypatch)
+    # The pending feat touches apps/api only: api would release, web would not.
+    assert _run_plan(run_cli, "--component", "api", "--strict").exit_code == 0
+    assert _run_plan(run_cli, "--component", "web", "--strict").exit_code == 1
+
+
+def test_plan_component_filter_single_component_map_degrades_cleanly(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, run_cli: RunCliFn
+) -> None:
+    _build_monorepo_repo(
+        tmp_path,
+        monkeypatch,
+        components=(("web", "apps/web"),),
+        last_commit="feat: web page",
+        last_file="apps/web/web.py",
+    )
+    result = _run_plan(run_cli, "--format", "json", "--component", "web")
+    assert result.exit_code == 0
+    doc = json.loads(str(result.stdout))
+    assert [c["name"] for c in doc["components"]] == ["web"]
+    assert doc["components"][0]["would_release"] is True
+    assert _run_plan(run_cli, "--component", "web", "--strict").exit_code == 0
+
+
+def test_plan_component_filter_unknown_name_is_usage_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, run_cli: RunCliFn
+) -> None:
+    _build_monorepo_repo(tmp_path, monkeypatch)
+    result = _run_plan(run_cli, "--component", "nope")
+    assert result.exit_code == 2
+    assert "unknown component(s): nope" in str(result.stdout + result.stderr)
+
+
+def test_plan_component_filter_requires_component_map(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, run_cli: RunCliFn
+) -> None:
+    _build_repo(tmp_path, monkeypatch)
+    result = _run_plan(run_cli, "--component", "api")
+    assert result.exit_code == 2
+    assert "requires a monorepo component map" in str(result.stdout + result.stderr)
