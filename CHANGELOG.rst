@@ -4,6 +4,20 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.8.0:
+
+v1.8.0 (2026-09-26)
+===================
+
+✨ Features
+-----------
+
+* Expose plan/verify GHA surface with e2e coverage (W1.1, W1.2) (`PR#174`_, `cbd359f`_)
+
+.. _cbd359f: https://github.com/n24q02m/better-semantic-release/commit/cbd359f89609a64f29551b6b3783e4c2349456ed
+.. _PR#174: https://github.com/n24q02m/better-semantic-release/pull/174
+
+
 .. _changelog-v1.7.5:
 
 v1.7.5 (2026-09-26)
