@@ -14,6 +14,8 @@ from git import Actor, Repo
 
 from semantic_release.cli.commands.main import main
 
+from tests.conftest import get_cli_runner
+
 if TYPE_CHECKING:
     from pathlib import Path
 
@@ -81,7 +83,7 @@ def _build_monorepo(
 
 
 def _invoke_noop() -> object:
-    return CliRunner(mix_stderr=True).invoke(
+    return CliRunner().invoke(
         main, ["--noop", "version", "--no-commit", "--no-tag", "--no-push"]
     )
 
@@ -159,7 +161,7 @@ def test_summary_stdout_untouched_when_on(
         monkeypatch,
         extra_bsr="\n[tool.semantic_release.bsr]\nsummary = true\n" + _COMPONENTS_TOML,
     )
-    result = CliRunner(mix_stderr=False).invoke(main, ["--noop", "version", "--print"])
+    result = get_cli_runner().invoke(main, ["--noop", "version", "--print"])
     assert result.exit_code == 0
     assert re.fullmatch(r"\d+\.\d+\.\d+(?:[-+].*)?\n", result.stdout)
     assert "release plan" not in result.stdout

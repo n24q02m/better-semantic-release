@@ -59,13 +59,13 @@ def test_explain_off_by_default_keeps_stock_message(
     PSR's misattributed "already been released" wording, unchanged.
     """
     proj = _build_minimal_project(tmp_path, monkeypatch)
-    _print = CliRunner(mix_stderr=True).invoke(main, ["--noop", "version", "--print"])
+    _print = CliRunner().invoke(main, ["--noop", "version", "--print"])
     assert _print.exit_code == 0
     computed_version = _print.output.strip().splitlines()[-1]
     Repo(str(proj)).create_tag(f"v{computed_version}")
     _add_chore_commit(proj)
 
-    result = CliRunner(mix_stderr=True).invoke(
+    result = CliRunner().invoke(
         main, ["--noop", "version", "--no-commit", "--no-tag", "--no-push"]
     )
     assert result.exit_code == 0
@@ -86,13 +86,13 @@ def test_explain_on_reports_no_qualifying_commits_not_already_released(
         monkeypatch,
         extra_pyproject="\n[tool.semantic_release.bsr]\nexplain = true\n",
     )
-    _print = CliRunner(mix_stderr=True).invoke(main, ["--noop", "version", "--print"])
+    _print = CliRunner().invoke(main, ["--noop", "version", "--print"])
     assert _print.exit_code == 0
     computed_version = _print.output.strip().splitlines()[-1]
     Repo(str(proj)).create_tag(f"v{computed_version}")
     _add_chore_commit(proj)
 
-    result = CliRunner(mix_stderr=True).invoke(
+    result = CliRunner().invoke(
         main, ["--noop", "version", "--no-commit", "--no-tag", "--no-push"]
     )
     assert result.exit_code == 0
@@ -113,12 +113,12 @@ def test_explain_on_reports_already_released_noop_for_zero_new_commits(
         monkeypatch,
         extra_pyproject="\n[tool.semantic_release.bsr]\nexplain = true\n",
     )
-    _print = CliRunner(mix_stderr=True).invoke(main, ["--noop", "version", "--print"])
+    _print = CliRunner().invoke(main, ["--noop", "version", "--print"])
     assert _print.exit_code == 0
     computed_version = _print.output.strip().splitlines()[-1]
     Repo(str(proj)).create_tag(f"v{computed_version}")
 
-    result = CliRunner(mix_stderr=True).invoke(
+    result = CliRunner().invoke(
         main, ["--noop", "version", "--no-commit", "--no-tag", "--no-push"]
     )
     assert result.exit_code == 0
@@ -134,7 +134,7 @@ def test_explain_on_prints_why_this_bump_for_a_real_release(
         monkeypatch,
         extra_pyproject="\n[tool.semantic_release.bsr]\nexplain = true\n",
     )
-    result = CliRunner(mix_stderr=True).invoke(
+    result = CliRunner().invoke(
         main, ["--noop", "version", "--no-commit", "--no-tag", "--no-push"]
     )
     assert result.exit_code == 0
@@ -146,7 +146,7 @@ def test_explain_off_prints_no_why_this_bump_line(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     _build_minimal_project(tmp_path, monkeypatch)
-    result = CliRunner(mix_stderr=True).invoke(
+    result = CliRunner().invoke(
         main, ["--noop", "version", "--no-commit", "--no-tag", "--no-push"]
     )
     assert result.exit_code == 0
@@ -161,13 +161,13 @@ def test_explain_strict_mode_also_gets_classified_reason(
         monkeypatch,
         extra_pyproject="\n[tool.semantic_release.bsr]\nexplain = true\n",
     )
-    _print = CliRunner(mix_stderr=True).invoke(main, ["--noop", "version", "--print"])
+    _print = CliRunner().invoke(main, ["--noop", "version", "--print"])
     assert _print.exit_code == 0
     computed_version = _print.output.strip().splitlines()[-1]
     Repo(str(proj)).create_tag(f"v{computed_version}")
     _add_chore_commit(proj)
 
-    result = CliRunner(mix_stderr=True).invoke(
+    result = CliRunner().invoke(
         main, ["--strict", "--noop", "version", "--no-commit", "--no-tag", "--no-push"]
     )
     assert result.exit_code == 2
@@ -191,7 +191,7 @@ def test_explain_on_classifies_orphan_when_guard_disabled(
     )
     repo = Repo(str(proj))
 
-    printed = CliRunner(mix_stderr=True).invoke(main, ["--noop", "version", "--print"])
+    printed = CliRunner().invoke(main, ["--noop", "version", "--print"])
     assert printed.exit_code == 0
     v1 = printed.output.strip().splitlines()[-1]
     repo.create_tag(f"v{v1}")
@@ -200,7 +200,7 @@ def test_explain_on_classifies_orphan_when_guard_disabled(
     (proj / "feature2.txt").write_text("feature 2\n", encoding="utf-8")
     repo.index.add(["feature2.txt"])
     repo.index.commit("feat: add thing 2", author=_AUTHOR, committer=_AUTHOR)
-    printed = CliRunner(mix_stderr=True).invoke(main, ["--noop", "version", "--print"])
+    printed = CliRunner().invoke(main, ["--noop", "version", "--print"])
     assert printed.exit_code == 0
     v2 = printed.output.strip().splitlines()[-1]
     repo.create_tag(f"v{v2}")
@@ -211,7 +211,7 @@ def test_explain_on_classifies_orphan_when_guard_disabled(
     repo.index.commit("feat: add thing 3", author=_AUTHOR, committer=_AUTHOR)
     assert not repo.is_ancestor(repo.tags[f"v{v2}"].commit, repo.head.commit)
 
-    result = CliRunner(mix_stderr=True).invoke(
+    result = CliRunner().invoke(
         main, ["--noop", "version", "--no-commit", "--no-tag", "--no-push"]
     )
     assert result.exit_code == 0  # guard opted out: stays silent (exit 0), like stock

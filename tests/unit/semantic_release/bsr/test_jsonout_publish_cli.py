@@ -17,10 +17,11 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING
 
-from click.testing import CliRunner
 from git import Actor, Repo
 
 from semantic_release.cli.commands.main import main
+
+from tests.conftest import get_cli_runner
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -70,7 +71,7 @@ def _build_repo(
 
 
 def _invoke(*args: str) -> object:
-    return CliRunner(mix_stderr=False).invoke(main, ["--noop", "publish", *args])
+    return get_cli_runner().invoke(main, ["--noop", "publish", *args])
 
 
 def test_publish_json_emits_one_document_on_stdout(
@@ -173,7 +174,7 @@ def test_publish_verbose_logging_does_not_reach_stdout(
 ) -> None:
     """`-vv` is the loudest this CLI gets; the document must still be alone."""
     _build_repo(tmp_path, monkeypatch)
-    result = CliRunner(mix_stderr=False).invoke(
+    result = get_cli_runner().invoke(
         main, ["-vv", "--noop", "publish", "--format", "json"]
     )
 

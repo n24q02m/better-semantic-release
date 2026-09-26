@@ -86,7 +86,7 @@ def _pyproject_toml(extra_bsr: str) -> str:
 
 
 def _print_version() -> str:
-    result = CliRunner(mix_stderr=True).invoke(main, ["--noop", "version", "--print"])
+    result = CliRunner().invoke(main, ["--noop", "version", "--print"])
     assert result.exit_code == 0, result.output
     return next(
         line

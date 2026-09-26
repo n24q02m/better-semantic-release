@@ -11,10 +11,11 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING
 
-from click.testing import CliRunner
 from git import Actor, Repo
 
 from semantic_release.cli.commands.main import main
+
+from tests.conftest import get_cli_runner
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -67,7 +68,7 @@ def _build_repo(
 def _invoke(*args: str) -> object:
     # Env is passed through CliRunner's own env mechanism so the HVCS token
     # resolution sees it regardless of how the runner isolates os.environ.
-    return CliRunner(mix_stderr=False).invoke(
+    return get_cli_runner().invoke(
         main, ["--noop", *args], env={"GH_TOKEN": "test-token"}
     )
 

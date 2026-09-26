@@ -97,7 +97,7 @@ def _print_version() -> str:
     stderr afterwards) -- so pick the printed-version line explicitly rather
     than assuming it is the last line of merged output.
     """
-    result = CliRunner(mix_stderr=True).invoke(main, ["--noop", "version", "--print"])
+    result = CliRunner().invoke(main, ["--noop", "version", "--print"])
     assert result.exit_code == 0, result.output
     return next(
         line
@@ -139,7 +139,7 @@ def test_invalid_component_path_map_blocks_version_before_release(
         ),
     )
 
-    result = CliRunner(mix_stderr=True).invoke(main, ["--noop", "version", "--print"])
+    result = CliRunner().invoke(main, ["--noop", "version", "--print"])
 
     assert result.exit_code != 0
     assert "schema_version" in result.output
@@ -211,7 +211,7 @@ def test_wiring_reaches_both_next_version_and_changelog_call_sites(
     monkeypatch.setattr(version_module, "next_version", _spy_next_version)
     monkeypatch.setattr(ReleaseHistory, "from_git_history", _spy_from_git_history)
 
-    result = CliRunner(mix_stderr=True).invoke(
+    result = CliRunner().invoke(
         main, ["--noop", "version", "--no-commit", "--no-tag", "--no-push"]
     )
     assert result.exit_code == 0, result.output
@@ -240,7 +240,7 @@ def test_wiring_passes_none_to_both_call_sites_when_off(
     monkeypatch.setattr(version_module, "next_version", _spy_next_version)
     monkeypatch.setattr(ReleaseHistory, "from_git_history", _spy_from_git_history)
 
-    result = CliRunner(mix_stderr=True).invoke(
+    result = CliRunner().invoke(
         main, ["--noop", "version", "--no-commit", "--no-tag", "--no-push"]
     )
     assert result.exit_code == 0, result.output

@@ -16,10 +16,11 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING
 
-from click.testing import CliRunner
 from git import Actor, Repo
 
 from semantic_release.cli.commands.main import main
+
+from tests.conftest import get_cli_runner
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -70,7 +71,7 @@ def _build_repo(
 
 
 def _invoke(*args: str) -> object:
-    return CliRunner(mix_stderr=False).invoke(main, ["--noop", "plan", *args])
+    return get_cli_runner().invoke(main, ["--noop", "plan", *args])
 
 
 def test_plan_releases_in_table_format(
