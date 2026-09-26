@@ -30,7 +30,7 @@ dependencies = [
   "click ~= 8.1.0; python_version == '3.8'",
   "click ~= 8.1.0; python_version == '3.9'",
   "click ~= 8.5.0; python_version >= '3.10'",
-  "click-option-group ~= 0.5.0",
+  "click-option-group ~=0.5.9",
   "gitpython ~=3.1",
   "requests ~=2.34",
   "jinja2 ~=3.1",
@@ -92,7 +92,7 @@ test = [
 ]
 dev = [
   "pre-commit >=3.8.0, <5.0.0",
-  "tox ~=4.61",
+  "tox ~=4.63",
   "ruff == 0.6.1"
 ]
 mypy = [
