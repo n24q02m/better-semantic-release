@@ -4,6 +4,20 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.10.0:
+
+v1.10.0 (2026-09-26)
+====================
+
+✨ Features
+-----------
+
+* Consume plan snapshots via verify --plan and publish --plan (W1.4) (`PR#176`_, `29b5c4b`_)
+
+.. _29b5c4b: https://github.com/n24q02m/better-semantic-release/commit/29b5c4ba99270781a76d1ffeb33c6897acaea99a
+.. _PR#176: https://github.com/n24q02m/better-semantic-release/pull/176
+
+
 .. _changelog-v1.9.0:
 
 v1.9.0 (2026-09-26)
