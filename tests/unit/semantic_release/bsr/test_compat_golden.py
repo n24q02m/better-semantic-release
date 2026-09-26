@@ -19,8 +19,18 @@ here.
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
+import pytest
 import yaml
+from git import Actor, Repo
+
+from semantic_release.cli.commands.main import main
+
+from tests.conftest import get_cli_runner
+
+if TYPE_CHECKING:
+    import pytest
 
 from semantic_release.bsr.config import BsrConfig, load_bsr_config
 
@@ -109,3 +119,181 @@ def test_legacy_config_without_bsr_table_loads_with_defaults(tmp_path: Path) -> 
         explain=False,
         actionable_errors=False,
     )
+
+
+# ---------------------------------------------------------------------------
+# W1.7: golden stdout of `version` (machine surface) and the default
+# `changelog` output on a real fixture — the drop-in behavior contract, not
+# just the action.yml wiring pinned above.
+#
+# The fixture pins author/commit DATES so the pending commit sha (and thus
+# the changelog links and release dates) is reproducible; the changelog
+# golden parameterizes only that sha (%SHORT_SHA%/%FULL_SHA%).
+
+_FIXTURE_DATE = "2024-01-15T12:00:00 +0000"
+_FIXTURE_AUTHOR = Actor("demo", "demo@example.com")
+
+_DEFAULT_BSR_TABLE = "[tool.semantic_release.bsr]\nschema_version = 1\n"
+
+
+_CLI_ENV = {
+    # hvcs/github.py prefers GITHUB_REPOSITORY over the remote URL for
+    # commit links; pin it so dev and CI render identical changelog URLs.
+    "GITHUB_TOKEN": "test-token",
+    "GITHUB_REPOSITORY": "example-owner/example-repo",
+}
+
+
+def _build_release_fixture(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    name: str = "proj",
+    bsr_table: str = "",
+) -> Path:
+    """A repo released once at `v0.1.0` with one pending feat commit."""
+    proj = tmp_path / name
+    (proj / "src" / "demo").mkdir(parents=True)
+    (proj / "pyproject.toml").write_text(
+        '[project]\nname = "demo"\nversion = "0.1.0"\n\n'
+        "[tool.semantic_release]\nallow_zero_version = true\n" + bsr_table,
+        encoding="utf-8",
+    )
+    (proj / "src" / "demo" / "__init__.py").write_text(
+        "__version__ = '0.1.0'\n", encoding="utf-8"
+    )
+    repo = Repo.init(proj, initial_branch="main")
+    repo.index.add(["pyproject.toml", "src/demo/__init__.py"])
+    repo.index.commit(
+        "feat: initial release",
+        author=_FIXTURE_AUTHOR,
+        committer=_FIXTURE_AUTHOR,
+        author_date=_FIXTURE_DATE,
+        commit_date=_FIXTURE_DATE,
+    )
+    repo.create_tag("v0.1.0")
+    repo.create_remote("origin", "https://github.com/example-owner/example-repo.git")
+    (proj / "src" / "demo" / "__init__.py").write_text(
+        "__version__ = '0.2.0'\n", encoding="utf-8"
+    )
+    repo.index.add(["src/demo/__init__.py"])
+    repo.index.commit(
+        "feat: add greeting",
+        author=_FIXTURE_AUTHOR,
+        committer=_FIXTURE_AUTHOR,
+        author_date=_FIXTURE_DATE,
+        commit_date=_FIXTURE_DATE,
+    )
+    monkeypatch.chdir(proj)
+    return proj
+
+
+_GOLDEN_VERSION_JSON_LINES = [
+    "{",
+    '  "schema_version": 1,',
+    '  "released": true,',
+    '  "version": "0.2.0",',
+    '  "tag": "v0.2.0",',
+    '  "is_prerelease": false,',
+    '  "previous_version": "0.1.0",',
+    '  "reason": null,',
+    '  "commit_count": 1,',
+    '  "level_bump": "minor",',
+    '  "type_counts": {',
+    '    "features": 1',
+    "  },",
+    '  "components": []',
+    "}",
+]
+
+
+def test_version_json_stdout_golden(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`version --format json` stdout is byte-exact on a legacy fixture."""
+    _build_release_fixture(tmp_path, monkeypatch)
+    result = get_cli_runner().invoke(
+        main,
+        ["--noop", "version", "--format", "json"],
+        env={"GITHUB_TOKEN": "test-token"},
+    )
+    assert result.exit_code == 0
+    assert str(result.stdout) == "\n".join(_GOLDEN_VERSION_JSON_LINES) + "\n"
+
+
+_GOLDEN_CHANGELOG_LINES = [
+    "# CHANGELOG",
+    "",
+    "<!-- version list -->",
+    "",
+    "## Unreleased",
+    "",
+    "### Features",
+    "",
+    "- Add greeting",
+    "  ([`%SHORT_SHA%`](https://github.com/example-owner/example-repo/commit/%FULL_SHA%))",
+    "",
+    "",
+    "## v0.1.0 (2024-01-15)",
+    "",
+    "- Initial Release",
+]
+
+
+def test_changelog_default_output_golden(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The default changelog template output is byte-exact on a legacy fixture."""
+    proj = _build_release_fixture(tmp_path, monkeypatch)
+    full_sha = str(Repo(str(proj)).head.commit.hexsha)
+    result = get_cli_runner().invoke(main, ["changelog"], env=_CLI_ENV)
+    assert result.exit_code == 0
+    content = (proj / "CHANGELOG.md").read_text(encoding="utf-8").replace("\r\n", "\n")
+    expected = "\n".join(_GOLDEN_CHANGELOG_LINES) + "\n"
+    expected = expected.replace("%SHORT_SHA%", full_sha[:7]).replace(
+        "%FULL_SHA%", full_sha
+    )
+    assert content == expected
+
+
+def _version_json_and_changelog(proj: Path) -> tuple[str, str]:
+    runner = get_cli_runner()
+    json_result = runner.invoke(
+        main,
+        ["--noop", "version", "--format", "json"],
+        env={"GITHUB_TOKEN": "test-token"},
+    )
+    assert json_result.exit_code == 0
+    cl_result = runner.invoke(main, ["changelog"], env=_CLI_ENV)
+    assert cl_result.exit_code == 0
+    changelog = (
+        (proj / "CHANGELOG.md").read_text(encoding="utf-8").replace("\r\n", "\n")
+    )
+    return str(json_result.stdout), changelog
+
+
+def test_no_bsr_config_behavior_is_byte_identical(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """
+    Adding an all-default ``[tool.semantic_release.bsr]`` table changes nothing.
+
+    The legacy path (no bsr table at all) and the bsr-defaults path must
+    produce byte-identical `version` JSON stdout and byte-identical default
+    changelog output, modulo the pending commit sha which differs by
+    construction (the pyproject blob itself differs).
+    """
+    import re
+
+    bare = _build_release_fixture(tmp_path, monkeypatch, name="bare")
+    bare_json, bare_changelog = _version_json_and_changelog(bare)
+
+    with_bsr = _build_release_fixture(
+        tmp_path, monkeypatch, name="with_bsr", bsr_table=_DEFAULT_BSR_TABLE
+    )
+    bsr_json, bsr_changelog = _version_json_and_changelog(with_bsr)
+
+    assert bare_json == bsr_json
+
+    sha_re = re.compile(r"\b[0-9a-f]{7,40}\b")
+    assert sha_re.sub("<SHA>", bare_changelog) == sha_re.sub("<SHA>", bsr_changelog)
