@@ -389,6 +389,14 @@ reason = "ReleasePlan spine (universal-release-engine Task 1) unifying summary/e
 gates = ["python-lint", "python-format", "python-type"]
 
 [[ownership]]
+path = "src/semantic_release/bsr/plan_drift.py"
+status = "A"
+kind = "python-source"
+owner = "bsr-core"
+reason = "W1.4 plan-snapshot consumption: strict loader plus verify/publish drift evaluators (spec §4.1C fail-closed)."
+gates = ["python-lint", "python-format", "python-type"]
+
+[[ownership]]
 path = "src/semantic_release/bsr/messages.py"
 status = "A"
 kind = "python-source"
@@ -634,6 +642,14 @@ status = "A"
 kind = "python-test"
 owner = "bsr-tests"
 reason = "Golden schema-v1 + legacy-parity coverage for the ReleasePlan spine."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/test_plan_drift.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-tests"
+reason = "W1.4 unit coverage: strict snapshot loader fail-closed paths and the narrow verify/publish drift definitions."
 gates = ["python-lint", "python-format", "python-test"]
 
 [[ownership]]
@@ -1369,7 +1385,15 @@ path = "tests/e2e/cmd_verify/test_verify.py"
 status = "A"
 kind = "python-test"
 owner = "bsr-tests"
-reason = "W1.2 end-to-end verify coverage: clean pass, orphan tag fail-closed, offline registry SKIP."
+reason = "W1.2 end-to-end verify coverage: clean pass, orphan fail-closed, offline registry skip."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/e2e/test_plan_verify_publish_roundtrip.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-tests"
+reason = "W1.4 end-to-end round-trip: plan --write -> verify --plan -> publish --plan plus per-gate drift fail-closed cases."
 gates = ["python-lint", "python-format", "python-test"]
 
 [[ownership]]

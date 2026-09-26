@@ -153,9 +153,11 @@ def test_plan_json_stdout_bytes(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, run_cli: RunCliFn
 ) -> None:
     """The `--format json` stdout is byte-exact against the schema-v1 serialization."""
-    _build_repo(tmp_path, monkeypatch)
+    proj = _build_repo(tmp_path, monkeypatch)
+    head_sha = str(Repo(str(proj)).head.commit.hexsha)
     stdout = str(_run_plan(run_cli, "--format", "json").stdout)
-    assert stdout == _GOLDEN_JSON_STDOUT
+    # The head anchor is per-run (the fixture's HEAD); every other byte is gold.
+    assert stdout == _GOLDEN_JSON_STDOUT.replace("%HEAD_SHA%", head_sha)
     assert isinstance(json.loads(stdout), dict)
 
 
@@ -228,6 +230,7 @@ _GOLDEN_JSON_STDOUT = """\
   "tag": "v0.2.0",
   "is_prerelease": false,
   "previous_version": "0.1.0",
+  "head_sha": "%HEAD_SHA%",
   "decision": null,
   "bump": {
     "level_bump": "minor",

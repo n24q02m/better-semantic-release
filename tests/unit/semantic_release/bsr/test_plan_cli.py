@@ -101,6 +101,7 @@ def test_plan_json_document_shape(
         "tag",
         "is_prerelease",
         "previous_version",
+        "head_sha",
         "decision",
         "bump",
         "components",
@@ -113,6 +114,7 @@ def test_plan_json_document_shape(
     assert doc["version"] == "0.2.0"
     assert doc["tag"] == "v0.2.0"
     assert doc["previous_version"] == "0.1.0"
+    assert doc["head_sha"]  # W1.4: every plan snapshot carries its HEAD anchor
     assert doc["decision"] is None
     assert doc["bump"]["level_bump"] == "minor"
     assert doc["blockers"] == []

@@ -126,6 +126,10 @@ class ReleasePlan(BaseModel):
     version: str | None = None
     tag: str | None = None
     previous_version: str | None = None
+    # W1.4 (additive, schema v1): HEAD commit the plan was computed from, so
+    # `verify --plan`/`publish --plan` can fail closed on repository drift.
+    # None only when the plan was built without a repository context.
+    head_sha: str | None = None
     decision: DecisionReason | None = None
     bump: BumpSummary | None = None
     components: tuple[ComponentPlanRow, ...] = ()
@@ -150,6 +154,7 @@ class ReleasePlan(BaseModel):
             "tag": self.tag,
             "is_prerelease": self.is_prerelease,
             "previous_version": self.previous_version,
+            "head_sha": self.head_sha,
             "decision": (
                 {"code": self.decision.code, "commit_count": self.decision.commit_count}
                 if self.decision is not None
@@ -343,6 +348,7 @@ def build_release_plan(
     blockers: Sequence[Blocker] = (),
     registry: RegistryStatus | None = None,
     publish_target: PublishTarget | None = None,
+    head_sha: str | None = None,
 ) -> ReleasePlan:
     """
     Build a :class:`ReleasePlan` from the existing decision primitives.
@@ -393,4 +399,5 @@ def build_release_plan(
         blockers=tuple(blockers),
         registry=registry,
         publish_target=publish_target,
+        head_sha=head_sha,
     )

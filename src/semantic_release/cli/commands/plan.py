@@ -25,6 +25,7 @@ import json
 from typing import TYPE_CHECKING, Any
 
 import click
+from git import Repo
 
 from semantic_release.bsr.config import load_bsr_config
 from semantic_release.bsr.doctor import (
@@ -54,17 +55,19 @@ def _emit_plan(doc: Any, output_format: str, write_path: str | None) -> None:
     """Render the plan document for the requested output format."""
     text_out: str | None = None
     if output_format == FORMAT_JSON:
-        click.echo(json.dumps(doc.to_document(), indent=2))
+        # W1.4: the JSON document is also a `--write` artifact (the snapshot
+        # `verify --plan` / `publish --plan` consume), so it flows through the
+        # same render+write path as the human formats.
+        text_out = json.dumps(doc.to_document(), indent=2)
     elif output_format == FORMAT_MARKDOWN:
         text_out = doc.render_markdown()
     else:
         text_out = doc.render_table()
-    if text_out is not None:
-        click.echo(text_out)
-        if write_path is not None:
-            with open(write_path, "w", encoding="utf-8") as fh:  # noqa: PTH123
-                fh.write(text_out)
-                fh.write("\n")
+    click.echo(text_out)
+    if write_path is not None:
+        with open(write_path, "w", encoding="utf-8") as fh:  # noqa: PTH123
+            fh.write(text_out)
+            fh.write("\n")
 
 
 @click.command(name="plan")
@@ -128,11 +131,22 @@ def plan(
     _bsr_cfg = load_bsr_config(opts.config_file)
     state = compute_release_state(runtime=runtime, config=config, bsr_cfg=_bsr_cfg)
 
+    # W1.4: record the HEAD the plan was computed from so the `--plan`
+    # consumers can fail closed on repository drift. A repository without any
+    # commit has no anchor; the field stays null there.
+    try:
+        with Repo(str(runtime.repo_dir)) as _plan_repo:
+            _head_sha: str | None = str(_plan_repo.head.commit.hexsha)
+    except ValueError:
+        # Unborn HEAD (no commits yet): no drift anchor, stays null.
+        _head_sha = None
+
     _plan_state: dict[str, Any] = {
         "released": False,
         "version": str(state.new_version),
         "tag": state.new_version.as_tag(),
         "previous_version": state.previous_version,
+        "head_sha": _head_sha,
         "decision": state.decision,
         "bump_stats": state.bump_stats,
         "components": state.components,
@@ -146,6 +160,7 @@ def plan(
             version=_plan_state["version"],
             tag=_plan_state["tag"],
             previous_version=_plan_state["previous_version"],
+            head_sha=_plan_state["head_sha"],
             decision=_plan_state["decision"],
             bump_stats=_plan_state["bump_stats"],
             components=_plan_state["components"],
