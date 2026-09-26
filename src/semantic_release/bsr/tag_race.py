@@ -37,8 +37,12 @@ class TagRaceGuardError(Exception):
         super().__init__(f"[{code}] {message}")
 
 
-def _parse_ls_remote(output: str) -> dict[str, str]:
+def _parse_ls_remote(output: object) -> dict[str, str]:
     """Parse `git ls-remote` output into {refname: sha} (peel lines dropped)."""
+    if not isinstance(output, str):
+        raise TypeError(
+            f"unexpected ls_remote output type {type(output).__name__}"
+        )
     refs: dict[str, str] = {}
     for raw_line in output.splitlines():
         line = raw_line.strip()
@@ -75,12 +79,8 @@ def check_tag_race(
     try:
         with Repo(str(repo_dir)) as repo:
             output = repo.git.ls_remote(remote_name)
-            if not isinstance(output, str):
-                raise ValueError(
-                    f"unexpected ls_remote output type {type(output).__name__}"
-                )
             refs = _parse_ls_remote(output)
-    except (GitCommandError, ValueError) as exc:
+    except (GitCommandError, ValueError, TypeError) as exc:
         raise TagRaceGuardError(
             code="TAG_RACE_UNCONFIRMED",
             message=(f"could not confirm remote state of '{remote_name}': " f"{exc}"),
