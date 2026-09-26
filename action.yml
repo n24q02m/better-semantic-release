@@ -24,6 +24,22 @@ inputs:
       configuration and execution directory; it does not enable commit path
       filtering. Use [tool.semantic_release.bsr] path_filter for that opt-in.
 
+  mode:
+    default: "version"
+    required: false
+    description: |
+      Selects which read-oriented command the action runs.
+
+      - "version" (default): the classic release flow, unchanged.
+      - "plan": computes the read-only release plan. Writes the machine-readable
+        plan to ``release-plan.json`` in the workspace root, appends a markdown
+        rendering to ``$GITHUB_STEP_SUMMARY`` (when set), and exposes the
+        ``plan_json`` and ``plan_blocked`` outputs. The verdict is exposed
+        through ``plan_blocked``; the step only fails when the ``strict``
+        input is also true.
+      - "verify": runs the fail-closed release-safety gate. Exits non-zero when
+        a policy blocker trips and exposes ``plan_blocked`` for follow-up steps.
+
   github_token:
     required: true
     description: GitHub token used to push release notes and new commits/tags
@@ -141,6 +157,18 @@ outputs:
       this will be an empty string.
     value: ${{ steps.run.outputs.link }}
 
+  plan_blocked:
+    description: |
+      "true" if the release plan or safety gate is blocked (mode "plan" or
+      "verify"); "false" when clean. Empty string in the default "version" mode.
+    value: ${{ steps.run.outputs.plan_blocked }}
+
+  plan_json:
+    description: |
+      Path to the machine-readable release plan (``release-plan.json`` in the
+      workspace root) when mode is "plan"; otherwise an empty string.
+    value: ${{ steps.run.outputs.plan_json }}
+
   previous_version:
     description: |
       The previous version before the release, if a release was or will be made. If no release is detected,
@@ -213,6 +241,7 @@ runs:
         PSR_VENV_BIN: ${{ steps.install.outputs.venv_bin }}
         INPUT_CONFIG_FILE: ${{ inputs.config_file }}
         INPUT_DIRECTORY: ${{ inputs.directory }}
+        INPUT_MODE: ${{ inputs.mode }}
         INPUT_GITHUB_TOKEN: ${{ inputs.github_token }}
         INPUT_GIT_COMMITTER_NAME: ${{ inputs.git_committer_name }}
         INPUT_GIT_COMMITTER_EMAIL: ${{ inputs.git_committer_email }}

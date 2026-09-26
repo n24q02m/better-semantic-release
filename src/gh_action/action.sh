@@ -11,6 +11,17 @@ explicit_run_cmd() {
   "$@"
 }
 
+# Same as explicit_run_cmd, but logs to STDERR: use it when STDOUT is
+# redirected to a data file (plan mode captures the JSON document on stdout).
+explicit_run_cmd_to_stderr() {
+  local cmd_str=""
+  for arg in "$@"; do
+    cmd_str="$cmd_str \"$arg\""
+  done
+  printf '%s\n' "$> ${cmd_str# }" >&2
+  "$@"
+}
+
 # Convert "true"/"false" into command line args, returns "" if not defined
 append_boolean_action_input() {
 	local array_name="$1"
@@ -32,6 +43,25 @@ append_boolean_action_input() {
 
 # Convert inputs to command line arguments
 ROOT_OPTIONS=()
+
+# Select the execution surface: "version" (default, legacy behavior),
+# "plan" (read-only release plan) or "verify" (fail-closed safety gate).
+MODE="${INPUT_MODE:-version}"
+case "$MODE" in
+version | plan | verify) ;;
+*)
+	printf "Error: Input 'mode' must be one of: version, plan, verify\n" >&2
+	exit 1
+	;;
+esac
+
+# Write one GitHub Actions step output (no-op outside Actions where
+# GITHUB_OUTPUT is unset).
+write_step_output() {
+	if [ -n "${GITHUB_OUTPUT:-}" ]; then
+		printf '%s=%s\n' "$1" "$2" >>"$GITHUB_OUTPUT"
+	fi
+}
 
 if ! printf '%s\n' "$INPUT_VERBOSITY" | grep -qE '^[0-9]+$'; then
 	printf "Error: Input 'verbosity' must be a positive integer\n" >&2
@@ -141,6 +171,60 @@ fi
 
 # Copy inputs into correctly-named environment variables
 export GH_TOKEN="${INPUT_GITHUB_TOKEN}"
+
+if [ "$MODE" = "plan" ]; then
+	# Read-only release plan: never mutates anything. The plan always runs with
+	# its own --strict so a blocked plan surfaces through the exit code
+	# (exit 1) while the JSON document is still emitted. The step itself only
+	# fails when the user opted in via the strict input; otherwise the verdict
+	# is exposed through the plan_blocked output.
+	PLAN_JSON_FILE="${GITHUB_WORKSPACE:-$(pwd)}/release-plan.json"
+
+	set +e
+	explicit_run_cmd_to_stderr "$PSR_VENV_BIN/semantic-release" "${ROOT_OPTIONS[@]}" "plan" "--strict" "--format" "json" >"$PLAN_JSON_FILE"
+	plan_rc=$?
+	set -e
+
+	if [ "$plan_rc" -ge 2 ]; then
+		# Usage/crash exit codes: fail loudly without claiming a verdict.
+		exit "$plan_rc"
+	fi
+
+	plan_blocked=false
+	if [ "$plan_rc" -eq 1 ]; then
+		plan_blocked=true
+	fi
+
+	# Human-readable rendering for the job summary (Actions only; deterministic
+	# offline, so both invocations see the same repository state).
+	if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+		explicit_run_cmd_to_stderr "$PSR_VENV_BIN/semantic-release" "${ROOT_OPTIONS[@]}" "plan" "--format" "markdown" >>"$GITHUB_STEP_SUMMARY" || true
+	fi
+
+	write_step_output plan_blocked "$plan_blocked"
+	write_step_output plan_json "$PLAN_JSON_FILE"
+
+	if [ "$INPUT_STRICT" = "true" ] && [ "$plan_blocked" = "true" ]; then
+		exit 1
+	fi
+	exit 0
+fi
+
+if [ "$MODE" = "verify" ]; then
+	# Fail-closed safety gate: verify exits non-zero when a policy blocker
+	# trips. Preserve that exit code while still reporting the verdict.
+	set +e
+	explicit_run_cmd "$PSR_VENV_BIN/semantic-release" "${ROOT_OPTIONS[@]}" "verify"
+	verify_rc=$?
+	set -e
+
+	if [ "$verify_rc" -eq 0 ]; then
+		write_step_output plan_blocked false
+	else
+		write_step_output plan_blocked true
+	fi
+	exit "$verify_rc"
+fi
 
 # Run Semantic Release (explicitly use the GitHub action version)
 explicit_run_cmd "$PSR_VENV_BIN/semantic-release" "${ROOT_OPTIONS[@]}" "version" "${ARGS[@]}"

@@ -58,6 +58,34 @@ def test_action_yml_output_contract() -> None:
         ), f"output {name!r} wiring changed: expected {expected!r}, got {actual!r}"
 
 
+# The W1.1 additive surface: mode input + plan outputs. Additive only -- this
+# test locks that the new surface exists as declared and that the default
+# behavior input cannot silently flip away from "version" (fleet pins @v1).
+ADDED_PLAN_OUTPUTS = ("plan_blocked", "plan_json")
+
+
+def test_action_yml_additive_plan_surface() -> None:
+    """The plan/verify surface is additive: mode defaults to version, new outputs are wired."""
+    action = yaml.safe_load(ACTION_YML.read_text(encoding="utf-8"))
+
+    # New input with the legacy default
+    mode = action["inputs"].get("mode")
+    assert mode is not None, "mode input was removed"
+    assert mode["default"] == "version", "mode default must stay 'version'"
+
+    # New outputs exist and pass through the run step
+    for name in ADDED_PLAN_OUTPUTS:
+        expected = f"${{{{ steps.run.outputs.{name} }}}}"
+        actual = action["outputs"].get(name, {}).get("value")
+        assert (
+            actual == expected
+        ), f"output {name!r} wiring changed: expected {expected!r}, got {actual!r}"
+
+    # The run step actually receives the mode input
+    run_step = next(step for step in action["runs"]["steps"] if step.get("id") == "run")
+    assert "INPUT_MODE" in run_step["env"], "run step env lost INPUT_MODE"
+
+
 def test_legacy_config_without_bsr_table_loads_with_defaults(tmp_path: Path) -> None:
     """
     A legacy pyproject.toml (no ``[tool.semantic_release.bsr]``) still parses.

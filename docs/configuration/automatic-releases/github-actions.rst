@@ -278,6 +278,32 @@ The token should have the following `permissions`_:
 
 ----
 
+.. _gh_actions-psr-inputs-mode:
+
+``mode``
+""""""""
+
+Selects which read-oriented command the action runs:
+
+* ``version`` (default): the classic release flow, unchanged.
+* ``plan``: computes the read-only release plan. The machine-readable plan is
+  written to ``release-plan.json`` in the workspace root (exposed through the
+  :ref:`plan_json <gh_actions-psr-outputs-plan_json>` output), a markdown
+  rendering is appended to ``$GITHUB_STEP_SUMMARY``, and the verdict is
+  exposed through the :ref:`plan_blocked <gh_actions-psr-outputs-plan_blocked>`
+  output. The verdict does not fail the step unless the
+  :ref:`strict <gh_actions-psr-inputs-strict>` input is also true; gate
+  later steps on ``plan_blocked`` instead.
+* ``verify``: runs the fail-closed release-safety gate. The step exits
+  non-zero when a policy blocker trips and exposes ``plan_blocked`` for
+  follow-up steps.
+
+**Required:** ``false``
+
+**Default:** ``"version"``
+
+----
+
 .. _gh_actions-psr-inputs-noop:
 
 ``no_operation_mode``
@@ -560,6 +586,43 @@ The URL link to the release if a release was made, otherwise an empty string.
 
 Example upon release: ``https://github.com/user/repo/releases/tag/v1.2.3``
 Example when no release was made: ``""``
+
+----
+
+.. _gh_actions-psr-outputs-plan_blocked:
+
+``plan_blocked``
+""""""""""""""""
+
+**Type:** ``Literal["true", "false"]``
+
+Whether the release plan or the safety gate is blocked. Only populated by the
+:ref:`mode <gh_actions-psr-inputs-mode>` input (``plan`` or ``verify``); an
+empty string in the default ``version`` mode.
+
+* ``plan`` mode: ``true`` when the plan has blockers (e.g. the orphan-tag
+  guard tripped) or its no-release reason is not benign.
+* ``verify`` mode: ``true`` when any policy blocker tripped (the step also
+  exits non-zero).
+
+Example: ``true``
+
+----
+
+.. _gh_actions-psr-outputs-plan_json:
+
+``plan_json``
+"""""""""""""
+
+**Type:** ``string``
+
+Absolute path to the machine-readable release plan (``release-plan.json`` in
+the workspace root) when :ref:`mode <gh_actions-psr-inputs-mode>` is ``plan``;
+otherwise an empty string. The document follows the schema-v1 ``plan``
+document (see ``--format json`` of the ``plan`` command).
+
+Example upon planning: ``/home/runner/work/repo/repo/release-plan.json``
+Example otherwise: ``""``
 
 ----
 
@@ -1026,6 +1089,67 @@ The equivalent GitHub Action configuration would be:
     manually provide input that triggers the desired version bump.
 
 .. _Publish Action Manual Release Workflow: https://github.com/python-semantic-release/publish-action/blob/main/.github/workflows/release.yml
+
+Release Plan Review Example
+---------------------------
+
+With the :ref:`mode <gh_actions-psr-inputs-mode>` input set to ``plan``, the
+action computes the read-only release plan instead of releasing: the
+machine-readable document is written to ``release-plan.json`` in the workspace
+root, a markdown rendering is appended to the job summary, and the verdict is
+exposed through the ``plan_blocked`` output. This makes the release decision
+reviewable in CI without a Release PR.
+
+.. code:: yaml
+
+  # snippet
+
+  jobs:
+    plan:
+      runs-on: ubuntu-latest
+      permissions:
+        contents: read
+
+      steps:
+        - name: Setup | Checkout Repository
+          uses: actions/checkout@COMMIT_HASH  # v6
+          with:
+            fetch-depth: 0
+
+        - name: Action | Compute Release Plan
+          id: plan
+          uses: python-semantic-release/python-semantic-release@COMMIT_HASH  # v10.6.1
+          with:
+            mode: plan
+            github_token: ${{ secrets.GITHUB_TOKEN }}
+
+        # The markdown rendering is already appended to $GITHUB_STEP_SUMMARY
+        # by the action; publish the machine-readable document as an artifact.
+        - name: Upload | Release Plan Artifact
+          uses: actions/upload-artifact@COMMIT_HASH  # v4.X.X
+          with:
+            name: release-plan
+            path: release-plan.json
+            if-no-files-found: error
+
+        - name: Gate | Block on blocked plan
+          if: steps.plan.outputs.plan_blocked == 'true'
+          run: |
+            echo "Release plan is blocked; see the job summary and release-plan artifact."
+            exit 1
+
+In ``verify`` mode the same action runs the fail-closed release-safety gate
+instead: it exits non-zero on any policy blocker and exposes the verdict
+through ``plan_blocked``, so a plain
+
+.. code:: yaml
+
+  - uses: python-semantic-release/python-semantic-release@COMMIT_HASH  # v10.6.1
+    with:
+      mode: verify
+      github_token: ${{ secrets.GITHUB_TOKEN }}
+
+is enough to gate a protected workflow.
 
 .. _gh_actions-monorepo:
 
