@@ -18,6 +18,8 @@ from git import Actor, Repo
 
 from semantic_release.cli.commands.main import main
 
+from tests.conftest import get_cli_runner
+
 if TYPE_CHECKING:
     from pathlib import Path
 
@@ -72,9 +74,7 @@ def _commit(proj: Path, relpath: str, content: str, message: str) -> None:
 
 def _run_version(*extra_args: str, env: dict[str, str] | None = None) -> object:
     """A REAL (non-`--noop`) `version` run: commits, tags, writes the changelog."""
-    return CliRunner(mix_stderr=True).invoke(
-        main, ["version", "--no-push", *extra_args], env=env
-    )
+    return CliRunner().invoke(main, ["version", "--no-push", *extra_args], env=env)
 
 
 def _tag_names(proj: Path) -> set[str]:
@@ -246,7 +246,7 @@ def test_aggregate_on_stdout_untouched(
     )
     _release_beta_then_stable(proj)
 
-    result = CliRunner(mix_stderr=False).invoke(main, ["version", "--no-push"])
+    result = get_cli_runner().invoke(main, ["version", "--no-push"])
     assert result.exit_code == 0
     assert result.stdout.strip() == "0.2.0"
 

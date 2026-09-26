@@ -62,7 +62,7 @@ def _build_project(
 
 
 def _invoke() -> object:
-    return CliRunner(mix_stderr=True).invoke(
+    return CliRunner().invoke(
         main, ["--noop", "version", "--no-commit", "--no-tag", "--no-push"]
     )
 
@@ -96,7 +96,7 @@ def test_explain_false_matches_no_bsr_table_on_benign_noop(
         monkeypatch,
         extra_pyproject="\n[tool.semantic_release.bsr]\nexplain = false\n",
     )
-    printed = CliRunner(mix_stderr=True).invoke(main, ["--noop", "version", "--print"])
+    printed = CliRunner().invoke(main, ["--noop", "version", "--print"])
     assert printed.exit_code == 0
     computed_version = printed.output.strip().splitlines()[-1]
     Repo(str(proj)).create_tag(f"v{computed_version}")

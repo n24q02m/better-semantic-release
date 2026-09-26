@@ -60,7 +60,7 @@ def test_guard_trip_exits_1(
         raise BsrGuardError("BSR-BOOM-orphan")
 
     monkeypatch.setattr("semantic_release.cli.commands.version.run_guards", _boom)
-    result = CliRunner(mix_stderr=True).invoke(
+    result = CliRunner().invoke(
         main, ["--noop", "version", "--no-commit", "--no-tag", "--no-push"]
     )
     assert result.exit_code == 1
@@ -75,7 +75,7 @@ def test_guard_pass_proceeds(
         "semantic_release.cli.commands.version.run_guards",
         lambda **_kwargs: calls.__setitem__("n", calls["n"] + 1),
     )
-    result = CliRunner(mix_stderr=True).invoke(
+    result = CliRunner().invoke(
         main, ["--noop", "version", "--no-commit", "--no-tag", "--no-push"]
     )
     assert result.exit_code == 0
@@ -97,7 +97,7 @@ def test_guard_trip_writes_no_github_output(
 
     monkeypatch.setattr("semantic_release.cli.commands.version.run_guards", _boom)
     output_file = tmp_path / "gha.out"
-    result = CliRunner(mix_stderr=True).invoke(
+    result = CliRunner().invoke(
         main,
         ["--noop", "version", "--no-commit", "--no-tag", "--no-push"],
         env={"GITHUB_OUTPUT": str(output_file)},
@@ -116,7 +116,7 @@ def _tag_already_computed_version(proj: Path) -> None:
     `previously_released_versions`.
     """
     repo = Repo(str(proj))
-    printed = CliRunner(mix_stderr=True).invoke(main, ["--noop", "version", "--print"])
+    printed = CliRunner().invoke(main, ["--noop", "version", "--print"])
     assert printed.exit_code == 0
     computed_version = printed.output.strip().splitlines()[-1]
     repo.create_tag(f"v{computed_version}")
@@ -142,7 +142,7 @@ def _build_orphaned_tag_project(
     )
     repo = Repo(str(proj))
 
-    printed = CliRunner(mix_stderr=True).invoke(main, ["--noop", "version", "--print"])
+    printed = CliRunner().invoke(main, ["--noop", "version", "--print"])
     assert printed.exit_code == 0
     v1 = printed.output.strip().splitlines()[-1]
     repo.create_tag(f"v{v1}")
@@ -153,7 +153,7 @@ def _build_orphaned_tag_project(
     repo.index.commit(
         "feat: add thing 2", author=Actor("t", "t@t"), committer=Actor("t", "t@t")
     )
-    printed = CliRunner(mix_stderr=True).invoke(main, ["--noop", "version", "--print"])
+    printed = CliRunner().invoke(main, ["--noop", "version", "--print"])
     assert printed.exit_code == 0
     v2 = printed.output.strip().splitlines()[-1]
     assert v2 != v1
@@ -181,7 +181,7 @@ def test_orphan_recompute_escalates_to_exit_1(
     `guard_orphan_tag` enabled (the default), this must fail loud.
     """
     _build_orphaned_tag_project(tmp_path, monkeypatch)
-    result = CliRunner(mix_stderr=True).invoke(
+    result = CliRunner().invoke(
         main, ["--noop", "version", "--no-commit", "--no-tag", "--no-push"]
     )
     assert result.exit_code == 1
@@ -198,7 +198,7 @@ def test_benign_noop_stays_silent(minimal_project: Path) -> None:
     does not cry-wolf on a benign no-op.
     """
     _tag_already_computed_version(minimal_project)
-    result = CliRunner(mix_stderr=True).invoke(
+    result = CliRunner().invoke(
         main, ["--noop", "version", "--no-commit", "--no-tag", "--no-push"]
     )
     assert result.exit_code == 0
@@ -216,7 +216,7 @@ def test_orphan_guard_trip_writes_no_github_output(
     """
     proj = _build_orphaned_tag_project(tmp_path, monkeypatch)
     output_file = proj.parent / "gha.out"
-    result = CliRunner(mix_stderr=True).invoke(
+    result = CliRunner().invoke(
         main,
         ["--noop", "version", "--no-commit", "--no-tag", "--no-push"],
         env={"GITHUB_OUTPUT": str(output_file)},
@@ -234,7 +234,7 @@ def test_benign_noop_still_writes_github_output(minimal_project: Path) -> None:
     """
     _tag_already_computed_version(minimal_project)
     output_file = minimal_project.parent / "gha.out"
-    result = CliRunner(mix_stderr=True).invoke(
+    result = CliRunner().invoke(
         main,
         ["--noop", "version", "--no-commit", "--no-tag", "--no-push"],
         env={"GITHUB_OUTPUT": str(output_file)},
@@ -258,7 +258,7 @@ def test_silent_freeze_opt_out_stays_silent(
         monkeypatch,
         extra_pyproject="\n[tool.semantic_release.bsr]\nguard_orphan_tag = false\n",
     )
-    result = CliRunner(mix_stderr=True).invoke(
+    result = CliRunner().invoke(
         main, ["--noop", "version", "--no-commit", "--no-tag", "--no-push"]
     )
     assert result.exit_code == 0

@@ -63,7 +63,7 @@ def _build_project(
 
 
 def _invoke_print() -> object:
-    return CliRunner(mix_stderr=True).invoke(main, ["--noop", "version", "--print"])
+    return CliRunner().invoke(main, ["--noop", "version", "--print"])
 
 
 class TestValidationErrorAtInitRawConfig:
@@ -311,7 +311,7 @@ class TestPrereleaseBumpMismatchAtVersionCommand:
         monkeypatch.setattr(
             "semantic_release.cli.commands.version.next_version", self._boom
         )
-        result = CliRunner(mix_stderr=True).invoke(main, ["--noop", "version"])
+        result = CliRunner().invoke(main, ["--noop", "version"])
         assert result.exit_code != 0
         assert isinstance(result.exception, ValueError)
         assert "PRERELEASE BUMP MISMATCH" not in result.output
@@ -327,7 +327,7 @@ class TestPrereleaseBumpMismatchAtVersionCommand:
         monkeypatch.setattr(
             "semantic_release.cli.commands.version.next_version", self._boom
         )
-        result = CliRunner(mix_stderr=True).invoke(main, ["--noop", "version"])
+        result = CliRunner().invoke(main, ["--noop", "version"])
         assert result.exit_code == 1
         assert "PRERELEASE BUMP MISMATCH" in result.output
 

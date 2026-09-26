@@ -27,6 +27,8 @@ from semantic_release.bsr import guards
 from semantic_release.bsr.registry import ProbeResult
 from semantic_release.cli.commands.main import main
 
+from tests.conftest import get_cli_runner
+
 if TYPE_CHECKING:
     from pathlib import Path
 
@@ -83,9 +85,7 @@ def _commit(proj: Path, relpath: str, content: str, message: str) -> None:
 
 
 def _run_version(*extra_args: str, env: dict[str, str] | None = None) -> object:
-    return CliRunner(mix_stderr=True).invoke(
-        main, ["version", "--no-push", *extra_args], env=env
-    )
+    return CliRunner().invoke(main, ["version", "--no-push", *extra_args], env=env)
 
 
 def _build_beta_then_stable_fixture(
@@ -243,7 +243,7 @@ def test_default_off_stdout_is_only_the_version(
     """
     shared = _build_beta_then_stable_fixture(tmp_path, monkeypatch)
     monkeypatch.chdir(shared)
-    result = CliRunner(mix_stderr=False).invoke(main, ["version", "--no-push"])
+    result = get_cli_runner().invoke(main, ["version", "--no-push"])
     assert result.exit_code == 0
     assert result.stdout.strip() == "0.2.0"
 

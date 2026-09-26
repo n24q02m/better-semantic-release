@@ -14,10 +14,11 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING
 
-from click.testing import CliRunner
 from git import Actor, Repo
 
 from semantic_release.cli.commands.main import main
+
+from tests.conftest import get_cli_runner
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -91,7 +92,7 @@ def _build_repo(
 
 
 def _invoke(*args: str) -> object:
-    return CliRunner(mix_stderr=False).invoke(
+    return get_cli_runner().invoke(
         main, ["--noop", "version", "--no-commit", "--no-tag", "--no-push", *args]
     )
 
@@ -275,7 +276,7 @@ def test_verbose_logging_does_not_reach_stdout(
     stdout, so this is the case most likely to break the contract in the field.
     """
     _build_repo(tmp_path, monkeypatch)
-    result = CliRunner(mix_stderr=False).invoke(
+    result = get_cli_runner().invoke(
         main,
         [
             "-vv",
