@@ -1411,3 +1411,19 @@ kind = "python-test"
 owner = "bsr-tests"
 reason = "W1.2 end-to-end doctor coverage: report rendering in all formats plus strict exit codes on a broken fixture."
 gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "src/semantic_release/bsr/tag_race.py"
+status = "A"
+kind = "python-source"
+owner = "bsr-w1-tagrace"
+reason = "W1.6 fail-closed tag-race / concurrent-runner guard shared by the version command push path."
+gates = ["python-lint", "python-format", "python-type"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/test_tag_race.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-w1-tagrace"
+reason = "W1.6 guard coverage: tag-race and concurrent-runner drift fail closed before any release mutation."
+gates = ["python-lint", "python-format", "python-test"]

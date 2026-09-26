@@ -46,6 +46,7 @@ from semantic_release.bsr.summary import (
     render_summary_table,
     resolve_components,
 )
+from semantic_release.bsr.tag_race import TagRaceGuardError, check_tag_race
 from semantic_release.changelog.release_history import ReleaseHistory
 from semantic_release.cli.changelog_writer import (
     generate_release_notes,
@@ -973,6 +974,13 @@ def version(  # noqa: C901
     # are disabled, and the changelog generation is disabled or it's not
     # modified, then the HEAD commit will be tagged as a release commit
     # despite not being made by PSR
+    # BSR-PATCH (W1.6, spec §4.6): tag-race / concurrent-runner guard runs at
+    # push time (inside the push block below), after the legacy upstream
+    # branch check, so legacy failure messages stay stable for commit runs.
+    # The guard adds: tag existence on remote (TAG_RACE), branch drift for
+    # tag-only runs (CONCURRENT_RUNNER), fail-closed on unconfirmable remote
+    # state (TAG_RACE_UNCONFIRMED). Opt-out:
+    # [tool.semantic_release.bsr] guard_tag_race = false.
     if create_tag:
         project.git_tag(
             tag_name=new_version.as_tag(),
@@ -1028,6 +1036,38 @@ def version(  # noqa: C901
                 branch=active_branch,
                 noop=opts.noop,
             )
+
+        # BSR-PATCH (W1.6, spec §4.6): tag-race / concurrent-runner guard.
+        # One read-only ls-remote re-read of the remote, fail closed on drift
+        # from the state this run planned from: planned tag already on the
+        # remote (TAG_RACE), remote branch moved since planning
+        # (CONCURRENT_RUNNER — covers tag-only runs with no release commit),
+        # or unconfirmable remote state (TAG_RACE_UNCONFIRMED). Complements
+        # the legacy upstream-branch check above, which only runs when a
+        # release commit was made. Opt-out:
+        # [tool.semantic_release.bsr] guard_tag_race = false.
+        if _bsr_cfg.guard_tag_race and not opts.noop:
+            with Repo(str(runtime.repo_dir)) as _race_repo:
+                try:
+                    _race_branch = _race_repo.active_branch.name
+                except TypeError:
+                    _race_branch = ""  # detached HEAD: skip branch check
+                # At this point any local release commit was already pushed
+                # by git_push_branch above, so the remote branch is expected
+                # to point at the current HEAD in all cases.
+                _expected_remote_head = str(_race_repo.head.commit.hexsha)
+            try:
+                check_tag_race(
+                    runtime.repo_dir,
+                    remote_name=config.remote.name,
+                    branch=_race_branch,
+                    planned_tag=new_version.as_tag(),
+                    planned_head_sha=_expected_remote_head,
+                )
+            except TagRaceGuardError as _race_exc:
+                rprint(f"[bold red]:x: {_race_exc.message}[/bold red]")
+                rprint(f"[bold red]:stop_sign: {_race_exc.remediation}[/bold red]")
+                ctx.exit(1)
 
         if create_tag:
             # push specific tag refspec (that we made) to remote

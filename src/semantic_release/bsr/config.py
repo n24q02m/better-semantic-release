@@ -30,6 +30,7 @@ class BsrConfig:
     schema_version: int = 1
     guard_orphan_tag: bool = True
     guard_registry_collision: bool = True
+    guard_tag_race: bool = True
     registry: str = ""  # "", "pypi", "npm", or "none"
     path_filter: bool = False
     paths: tuple[str, ...] = ()
@@ -78,6 +79,7 @@ def _parse_components(raw_components: object) -> tuple[BsrComponent, ...]:
 _BSR_BOOL_FIELDS = (
     "guard_orphan_tag",
     "guard_registry_collision",
+    "guard_tag_race",
     "path_filter",
     "explain",
     "actionable_errors",
@@ -490,6 +492,7 @@ def load_bsr_config(config_file: str | os.PathLike[str]) -> BsrConfig:
         schema_version=schema_version,
         guard_orphan_tag=bsr.get("guard_orphan_tag", True),
         guard_registry_collision=bsr.get("guard_registry_collision", True),
+        guard_tag_race=bsr.get("guard_tag_race", True),
         registry=bsr.get("registry", ""),
         path_filter=bsr.get("path_filter", False),
         paths=tuple(bsr.get("paths", [])),

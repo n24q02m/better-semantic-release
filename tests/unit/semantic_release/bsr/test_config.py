@@ -398,3 +398,23 @@ def test_publish_unknown_probe_kind_fails_closed(tmp_path: Path) -> None:
     )
     with pytest.raises(InvalidConfiguration, match="probe.kind"):
         load_bsr_config(cfg_file)
+
+
+def test_guard_tag_race_flag(tmp_path: Path):
+    cfg_file = _write(
+        tmp_path,
+        '[tool.semantic_release]\ntag_format = "v{version}"\n'
+        "[tool.semantic_release.bsr]\n"
+        "schema_version = 1\n"
+        "guard_tag_race = false\n",
+    )
+    assert load_bsr_config(cfg_file).guard_tag_race is False
+    tmp_path2 = tmp_path / "second"
+    tmp_path2.mkdir()
+    cfg_file2 = _write(
+        tmp_path2,
+        '[tool.semantic_release]\ntag_format = "v{version}"\n'
+        "[tool.semantic_release.bsr]\n"
+        "schema_version = 1\n",
+    )
+    assert load_bsr_config(cfg_file2).guard_tag_race is True
