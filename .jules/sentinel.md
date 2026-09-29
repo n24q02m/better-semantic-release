@@ -7,3 +7,8 @@
 **Vulnerability:** Outputting the SHA256 hash of the SSH private key (`sha256sum ~/.ssh/signing_key`) in a shell script leaks credential derivatives and fingerprinting metadata to standard output.
 **Learning:** Even if the plaintext key is protected (e.g. avoiding `cat`), emitting cryptographic hashes of secrets into CI/CD build logs exposes fingerprinting data that could be leveraged by attackers.
 **Prevention:** Never compute and print hashes of secrets or sensitive files in CI/CD pipeline scripts.
+
+## 2024-10-15 - Prevent SSH key fingerprint leaks in CI logs
+**Vulnerability:** The `ssh-add` command prints the added key's fingerprint and metadata to standard output, which gets captured and exposed in CI/CD build logs.
+**Learning:** Tools that handle secrets often emit metadata (like hashes or fingerprints) to standard output by default, creating credential derivatives that leak sensitive environment properties.
+**Prevention:** Always redirect standard output of secret-handling commands (like `ssh-add`) to `/dev/null` to ensure build logs remain clean of cryptographic fingerprints.
