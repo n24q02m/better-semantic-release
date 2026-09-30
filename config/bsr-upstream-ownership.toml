@@ -15,6 +15,20 @@ marker = "BSR-PATCH"
 ignored_paths = [".superpowers/"]
 
 [[ownership]]
+path = ".jules/bolt.md"
+status = "M"
+kind = "journal"
+owner = "bsr-tests"
+reason = "Agent persona journal explicitly authorized."
+
+[[ownership]]
+path = "src/semantic_release/bsr/config.py"
+status = "M"
+kind = "source"
+owner = "bsr-stock-patch"
+reason = "Replaced generator overhead with explicit short-circuiting loops."
+
+[[ownership]]
 path = ".github/CODEOWNERS"
 status = "A"
 kind = "other"
