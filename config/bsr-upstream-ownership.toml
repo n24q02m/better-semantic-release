@@ -24,7 +24,7 @@ gates = ["other"]
 
 [[ownership]]
 path = ".jules/sentinel.md"
-status = "M"
+status = "A"
 kind = "other"
 owner = "bsr-tests"
 reason = "Agent persona journal explicitly authorized."
