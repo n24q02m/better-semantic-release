@@ -25,3 +25,7 @@
 ## 2024-10-03 - Avoid any() generator overhead in hot paths
 **Learning:** While `any()` with a generator expression provides lazy evaluation, it introduces generator initialization overhead. In frequently executed hot paths (like checking exclude commit patterns during changelog generation), replacing `any(cond(x) for x in iterable)` with an explicit `for` loop and an `if cond(x): return True` short-circuit avoids this overhead and improves execution speed by ~25-40%.
 **Action:** Use explicit `for` loops with early returns for short-circuit logic in critical, frequently executed methods where generator overhead outweighs the benefits of `any()`.
+
+## 2024-05-30 - Generator Overhead in all()
+**Learning:** Using `all()` or `any()` with a generator expression introduces significant initialization overhead in frequently executed hot-paths.
+**Action:** Replace `all()` and `any()` generator expressions with explicit short-circuiting `for` loops to maximize execution speed when validating configurations or iterating over attributes.
