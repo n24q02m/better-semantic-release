@@ -7,3 +7,8 @@
 **Vulnerability:** Outputting the SHA256 hash of the SSH private key (`sha256sum ~/.ssh/signing_key`) in a shell script leaks credential derivatives and fingerprinting metadata to standard output.
 **Learning:** Even if the plaintext key is protected (e.g. avoiding `cat`), emitting cryptographic hashes of secrets into CI/CD build logs exposes fingerprinting data that could be leveraged by attackers.
 **Prevention:** Never compute and print hashes of secrets or sensitive files in CI/CD pipeline scripts.
+
+## 2026-09-08 - [action.sh SSH Output Leak]
+**Vulnerability:** The GitHub Action shell script does not redirect the output of native secret-handling commands (`ssh-agent` and `ssh-add`), which causes them to emit metadata such as agent PIDs and key fingerprints to standard output by default.
+**Learning:** Native secret-handling commands emit metadata that can be logged in CI environments, leaking credential derivatives.
+**Prevention:** Always redirect standard output (and standard error when appropriate) of secret-handling commands to `/dev/null` in CI/CD scripts to prevent leaking credential derivatives into build logs.
