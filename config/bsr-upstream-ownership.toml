@@ -24,14 +24,6 @@ gates = ["other"]
 
 [[ownership]]
 path = ".jules/sentinel.md"
-status = "A"
-kind = "other"
-owner = "bsr-tests"
-reason = "Agent persona journal explicitly authorized."
-gates = ["other"]
-
-[[ownership]]
-path = ".jules/sentinel.md"
 status = "M"
 kind = "other"
 owner = "bsr-tests"
