@@ -9,9 +9,6 @@
 name: cd
 
 on:
-  push:
-    branches:
-      - main
   schedule:
     - cron: "17 3 * * 1"
   workflow_dispatch:
@@ -29,7 +26,6 @@ on:
         description: Release type (beta-first -- pick stable only when ready to publish for real)
         type: choice
         required: true
-        default: beta
         options:
           - beta
           - stable
@@ -69,9 +65,8 @@ concurrency:
   cancel-in-progress: false
 
 env:
-# Release lane: merge to main auto-publishes stable; beta only via manual dispatch (release_type=beta).
-  # workflow_dispatch keeps release_type as an explicit override.
-  RELEASE_TYPE: ${{ github.event_name == 'push' && 'stable' || inputs.release_type }}
+  # Release lane: dispatch-only (release_type=beta|stable); push never releases.
+  RELEASE_TYPE: ${{ inputs.release_type }}
 
 permissions:
   contents: read
@@ -79,7 +74,7 @@ permissions:
 jobs:
   release:
     name: Release
-    if: github.event_name == 'push' || inputs.operation == 'release'
+    if: inputs.operation == 'release'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -87,7 +82,7 @@ jobs:
     # The environment must be provisioned with reviewers and branch policy before dispatch.
     # Without that external settings gate, GitHub must not be used for publication.
     environment:
-      name: ${{ github.event_name == 'push' && (github.ref_name == 'staging' && 'beta-publish' || 'stable-publish') || (inputs.release_type == 'beta' && 'beta-publish' || 'stable-publish') }}
+      name: ${{ inputs.release_type == 'beta' && 'beta-publish' || 'stable-publish' }}
 
     steps:
       - name: Mint a token from the CI GitHub App
