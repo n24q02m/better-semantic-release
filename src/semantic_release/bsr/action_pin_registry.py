@@ -193,8 +193,9 @@ def _reject_constant(_value: str) -> Any:
 
 def _walk_for_controls(value: Any) -> None:
     if isinstance(value, str):
-        if any(ord(char) < 0x20 for char in value):
-            raise RegistryError("record control character")
+        for char in value:
+            if ord(char) < 0x20:
+                raise RegistryError("record control character")
         return
     if isinstance(value, Mapping):
         for key, child in value.items():
@@ -303,8 +304,9 @@ def _mapping(value: Any, expected: Sequence[str], scope: str) -> Mapping[str, An
 def _text(value: Any, scope: str, *, max_length: int = 4096) -> str:
     if not isinstance(value, str) or not value or len(value) > max_length:
         raise RegistryError(f"record {scope}")
-    if any(ord(char) < 0x20 for char in value):
-        raise RegistryError(f"record {scope}")
+    for char in value:
+        if ord(char) < 0x20:
+            raise RegistryError(f"record {scope}")
     return value
 
 
