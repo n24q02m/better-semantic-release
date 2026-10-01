@@ -266,8 +266,9 @@ def _reject_constant(_value: str) -> Any:
 
 def _walk_for_controls(value: Any) -> None:
     if isinstance(value, str):
-        if any(ord(char) < 0x20 for char in value):
-            raise ManifestError("manifest control character")
+        for char in value:
+            if ord(char) < 0x20:
+                raise ManifestError("manifest control character")
     elif isinstance(value, Mapping):
         for key, child in value.items():
             if not isinstance(key, str):
@@ -313,8 +314,9 @@ def _require_exact_keys(
 def _require_string(value: Any, scope: str, *, max_length: int = 1024) -> str:
     if not isinstance(value, str) or not value or len(value) > max_length:
         raise ManifestError(f"manifest {scope}")
-    if any(ord(char) < 0x20 for char in value):
-        raise ManifestError(f"manifest {scope}")
+    for char in value:
+        if ord(char) < 0x20:
+            raise ManifestError(f"manifest {scope}")
     return value
 
 
