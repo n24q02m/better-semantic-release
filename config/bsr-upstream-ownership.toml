@@ -1427,3 +1427,17 @@ kind = "python-test"
 owner = "bsr-w1-tagrace"
 reason = "W1.6 guard coverage: tag-race and concurrent-runner drift fail closed before any release mutation."
 gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = ".jules/sentinel.md"
+status = "A"
+kind = "journal"
+owner = "bsr-tests"
+reason = "Sentinel journal for security learnings."
+
+[[ownership]]
+path = "src/gh_action/action.sh"
+status = "M"
+kind = "bash"
+owner = "bsr-tests"
+reason = "Action shell script."
