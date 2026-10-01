@@ -1434,10 +1434,4 @@ status = "A"
 kind = "journal"
 owner = "bsr-tests"
 reason = "Sentinel journal for security learnings."
-
-[[ownership]]
-path = "src/gh_action/action.sh"
-status = "M"
-kind = "bash"
-owner = "bsr-tests"
-reason = "Action shell script."
+gates = ["other"]
