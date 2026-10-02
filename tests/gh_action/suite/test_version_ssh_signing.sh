@@ -71,25 +71,6 @@ test_version_ssh_signing() {
         return 1
     fi
 
-    # Evaluate the output to ensure ssh-agent was started successfully
-    if ! printf '%s' "$output" | grep -q "Agent pid"; then
-        # Log the output for debugging purposes
-        log "$output"
-        error "Failed to find ssh-agent start message in the output!"
-        error "\tExpected Message pattern: 'Agent pid'"
-        error "::error:: $test_name failed!"
-        return 1
-    fi
-
-    # Evaluate the output to ensure ssh-add was successful
-    if ! printf '%s' "$output" | grep -q "Identity added"; then
-        # Log the output for debugging purposes
-        log "$output"
-        error "Failed to find ssh-add success message in the output!"
-        error "\tExpected Message pattern: 'Identity added'"
-        error "::error:: $test_name failed!"
-        return 1
-    fi
 
     # Evaluate the output to ensure the expected command is present
     if ! printf '%s' "$output" | grep -q -E "$expected_psr_cmd"; then

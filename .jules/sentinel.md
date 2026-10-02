@@ -7,3 +7,8 @@
 **Vulnerability:** Outputting the SHA256 hash of the SSH private key (`sha256sum ~/.ssh/signing_key`) in a shell script leaks credential derivatives and fingerprinting metadata to standard output.
 **Learning:** Even if the plaintext key is protected (e.g. avoiding `cat`), emitting cryptographic hashes of secrets into CI/CD build logs exposes fingerprinting data that could be leveraged by attackers.
 **Prevention:** Never compute and print hashes of secrets or sensitive files in CI/CD pipeline scripts.
+
+## 2026-09-07 - [action.sh SSH Metadata Leak]
+**Vulnerability:** Native secret-handling commands like ssh-agent and ssh-add emit metadata (such as agent PIDs and key fingerprints) to standard output by default, which may leak into CI/CD build logs.
+**Learning:** Even if the plaintext key is protected, emitting metadata or cryptographic derivatives of secrets into CI/CD build logs exposes fingerprinting data that could be leveraged.
+**Prevention:** Always redirect output of commands like ssh-agent and ssh-add to /dev/null in CI/CD scripts. When evaluating ssh-agent, use `eval "$(ssh-agent -s)" > /dev/null`. Redirecting inside the substitution breaks functionality.
