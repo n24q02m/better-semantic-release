@@ -1427,3 +1427,17 @@ kind = "python-test"
 owner = "bsr-w1-tagrace"
 reason = "W1.6 guard coverage: tag-race and concurrent-runner drift fail closed before any release mutation."
 gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = ".jules/bolt.md"
+status = "M"
+kind = "journal"
+owner = "bsr-tests"
+reason = "Agent persona journal"
+
+[[ownership]]
+path = "src/semantic_release/bsr/component_graph.py"
+status = "M"
+kind = "source"
+owner = "bsr-stock-patch"
+reason = "Performance improvement: O(1) set operations"
