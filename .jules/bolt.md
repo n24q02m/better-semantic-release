@@ -25,3 +25,7 @@
 ## 2024-10-03 - Avoid any() generator overhead in hot paths
 **Learning:** While `any()` with a generator expression provides lazy evaluation, it introduces generator initialization overhead. In frequently executed hot paths (like checking exclude commit patterns during changelog generation), replacing `any(cond(x) for x in iterable)` with an explicit `for` loop and an `if cond(x): return True` short-circuit avoids this overhead and improves execution speed by ~25-40%.
 **Action:** Use explicit `for` loops with early returns for short-circuit logic in critical, frequently executed methods where generator overhead outweighs the benefits of `any()`.
+
+## 2024-05-18 - Fast Component Graph Cascading
+**Learning:** In highly nested cascade or fixed-point loops, using `any()` with generator expressions over small datasets incurs significant Python interpretation overhead compared to native C-level equivalents.
+**Action:** Replace `any(x in A for x in B)` where A is a set with the `not A.isdisjoint(B)` set method. It performs the same boolean check with substantial speedups.
