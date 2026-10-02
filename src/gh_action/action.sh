@@ -148,8 +148,8 @@ if [[ -n "$INPUT_SSH_PUBLIC_SIGNING_KEY" && -n "$INPUT_SSH_PRIVATE_SIGNING_KEY" 
 	)
 
 	# Enable ssh-agent & add signing key
-	eval "$(ssh-agent -s)"
-	ssh-add ~/.ssh/signing_key
+		eval "$(ssh-agent -s)" > /dev/null 2>&1
+		ssh-add ~/.ssh/signing_key > /dev/null 2>&1
 
 	# Create allowed_signers file for git
 	if [ "${INPUT_GIT_COMMITTER_EMAIL:="-"}" = "-" ]; then
