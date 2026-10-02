@@ -1052,13 +1052,6 @@ owner = "bsr-g1-registry"
 reason = "Phase B self-contained composite action for signed remote registry loading."
 gates = ["other"]
 
-[[ownership]]
-path = ".jules/bolt.md"
-status = "A"
-kind = "other"
-owner = "bsr-tests"
-reason = "Journal file for the performance optimization persona."
-gates = ["other"]
 
 [[ownership]]
 path = "src/semantic_release/version/version.py"
@@ -1188,13 +1181,6 @@ owner = "bsr-g5-publish-adapters"
 reason = "Task 5 probe adapter coverage: per-kind classification and fail-closed required fields."
 gates = ["python-lint", "python-format", "python-test"]
 
-[[ownership]]
-path = "src/semantic_release/bsr/component_graph.py"
-status = "A"
-kind = "python-source"
-owner = "bsr-g6-component-graph"
-reason = "Task 6 monorepo-lite: dependency graph with fail-closed cycle checks and release propagation."
-gates = ["python-lint", "python-format", "python-type"]
 
 [[ownership]]
 path = "tests/unit/semantic_release/bsr/test_component_graph.py"
@@ -1430,14 +1416,17 @@ gates = ["python-lint", "python-format", "python-test"]
 
 [[ownership]]
 path = ".jules/bolt.md"
-status = "M"
+status = "A"
 kind = "journal"
 owner = "bsr-tests"
 reason = "Agent persona journal"
+gates = ["other"]
+
 
 [[ownership]]
 path = "src/semantic_release/bsr/component_graph.py"
-status = "M"
-kind = "source"
+status = "A"
+kind = "python-source"
 owner = "bsr-stock-patch"
 reason = "Performance improvement: O(1) set operations"
+gates = ["python-lint", "python-format", "python-test", "python-type"]
