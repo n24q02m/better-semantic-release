@@ -1422,14 +1422,17 @@ gates = ["other"]
 
 [[ownership]]
 path = ".jules/bolt.md"
-status = "M"
+status = "A"
 kind = "journal"
 owner = "bsr-tests"
 reason = "Agent persona journal"
+gates = ["other"]
+
 
 [[ownership]]
 path = "src/semantic_release/bsr/component_graph.py"
-status = "M"
-kind = "source"
+status = "A"
+kind = "python-source"
 owner = "bsr-stock-patch"
 reason = "Performance improvement: O(1) set operations"
+gates = ["python-lint", "python-format", "python-test", "python-type"]
