@@ -17,3 +17,7 @@
 ## 2024-05-23 - Python `any()` Generator Overhead in Dataclass Initialization
 **Learning:** Using `any()` with a generator expression in dataclass `__post_init__` logic introduces unnecessary generator initialization overhead. For validations involving a fixed number of attributes, an explicit boolean chain (e.g., `self.attr1 <= 0 or self.attr2 <= 0`) is significantly faster.
 **Action:** Replace `any()` containing generator expressions for multiple attribute checks with explicit boolean short-circuiting to eliminate generator overhead.
+
+## 2024-05-18 - Fast Component Graph Cascading
+**Learning:** In highly nested cascade or fixed-point loops, using `any()` with generator expressions over small datasets incurs significant Python interpretation overhead compared to native C-level equivalents.
+**Action:** Replace `any(x in A for x in B)` where A is a set with the `not A.isdisjoint(B)` set method. It performs the same boolean check with substantial speedups.
