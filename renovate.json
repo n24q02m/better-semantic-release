@@ -23,11 +23,19 @@
   },
   "packageRules": [
     {
+      "description": "Hold every update for 7 days so a malicious or yanked release is caught before it lands",
+      "matchPackageNames": [
+        "*"
+      ],
+      "minimumReleaseAge": "7 days"
+    },
+    {
       "description": "Pin GitHub Actions to SHA for security",
       "matchManagers": [
         "github-actions"
       ],
-      "pinDigests": true
+      "pinDigests": true,
+      "minimumReleaseAge": "7 days"
     },
     {
       "description": "Auto-merge GitHub Actions digest updates after cooldown",
@@ -51,7 +59,8 @@
         "patch"
       ],
       "groupName": "non-major dependencies",
-      "groupSlug": "non-major"
+      "groupSlug": "non-major",
+      "minimumReleaseAge": "7 days"
     },
     {
       "description": "Auto-merge non-major devDependencies",
@@ -73,7 +82,8 @@
       "matchPackageNames": [
         "python"
       ],
-      "allowedVersions": ">=3.13.0 <3.14.0"
+      "allowedVersions": ">=3.13.0 <3.14.0",
+      "minimumReleaseAge": "7 days"
     },
     {
       "description": "Disable runtime version updates from mise",
@@ -85,14 +95,16 @@
         "node",
         "go"
       ],
-      "enabled": false
+      "enabled": false,
+      "minimumReleaseAge": "7 days"
     },
     {
       "description": "ruff is pinned deliberately in the [dev] extra — the vendored config uses select=[\"ALL\"], so any bump surfaces a wall of new lint errors",
       "matchPackageNames": [
         "ruff"
       ],
-      "enabled": false
+      "enabled": false,
+      "minimumReleaseAge": "7 days"
     }
   ],
   "semanticCommits": "enabled",
