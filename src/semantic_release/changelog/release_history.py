@@ -168,9 +168,15 @@ class ReleaseHistory:
                 )
                 logger.debug("commit has type '%s'", commit_type)
 
-                has_exclusion_match = any(
-                    pattern.match(commit_message) for pattern in exclude_commit_patterns
-                )
+                # Performance Optimization (Bolt):
+                # Using an explicit `for` loop with a short-circuit `break`
+                # avoids the generator initialization overhead of `any(...)`
+                # which is noticeable in this frequently executed hot path.
+                has_exclusion_match = False
+                for pattern in exclude_commit_patterns:
+                    if pattern.match(commit_message):
+                        has_exclusion_match = True
+                        break
 
                 commit_level_bump = (
                     LevelBump.NO_RELEASE
