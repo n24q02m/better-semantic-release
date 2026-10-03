@@ -1427,3 +1427,11 @@ kind = "python-test"
 owner = "bsr-w1-tagrace"
 reason = "W1.6 guard coverage: tag-race and concurrent-runner drift fail closed before any release mutation."
 gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/gh_action/suite/test_version_ssh_signing.sh"
+status = "M"
+kind = "test"
+owner = "bsr-stock-patch"
+reason = "Removing assertions against standard output for ssh-agent and ssh-add because CI logs should not contain ssh metadata."
+gates = ["other"]
