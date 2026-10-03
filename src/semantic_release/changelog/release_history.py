@@ -43,7 +43,7 @@ def _apply_commit_path_filter(
 
 class ReleaseHistory:
     @classmethod
-    def from_git_history(
+    def from_git_history(  # noqa: C901
         cls,
         repo: Repo,
         translator: VersionTranslator,
