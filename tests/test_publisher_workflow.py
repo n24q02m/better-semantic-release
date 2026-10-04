@@ -159,7 +159,7 @@ def test_g1_job_signs_publishes_and_fresh_loads_create_once_pair() -> None:
         if step.get("name") == "Upload signed G1 evidence"
     )
     assert upload["uses"] == (
-        "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02"
+        "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a"
     )
     assert upload["with"]["if-no-files-found"] == "error"
 
@@ -264,7 +264,7 @@ def test_candidate_job_verifies_provenance_and_exports_exact_handoff() -> None:
         step for step in steps if step.get("name") == "Upload candidate handoff"
     )
     assert upload["uses"] == (
-        "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02"
+        "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a"
     )
     assert upload["with"]["path"] == "publisher-image-candidate.json"
     assert upload["with"]["if-no-files-found"] == "error"
