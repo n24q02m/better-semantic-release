@@ -53,6 +53,17 @@
       "minimumReleaseAge": "7 days"
     },
     {
+      "description": "Auto-merge safe update types (patch, digest, pin) across all managers after the 7-day cooldown",
+      "matchUpdateTypes": [
+        "patch",
+        "digest",
+        "pin"
+      ],
+      "automerge": true,
+      "automergeType": "pr",
+      "minimumReleaseAge": "7 days"
+    },
+    {
       "description": "Group all non-major updates",
       "matchUpdateTypes": [
         "minor",
@@ -112,5 +123,6 @@
   "commitMessageAction": "update",
   "commitMessageTopic": "{{depName}}",
   "semanticCommitType": "fix",
-  "semanticCommitScope": "deps"
+  "semanticCommitScope": "deps",
+  "platformAutomerge": true
 }
