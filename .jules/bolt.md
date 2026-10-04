@@ -17,3 +17,7 @@
 ## 2024-05-23 - Python `any()` Generator Overhead in Dataclass Initialization
 **Learning:** Using `any()` with a generator expression in dataclass `__post_init__` logic introduces unnecessary generator initialization overhead. For validations involving a fixed number of attributes, an explicit boolean chain (e.g., `self.attr1 <= 0 or self.attr2 <= 0`) is significantly faster.
 **Action:** Replace `any()` containing generator expressions for multiple attribute checks with explicit boolean short-circuiting to eliminate generator overhead.
+
+## 2024-05-23 - Python `any()` Generator Overhead in String Validation
+**Learning:** Using `any(condition(x) for x in iterable)` for string validation (e.g. checking for control characters) introduces generator overhead. In a hot path like traversing large JSON-like manifests and registries, this can slow down execution significantly.
+**Action:** Replace `any()` containing generator expressions with explicit `for` loops that use explicit boolean short-circuiting to eliminate generator overhead.
