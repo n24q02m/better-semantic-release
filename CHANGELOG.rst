@@ -4,6 +4,62 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.12.1-beta.1:
+
+v1.12.1-beta.1 (2026-10-04)
+===========================
+
+🪲 Bug Fixes
+------------
+
+* Assign ownership gate to test_version_ssh_signing.sh (`22a5e3d`_)
+
+* Hold every Renovate update for 7 days (`PR#192`_, `bc99a32`_)
+
+* Make release dispatch-only (remove push-triggered stable) (`PR#185`_, `2c3fe83`_)
+
+* Secure ssh metadata from standard output (`22a5e3d`_)
+
+* **deps**: Update actions/setup-python action to v7 (`3d0d1e5`_)
+
+* **deps**: Update actions/upload-artifact action to v7 (`ece0c3d`_)
+
+* **deps**: Update astral-sh/setup-uv action to v10 (`95ab6a8`_)
+
+* **deps**: Update non-major dependencies (`27530bb`_)
+
+* **deps**: Update python:3.13-slim-bookworm Docker digest to 2325bb2 (`e8ff9a7`_)
+
+* **gh-action**: Redirect ssh-agent/ssh-add output to prevent SSH metadata leak in CI logs
+  (`22a5e3d`_)
+
+⚡ Performance Improvements
+---------------------------
+
+* Replace any() generator with explicit loop in hot path (`b9372c7`_)
+
+* **bsr**: Replace any() generators with explicit loops in registry/publisher control-char
+  validation (`dfd3ef7`_)
+
+* **bsr**: Use set isdisjoint for component graph release propagation (`734e0de`_)
+
+* **changelog**: Replace any() generator with explicit loop in commit exclusion filter (`b9372c7`_)
+
+.. _22a5e3d: https://github.com/n24q02m/better-semantic-release/commit/22a5e3db3f3621bd24516d92920cef8900ddb0bb
+.. _27530bb: https://github.com/n24q02m/better-semantic-release/commit/27530bb82cbe4c8883391d59e04fcf827bf4c07f
+.. _2c3fe83: https://github.com/n24q02m/better-semantic-release/commit/2c3fe833b155e26aff5aa8c6b0c296104bb2ba60
+.. _3d0d1e5: https://github.com/n24q02m/better-semantic-release/commit/3d0d1e568814bf429aace9fd3f6784cbe3d75957
+.. _734e0de: https://github.com/n24q02m/better-semantic-release/commit/734e0de7fdd97f84d615d68d7cbbfdaf12e43107
+.. _95ab6a8: https://github.com/n24q02m/better-semantic-release/commit/95ab6a83ed0786b78804613ace757681b2f9e0ff
+.. _b9372c7: https://github.com/n24q02m/better-semantic-release/commit/b9372c76b406e390a88a7f89b01455ae89f0fc97
+.. _bc99a32: https://github.com/n24q02m/better-semantic-release/commit/bc99a32e0f2ffade7c6b89f490c40d1dd3b59bf6
+.. _dfd3ef7: https://github.com/n24q02m/better-semantic-release/commit/dfd3ef712e9d66d9e67988797341ba156c899904
+.. _e8ff9a7: https://github.com/n24q02m/better-semantic-release/commit/e8ff9a7e10384ba8b930d1eccba1dd80903c8d69
+.. _ece0c3d: https://github.com/n24q02m/better-semantic-release/commit/ece0c3d9479eae3416c4a9618076a0dd1a2d5349
+.. _PR#185: https://github.com/n24q02m/better-semantic-release/pull/185
+.. _PR#192: https://github.com/n24q02m/better-semantic-release/pull/192
+
+
 .. _changelog-v1.12.0:
 
 v1.12.0 (2026-09-26)
