@@ -68,7 +68,11 @@ def _parse_components(raw_components: object) -> tuple[BsrComponent, ...]:
             raise ValueError(f"duplicate component id: {name}")
         raw_paths = raw_component.get("paths", [])
         if not isinstance(raw_paths, list):
-            raise ValueError(f"components[{index}].paths must be an array of strings")
+            # NOTE: keep ValueError (not TypeError) for consistency with the
+            # surrounding component validation errors in this function.
+            raise ValueError(  # noqa: TRY004
+                f"components[{index}].paths must be an array of strings"
+            )
         for path in raw_paths:
             if not isinstance(path, str) or not path.strip():
                 raise ValueError(
@@ -356,6 +360,20 @@ def _parse_publisher_entries(
     return publishers
 
 
+def _validate_bsr_paths(bsr: Mapping[str, object], config_path: Path) -> None:
+    if "paths" not in bsr:
+        return
+    if not isinstance(bsr["paths"], list):
+        raise InvalidConfiguration(
+            f"{config_path}: [tool.semantic_release.bsr].paths must be an array of strings"
+        )
+    for path in bsr["paths"]:
+        if not isinstance(path, str) or not path.strip():
+            raise InvalidConfiguration(
+                f"{config_path}: [tool.semantic_release.bsr].paths must be an array of strings"
+            )
+
+
 def _validate_bsr_table(bsr: Mapping[str, object], config_path: Path) -> int:
     unknown = set(bsr) - _BSR_FIELDS
     if unknown:
@@ -377,16 +395,7 @@ def _validate_bsr_table(bsr: Mapping[str, object], config_path: Path) -> int:
         raise InvalidConfiguration(
             f"{config_path}: [tool.semantic_release.bsr].registry must be a string"
         )
-    if "paths" in bsr:
-        if not isinstance(bsr["paths"], list):
-            raise InvalidConfiguration(
-                f"{config_path}: [tool.semantic_release.bsr].paths must be an array of strings"
-            )
-        for path in bsr["paths"]:
-            if not isinstance(path, str) or not path.strip():
-                raise InvalidConfiguration(
-                    f"{config_path}: [tool.semantic_release.bsr].paths must be an array of strings"
-                )
+    _validate_bsr_paths(bsr, config_path)
     if "stable_notes_scope" in bsr and (
         not isinstance(bsr["stable_notes_scope"], str)
         or bsr["stable_notes_scope"] not in {"line", "since_stable"}
