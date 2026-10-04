@@ -4,6 +4,19 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.12.1-beta.2:
+
+v1.12.1-beta.2 (2026-10-04)
+===========================
+
+🪲 Bug Fixes
+------------
+
+* **cd**: Classify package-source and test drift for registry freshness (`a7b9c93`_)
+
+.. _a7b9c93: https://github.com/n24q02m/better-semantic-release/commit/a7b9c93a7e36af27b558277db3a91f6fbbcd4d42
+
+
 .. _changelog-v1.12.1-beta.1:
 
 v1.12.1-beta.1 (2026-10-04)
