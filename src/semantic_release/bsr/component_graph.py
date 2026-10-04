@@ -168,7 +168,8 @@ def propagate_releases(
         for node in graph.nodes:
             if node.name in released:
                 continue
-            if any(dep in released for dep in node.depends_on):
+            # Performance optimization: use O(1) set intersection instead of O(N^2) any() with generator expression
+            if not released.isdisjoint(node.depends_on):
                 released.add(node.name)
                 result.append(node.name)
                 changed_this_round = True
