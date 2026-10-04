@@ -67,10 +67,13 @@ def _parse_components(raw_components: object) -> tuple[BsrComponent, ...]:
         if name in seen:
             raise ValueError(f"duplicate component id: {name}")
         raw_paths = raw_component.get("paths", [])
-        if not isinstance(raw_paths, list) or not all(
-            isinstance(path, str) and path.strip() for path in raw_paths
-        ):
+        if not isinstance(raw_paths, list):
             raise ValueError(f"components[{index}].paths must be an array of strings")
+        for path in raw_paths:
+            if not isinstance(path, str) or not path.strip():
+                raise ValueError(
+                    f"components[{index}].paths must be an array of strings"
+                )
         seen.add(name)
         components.append(BsrComponent(name=name, paths=tuple(raw_paths)))
     return tuple(components)
@@ -332,12 +335,15 @@ def _parse_publisher_entries(
                 + ", ".join(sorted(_PUBLISH_PUBLISHER_KINDS))
             )
         raw_command = raw.get("command", [])
-        if not isinstance(raw_command, list) or not all(
-            isinstance(part, str) for part in raw_command
-        ):
+        if not isinstance(raw_command, list):
             raise InvalidConfiguration(
                 f"{config_path}: {label}.command must be an array of strings"
             )
+        for part in raw_command:
+            if not isinstance(part, str):
+                raise InvalidConfiguration(
+                    f"{config_path}: {label}.command must be an array of strings"
+                )
         publishers.append(
             BsrPublishCommandConfig(
                 kind=kind,
@@ -371,13 +377,16 @@ def _validate_bsr_table(bsr: Mapping[str, object], config_path: Path) -> int:
         raise InvalidConfiguration(
             f"{config_path}: [tool.semantic_release.bsr].registry must be a string"
         )
-    if "paths" in bsr and (
-        not isinstance(bsr["paths"], list)
-        or not all(isinstance(path, str) and path.strip() for path in bsr["paths"])
-    ):
-        raise InvalidConfiguration(
-            f"{config_path}: [tool.semantic_release.bsr].paths must be an array of strings"
-        )
+    if "paths" in bsr:
+        if not isinstance(bsr["paths"], list):
+            raise InvalidConfiguration(
+                f"{config_path}: [tool.semantic_release.bsr].paths must be an array of strings"
+            )
+        for path in bsr["paths"]:
+            if not isinstance(path, str) or not path.strip():
+                raise InvalidConfiguration(
+                    f"{config_path}: [tool.semantic_release.bsr].paths must be an array of strings"
+                )
     if "stable_notes_scope" in bsr and (
         not isinstance(bsr["stable_notes_scope"], str)
         or bsr["stable_notes_scope"] not in {"line", "since_stable"}
