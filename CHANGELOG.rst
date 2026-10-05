@@ -4,6 +4,28 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.12.1-beta.4:
+
+v1.12.1-beta.4 (2026-10-05)
+===========================
+
+🪲 Bug Fixes
+------------
+
+* Sync PUBLISHER_DIGEST test constant to pinned e35ecb3 (`PR#198`_, `d955490`_)
+
+* **deps**: Update pytest-mock to ~=3.16 (`PR#197`_, `74437d0`_)
+
+* **tests**: Sync PUBLISHER_DIGEST constant to pinned candidate e35ecb3 (`PR#199`_, `ab6c3fb`_)
+
+.. _74437d0: https://github.com/n24q02m/better-semantic-release/commit/74437d0e2a56f20fd37ec57e2811518d6246bef9
+.. _ab6c3fb: https://github.com/n24q02m/better-semantic-release/commit/ab6c3fbacb41a9a990fc6968afeb70abe8274268
+.. _d955490: https://github.com/n24q02m/better-semantic-release/commit/d95549051a5d163e947b47a093a491f548c407fa
+.. _PR#197: https://github.com/n24q02m/better-semantic-release/pull/197
+.. _PR#198: https://github.com/n24q02m/better-semantic-release/pull/198
+.. _PR#199: https://github.com/n24q02m/better-semantic-release/pull/199
+
+
 .. _changelog-v1.12.1-beta.3:
 
 v1.12.1-beta.3 (2026-10-04)
