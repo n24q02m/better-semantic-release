@@ -1438,9 +1438,9 @@ reason = "Performance improvement: O(1) set operations"
 gates = ["python-lint", "python-format", "python-test", "python-type"]
 
 [[ownership]]
-path = ".jules/bolt.md"
+path = "src/semantic_release/commit_parser/conventional/parser_monorepo.py"
 status = "M"
-kind = "journal"
-owner = "bsr-tests"
-reason = "Bolt performance learning journal."
-gates = ["other"]
+kind = "python-source"
+owner = "bsr-stock-patch"
+reason = "Performance optimization: replace any() generator with explicit for-loops"
+gates = ["python-lint", "python-format", "python-test", "python-type"]
