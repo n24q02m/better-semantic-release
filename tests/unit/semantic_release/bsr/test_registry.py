@@ -95,12 +95,15 @@ def test_http_status_real_server_returns_status(status_code, monkeypatch):
     # Bypass the SSRF protection temporarily for this test
     # since it specifically tests a real local server.
     import urllib.parse
+
     original_urlparse = urllib.parse.urlparse
+
     def _mock_urlparse(url_str):
         parsed = original_urlparse(url_str)
         if parsed.hostname == "127.0.0.1":
             return parsed._replace(netloc="example.com:0")
         return parsed
+
     monkeypatch.setattr(urllib.parse, "urlparse", _mock_urlparse)
 
     with _local_http_server(status_code) as url:
@@ -113,12 +116,15 @@ def test_http_status_connection_failure_returns_none(monkeypatch):
     failure, without touching the internet.
     """
     import urllib.parse
+
     original_urlparse = urllib.parse.urlparse
+
     def _mock_urlparse(url_str):
         parsed = original_urlparse(url_str)
         if parsed.hostname == "127.0.0.1":
             return parsed._replace(netloc="example.com:0")
         return parsed
+
     monkeypatch.setattr(urllib.parse, "urlparse", _mock_urlparse)
 
     assert reg._http_status(_closed_port_url(), timeout=2.0) is None
@@ -131,7 +137,10 @@ def test_http_status_ssrf_returns_none():
     """
     assert reg._http_status("http://127.0.0.1:80/", timeout=2.0) is None
     assert reg._http_status("http://localhost:80/", timeout=2.0) is None
-    assert reg._http_status("http://169.254.169.254/latest/meta-data/", timeout=2.0) is None
+    assert (
+        reg._http_status("http://169.254.169.254/latest/meta-data/", timeout=2.0)
+        is None
+    )
 
 
 def test_http_status_invalid_scheme_returns_none():
