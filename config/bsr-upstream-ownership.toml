@@ -1436,3 +1436,11 @@ kind = "python-source"
 owner = "bsr-stock-patch"
 reason = "Performance improvement: O(1) set operations"
 gates = ["python-lint", "python-format", "python-test", "python-type"]
+
+[[ownership]]
+path = ".jules/bolt.md"
+status = "M"
+kind = "journal"
+owner = "bsr-tests"
+reason = "Bolt performance learning journal."
+gates = ["other"]

@@ -29,3 +29,6 @@
 ## 2024-05-18 - Fast Component Graph Cascading
 **Learning:** In highly nested cascade or fixed-point loops, using `any()` with generator expressions over small datasets incurs significant Python interpretation overhead compared to native C-level equivalents.
 **Action:** Replace `any(x in A for x in B)` where A is a set with the `not A.isdisjoint(B)` set method. It performs the same boolean check with substantial speedups.
+## 2024-05-18 - Generator Overhead in Hot Paths
+**Learning:** `any()` with a generator expression introduces significant initialization overhead in frequently executed hot paths (like evaluating every file in every commit).
+**Action:** Replace `any()` with explicit `for` loops and short-circuit breaks in high-frequency validation logic.
