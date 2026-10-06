@@ -1,0 +1,58 @@
+# Upstream sync drift gate (W2.4) -- dispatch-only, manual.
+#
+# Recomputes the fork-vs-upstream module divergence inventory and compares
+# it against config/bsr-upstream-sync-golden.json. Run after pulling the
+# upstream remote, or periodically; a stale golden means upstream moved or
+# local stock files drifted -- refresh deliberately, never silently.
+#
+# Prerequisite: a git remote named `upstream` pointing at
+# python-semantic-release/python-semantic-release.
+
+name: upstream-sync-check
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Upstream ref to compare against (owner:ref or plain ref)"
+        required: false
+        default: "python-semantic-release:master"
+      refresh:
+        description: "Re-pin the golden to the current inventory"
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  upstream-sync:
+    name: compare fork vs upstream
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set up upstream remote
+        run: |
+          git remote add upstream \
+            https://github.com/python-semantic-release/python-semantic-release.git
+          git config user.name "bsr-upstream-sync"
+          git config user.email "bsr-upstream-sync@users.noreply.github.com"
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          python-version: "3.13"
+      - name: Install project
+        run: uv sync --frozen
+      - name: Compare against golden
+        run: |
+          uv run python scripts/upstream_sync.py \
+            --ref "${{ inputs.ref }}" \
+            ${{ inputs.refresh && '--refresh' || '--check' }}
+      - name: Upload refreshed golden
+        if: inputs.refresh
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: bsr-upstream-sync-golden
+          path: config/bsr-upstream-sync-golden.json

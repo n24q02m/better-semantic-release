@@ -14,17 +14,27 @@ point. Use `--offline` for deterministic CI runs.
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import click
 from git import Repo
 from git.exc import GitCommandError
 
+from semantic_release.bsr.commit_presets import (
+    CommitPresetError,
+    commit_subjects_since_latest_tag,
+    load_preset,
+    validate_subjects,
+)
 from semantic_release.bsr.config import load_bsr_config
 from semantic_release.bsr.doctor import (
     _LIVE_PROBE,
     SEVERITY_BLOCKER,
+    SEVERITY_INFO,
+    SEVERITY_WARNING,
     STATUS_FAIL,
+    STATUS_PASS,
     CheckResult,
     DoctorReport,
     check_branch_config,
@@ -45,9 +55,112 @@ from semantic_release.errors import MissingGitRemote, NotAReleaseBranch
 if TYPE_CHECKING:  # pragma: no cover
     from click import Context
 
+    from semantic_release.bsr.commit_presets import (
+        CommitAudit,
+    )
     from semantic_release.bsr.doctor import DoctorReport as _DoctorReport  # noqa: F401
     from semantic_release.bsr.plan import ReleasePlan
     from semantic_release.cli.cli_context import CliContextObj
+
+
+_MAX_VIOLATION_ROWS = 5
+
+
+def _commit_preset_checks(
+    spec: str,
+    repo_dir: object,
+) -> list[CheckResult]:
+    """
+    W2.3 commit-preset rows: validate pending commits against the preset.
+
+    Mode semantics: `parse` always reports PASS (observational), `warn` reports
+    violations as warning-severity rows, `reject` as blocker rows. A spec that
+    cannot be resolved fails closed as a blocker (misconfiguration, not drift).
+    """
+    try:
+        preset = load_preset(spec)
+    except CommitPresetError as exc:
+        return [
+            CheckResult(
+                code="COMMIT_PRESET",
+                severity=SEVERITY_BLOCKER,
+                status=STATUS_FAIL,
+                what="commit preset could not be loaded",
+                why=str(exc),
+                fix="pass a built-in name or a readable TOML preset pack",
+            )
+        ]
+
+    subjects, base_desc = commit_subjects_since_latest_tag(Path(str(repo_dir)))
+    audit: CommitAudit = validate_subjects(preset, list(subjects))
+
+    summary = (
+        f"{audit.passed_count}/{audit.total} commits after {base_desc} "
+        f"conform to preset '{preset.name}' (mode={preset.mode})"
+    )
+    histogram = (
+        f" types: {', '.join(f'{t}x{n}' for t, n in audit.types.items())}"
+        if audit.types
+        else ""
+    )
+
+    if preset.mode == "parse":
+        detail = (
+            f"{len(audit.violations)} non-conforming"
+            if audit.violations
+            else "all conform"
+        )
+        return [
+            CheckResult(
+                code="COMMIT_PRESET",
+                severity=SEVERITY_INFO,
+                status=STATUS_PASS,
+                what=f"{summary} -- {detail}{histogram}",
+            )
+        ]
+
+    severity = SEVERITY_WARNING if preset.mode == "warn" else SEVERITY_BLOCKER
+    if not audit.violations:
+        return [
+            CheckResult(
+                code="COMMIT_PRESET",
+                severity=severity,
+                status=STATUS_PASS,
+                what=f"{summary}{histogram}",
+            )
+        ]
+
+    rows = [
+        CheckResult(
+            code="COMMIT_PRESET",
+            severity=severity,
+            status=STATUS_FAIL,
+            what=(
+                f"{len(audit.violations)}/{audit.total} commits after "
+                f"{base_desc} do not conform to preset '{preset.name}'"
+            ),
+            fix="rewrite non-conforming commits before release, or pick a matching preset",
+        )
+    ]
+    rows.extend(
+        CheckResult(
+            code="COMMIT_PRESET",
+            severity=severity,
+            status=STATUS_FAIL,
+            what=f"{violation.sha[:8]} {violation.subject}",
+        )
+        for violation in audit.violations[:_MAX_VIOLATION_ROWS]
+    )
+    if len(audit.violations) > _MAX_VIOLATION_ROWS:
+        rows.append(
+            CheckResult(
+                code="COMMIT_PRESET",
+                severity=severity,
+                status=STATUS_FAIL,
+                what=f"... and {len(audit.violations) - _MAX_VIOLATION_ROWS} more",
+            )
+        )
+    return rows
 
 
 def _active_branch(repo_dir: object) -> str:
@@ -148,12 +261,21 @@ def _print_report(report: DoctorReport, output_format: str) -> None:
         "planned tag already exists)."
     ),
 )
+@click.option(
+    "--commit-preset",
+    "commit_preset",
+    type=str,
+    default=None,
+    metavar="SPEC",
+    help="Validate commits since the latest tag against a commit-message preset.",
+)
 @click.pass_obj
 def verify(
     cli_ctx: CliContextObj,
     output_format: str = "table",
     offline: bool = False,
     plan_path: str | None = None,
+    commit_preset: str | None = None,
 ) -> None:
     """
     Enforce the release-safety policy against the current repository state.
@@ -243,6 +365,10 @@ def verify(
             current_version=str(state.new_version),
         )
     )
+
+    # W2.3: commit-preset rows (reject-severity per the resolved preset mode).
+    if commit_preset is not None:
+        checks.extend(_commit_preset_checks(commit_preset, runtime.repo_dir))
 
     checks.append(check_hvcs_token(runtime.hvcs_client, needs_release=True))
 

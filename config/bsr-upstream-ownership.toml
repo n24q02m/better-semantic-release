@@ -1498,3 +1498,50 @@ kind = "python-test"
 owner = "bsr-w2-oci-publisher"
 reason = "Wave-2 OCI publisher: registration validation, publish decision table, deterministic tar layout."
 gates = ["python-lint", "python-format", "python-test"]
+path = "src/semantic_release/bsr/commit_presets.py"
+status = "A"
+kind = "python-source"
+owner = "bsr-w2-presets"
+reason = "Wave-2 commit presets (W2.3): builtin conventional/commitizen/gitmoji presets, TOML packs, audit API."
+gates = ["python-lint", "python-format", "python-type"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/cli/test_verify_commit_preset.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-w2-presets"
+reason = "Wave-2 commit presets: CLI wiring coverage for the --commit-preset option rows."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/test_commit_presets.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-w2-presets"
+reason = "Wave-2 commit presets: preset loading, matchers, audits, repo-range collection."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "scripts/upstream_sync.py"
+status = "A"
+kind = "python-tool"
+owner = "bsr-w2-upstream-sync"
+reason = "Wave-2 upstream sync harness (W2.4): module-level divergence inventory with deterministic golden."
+gates = ["python-lint", "python-format"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/test_upstream_sync.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-w2-upstream-sync"
+reason = "Wave-2 upstream sync: compare/golden idempotency/seam injection coverage."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = ".github/workflows/upstream-sync.yml"
+status = "A"
+kind = "workflows"
+owner = "bsr-w2-upstream-sync"
+reason = "Wave-2 upstream sync: dispatch-only drift gate executing scripts/upstream_sync.py."
+gates = ["workflows"]
+
