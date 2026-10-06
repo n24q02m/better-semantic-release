@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import typing
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -46,6 +47,8 @@ class BsrConfig:
     hooks: tuple = ()
     stable_notes_aggregate: bool = False
     stable_notes_scope: str = "line"  # "line" or "since_stable"
+    mode: str = "release"  # "release" | "gated" (W2.1)
+    gated: BsrGatedConfig | None = None  # [tool.semantic_release.bsr.gated]
 
 
 def _parse_components(raw_components: object) -> tuple[BsrComponent, ...]:
@@ -99,6 +102,8 @@ _BSR_FIELDS = {
     "publish",
     "notes",
     "hooks",
+    "mode",
+    "gated",
 }
 
 
@@ -202,6 +207,16 @@ class BsrPublishProbeConfig:
     registry_url: str = ""  # oci: registry host
 
 
+RELEASE_MODES = frozenset({"release", "gated"})
+
+
+@dataclass(frozen=True)
+class BsrGatedConfig:
+    """``[tool.semantic_release.bsr.gated]``: approval-gate options (W2.1)."""
+
+    environment: str = "release-gate"
+
+
 @dataclass(frozen=True)
 class BsrPublishCommandConfig:
     """One publisher step (Task 5)."""
@@ -211,6 +226,14 @@ class BsrPublishCommandConfig:
     command: tuple[str, ...] = ()  # explicit argv; presets exist for pypi/npm/crates
     manifest_path: str = ""  # github-release: staged manifest
     workspace: str = ""  # github-release: workspace dir
+    # kind = "oci" (W2.2): carried so BsrPublishCommandConfig can represent an
+    # OCI publisher; kind "oci" without an image still flows to ShellPublisher.
+    image: str = ""  # required for oci; no tag or @digest suffix
+    tags: tuple[str, ...] = ()  # {version} templates
+    dockerfile: str = ""  # repo-relative; default Dockerfile
+    context: str = ""  # repo-relative; default .
+    push: bool = False
+    output: str = ""  # artifact path; default dist/<slug>.oci.tar
 
 
 @dataclass(frozen=True)
@@ -319,7 +342,19 @@ def _parse_publisher_entries(
         label = f"bsr.publish.publishers[{index}]"
         if not isinstance(raw, dict):
             raise InvalidConfiguration(f"{config_path}: {label} must be a table")
-        unknown = set(raw) - {"kind", "name", "command", "manifest_path", "workspace"}
+        unknown = set(raw) - {
+            "kind",
+            "name",
+            "command",
+            "manifest_path",
+            "workspace",
+            "image",
+            "tags",
+            "dockerfile",
+            "context",
+            "push",
+            "output",
+        }
         if unknown:
             raise InvalidConfiguration(
                 f"{config_path}: {label} has unknown fields: "
@@ -338,6 +373,7 @@ def _parse_publisher_entries(
             raise InvalidConfiguration(
                 f"{config_path}: {label}.command must be an array of strings"
             )
+        oci = _parse_oci_fields(raw, label, config_path)
         publishers.append(
             BsrPublishCommandConfig(
                 kind=kind,
@@ -345,9 +381,97 @@ def _parse_publisher_entries(
                 command=tuple(raw_command),
                 manifest_path=raw.get("manifest_path", ""),
                 workspace=raw.get("workspace", ""),
+                image=oci.image,
+                tags=oci.tags,
+                dockerfile=oci.dockerfile,
+                context=oci.context,
+                push=oci.push,
+                output=oci.output,
             )
         )
     return publishers
+
+
+class _OciFields(typing.NamedTuple):
+    """Validated kind="oci" publisher fields (W2.2), constructor-ready."""
+
+    image: str = ""
+    tags: tuple[str, ...] = ()
+    dockerfile: str = ""
+    context: str = ""
+    push: bool = False
+    output: str = ""
+
+
+def _parse_oci_fields(
+    raw: Mapping[str, object], label: str, config_path: Path
+) -> _OciFields:
+    """Validate and normalize the kind="oci" publisher fields (W2.2)."""
+    image = raw.get("image", "")
+    if not isinstance(image, str):
+        raise InvalidConfiguration(f"{config_path}: {label}.image must be a string")
+    raw_tags = raw.get("tags", [])
+    if not isinstance(raw_tags, list) or not all(
+        isinstance(tag, str) for tag in raw_tags
+    ):
+        raise InvalidConfiguration(
+            f"{config_path}: {label}.tags must be an array of strings"
+        )
+    for path_field in ("dockerfile", "context", "output"):
+        value = raw.get(path_field, "")
+        if not isinstance(value, str):
+            raise InvalidConfiguration(
+                f"{config_path}: {label}.{path_field} must be a string"
+            )
+    raw_push = raw.get("push", False)
+    if not isinstance(raw_push, bool):
+        raise InvalidConfiguration(f"{config_path}: {label}.push must be a boolean")
+    return _OciFields(
+        image=image,
+        tags=tuple(raw_tags),
+        dockerfile=raw.get("dockerfile", ""),  # type: ignore[arg-type]
+        context=raw.get("context", ""),  # type: ignore[arg-type]
+        push=raw_push,
+        output=raw.get("output", ""),  # type: ignore[arg-type]
+    )
+
+
+def _parse_release_mode(bsr: Mapping[str, object], config_path: Path) -> str:
+    """Validate [tool.semantic_release.bsr].mode (W2.1); default "release"."""
+    raw_mode = bsr.get("mode", "release")
+    if raw_mode not in RELEASE_MODES:
+        raise InvalidConfiguration(
+            f"{config_path}: [tool.semantic_release.bsr].mode must be one of: "
+            + ", ".join(sorted(RELEASE_MODES))
+        )
+    return str(raw_mode)
+
+
+def _parse_gated_table(
+    bsr: Mapping[str, object], config_path: Path
+) -> BsrGatedConfig | None:
+    """Validate [tool.semantic_release.bsr.gated] (W2.1); None unless present."""
+    if "gated" not in bsr:
+        return None
+    raw_gated = bsr["gated"]
+    if not isinstance(raw_gated, dict):
+        raise InvalidConfiguration(
+            f"{config_path}: [tool.semantic_release.bsr.gated] must be a table"
+        )
+    unknown_gated = set(raw_gated) - {"environment"}
+    if unknown_gated:
+        raise InvalidConfiguration(
+            f"{config_path}: unknown [tool.semantic_release.bsr.gated] fields: "
+            + ", ".join(sorted(unknown_gated))
+        )
+    from semantic_release.bsr.gating import DEFAULT_GATE_ENVIRONMENT
+
+    gated_environment = raw_gated.get("environment", DEFAULT_GATE_ENVIRONMENT)
+    if not isinstance(gated_environment, str) or not gated_environment.strip():
+        raise InvalidConfiguration(
+            f"{config_path}: bsr.gated.environment must be a non-empty string"
+        )
+    return BsrGatedConfig(environment=gated_environment)
 
 
 def _validate_bsr_table(bsr: Mapping[str, object], config_path: Path) -> int:
@@ -461,6 +585,8 @@ def load_bsr_config(config_file: str | os.PathLike[str]) -> BsrConfig:
         )
 
     schema_version = _validate_bsr_table(bsr, config_path)
+    raw_mode = _parse_release_mode(bsr, config_path)
+    gated_cfg = _parse_gated_table(bsr, config_path)
     component_path_map = _load_component_path_map(bsr, config_path)
     component_graph = _load_component_graph(bsr, config_path)
 
@@ -508,4 +634,6 @@ def load_bsr_config(config_file: str | os.PathLike[str]) -> BsrConfig:
         hooks=hooks_cfg,
         stable_notes_aggregate=bsr.get("stable_notes_aggregate", False),
         stable_notes_scope=bsr.get("stable_notes_scope", "line"),
+        mode=raw_mode,
+        gated=gated_cfg,
     )
