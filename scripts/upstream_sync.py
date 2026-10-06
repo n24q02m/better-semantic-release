@@ -38,10 +38,12 @@ from pathlib import Path
 from typing import Callable, Mapping, Sequence
 
 try:
-    from scripts.check_upstream_ownership import load_manifest
+    from scripts.check_upstream_ownership import (  # type: ignore[import-not-found]
+        load_manifest,
+    )
 except ModuleNotFoundError:  # pragma: no cover - direct script execution
-    from check_upstream_ownership import (
-        load_manifest,  # type: ignore[no-redef, import-not-found]
+    from check_upstream_ownership import (  # type: ignore[no-redef, import-not-found]
+        load_manifest,
     )
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
