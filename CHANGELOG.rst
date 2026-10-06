@@ -4,6 +4,60 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.13.0-beta.1:
+
+v1.13.0-beta.1 (2026-10-06)
+===========================
+
+✨ Features
+-----------
+
+* Commit presets (W2.3) + upstream sync harness (W2.4) (`PR#205`_, `133118b`_)
+
+* Commit-message presets with verify --commit-preset wiring (wave-2 W2.3) (`PR#205`_, `133118b`_)
+
+* Gated release mode state machine, e2e drive and recipe (wave-2 W2.1) (`PR#203`_, `c826c7e`_)
+
+* OCI publisher module with provenance tar fallback and unit coverage (wave-2 W2.2) (`PR#204`_,
+  `70b0851`_)
+
+* Upstream sync harness with deterministic golden and dispatch gate (wave-2 W2.4) (`PR#205`_,
+  `133118b`_)
+
+* Wire wave-2 config surface into config.py and publisher dispatch (`PR#206`_, `e2d8169`_)
+
+🪲 Bug Fixes
+------------
+
+* Add missing manifest entry for pyproject.toml (`PR#202`_, `36e20eb`_)
+
+* Drop unshipped golden ownership entry and cover --commit-preset wiring (`PR#205`_, `133118b`_)
+
+* Rebuild corrupt wave-2 ownership manifest entries (`PR#207`_, `244aaa5`_)
+
+* **deps**: Update Deprecated to v3 (`PR#200`_, `6bb8335`_)
+
+⚡ Performance Improvements
+---------------------------
+
+* Replace any() generator expressions with explicit loops (`PR#202`_, `36e20eb`_)
+
+.. _133118b: https://github.com/n24q02m/better-semantic-release/commit/133118b9b3e10aed4695699ba91ed6349520681b
+.. _244aaa5: https://github.com/n24q02m/better-semantic-release/commit/244aaa5a7e3a3e38970abe3d293fe89368aea015
+.. _36e20eb: https://github.com/n24q02m/better-semantic-release/commit/36e20ebab450998cadad97684d692d632d6baa89
+.. _6bb8335: https://github.com/n24q02m/better-semantic-release/commit/6bb8335f6e978d38f7c8c8c9cf598ac6868a5245
+.. _70b0851: https://github.com/n24q02m/better-semantic-release/commit/70b0851ac2434d4f2a65583857c13e6c71b70baa
+.. _c826c7e: https://github.com/n24q02m/better-semantic-release/commit/c826c7e84afc508327b174df1d20313a254258d8
+.. _e2d8169: https://github.com/n24q02m/better-semantic-release/commit/e2d8169495409a3a805ac8a1e584e8262b7deab9
+.. _PR#200: https://github.com/n24q02m/better-semantic-release/pull/200
+.. _PR#202: https://github.com/n24q02m/better-semantic-release/pull/202
+.. _PR#203: https://github.com/n24q02m/better-semantic-release/pull/203
+.. _PR#204: https://github.com/n24q02m/better-semantic-release/pull/204
+.. _PR#205: https://github.com/n24q02m/better-semantic-release/pull/205
+.. _PR#206: https://github.com/n24q02m/better-semantic-release/pull/206
+.. _PR#207: https://github.com/n24q02m/better-semantic-release/pull/207
+
+
 .. _changelog-v1.12.1-beta.6:
 
 v1.12.1-beta.6 (2026-10-05)
