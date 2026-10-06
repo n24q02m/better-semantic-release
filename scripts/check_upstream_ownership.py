@@ -20,7 +20,7 @@ except ModuleNotFoundError:  # pragma: no cover - CI installs project dependenci
         def parse(document: str) -> dict[str, object]:
             return tomllib.loads(document)
 
-    tomlkit = _TomlParser()
+    tomlkit = _TomlParser()  # type: ignore[assignment]
 
 COVERAGE_GATES = (
     "python-lint",
@@ -91,10 +91,11 @@ def _as_text(value: object, field: str, path: Path) -> str:
 def _as_strings(value: object, field: str, path: Path) -> tuple[str, ...]:
     if isinstance(value, (str, bytes)) or value is None:
         raise ValueError(f"{path}: {field} must be an array")
-    try:
-        values = tuple(value)
-    except TypeError as exc:
-        raise ValueError(f"{path}: {field} must be an array") from exc
+    if not isinstance(value, (list, tuple)):
+        # ValueError is the established failure contract here (loaders convert it
+        # to InvalidConfiguration); TypeError would change caller behaviour.
+        raise ValueError(f"{path}: {field} must be an array")  # noqa: TRY004
+    values = tuple(value)
     return tuple(_as_text(item, field, path) for item in values)
 
 

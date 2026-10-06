@@ -193,6 +193,7 @@ commands =
 # pre-commit hook; CI invokes the manifest checker directly.
 files = [
   "src/semantic_release/bsr",
+  "scripts/upstream_sync.py",
   "src/semantic_release/__init__.py",
   "src/semantic_release/changelog/release_history.py",
   "src/semantic_release/commit_parser/conventional/parser_monorepo.py",
