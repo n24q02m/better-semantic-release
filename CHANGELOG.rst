@@ -4,6 +4,20 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.13.0-beta.3:
+
+v1.13.0-beta.3 (2026-10-06)
+===========================
+
+🪲 Bug Fixes
+------------
+
+* Pin reviewed publisher-image candidate digest (`PR#210`_, `873ef47`_)
+
+.. _873ef47: https://github.com/n24q02m/better-semantic-release/commit/873ef4788c12ba588a54433e795e5fd90e209503
+.. _PR#210: https://github.com/n24q02m/better-semantic-release/pull/210
+
+
 .. _changelog-v1.13.0-beta.2:
 
 v1.13.0-beta.2 (2026-10-06)
