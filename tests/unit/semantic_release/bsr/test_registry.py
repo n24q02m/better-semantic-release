@@ -141,6 +141,10 @@ def test_http_status_ssrf_returns_none():
         reg._http_status("http://169.254.169.254/latest/meta-data/", timeout=2.0)
         is None
     )
+    assert reg._http_status("http://2130706433/", timeout=2.0) is None
+    assert reg._http_status("http://0x7f000001/", timeout=2.0) is None
+    assert reg._http_status("http://0177.0.0.1/", timeout=2.0) is None
+    assert reg._http_status("http://[::1]/", timeout=2.0) is None
 
 
 def test_http_status_invalid_scheme_returns_none():
