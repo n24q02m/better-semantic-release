@@ -69,7 +69,7 @@ def _http_status(  # noqa: C901
             # Use getaddrinfo to support both IPv4 and IPv6
             addrinfo = socket.getaddrinfo(host, None, family=0, type=socket.SOCK_STREAM)
             for family, _, _, _, sockaddr in addrinfo:
-                ip = sockaddr[0]
+                ip = str(sockaddr[0])
                 # Filter out IPv6 scope IDs from the address string before parsing
                 if family == socket.AF_INET6 and "%" in ip:
                     ip = ip.split("%")[0]
