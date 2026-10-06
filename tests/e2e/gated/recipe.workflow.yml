@@ -1,0 +1,85 @@
+# Gated release recipe (W2.1) -- act-compatible workflow.
+#
+# This is the reference flow for `release.mode = "gated"`. It is intentionally
+# a plain workflow file (no reusable-workflow calls, no secrets beyond the
+# default token) so it can be driven locally with nektos/act or pasted into
+# .github/workflows/ of a consuming repo.
+#
+# The environment gate is provided by GitHub itself: `jobs.release.environment`
+# pauses the run until a configured reviewer approves. The bsr gating state
+# machine (semantic_release.bsr.gating) models exactly that pause -> publish /
+# abort decision; the e2e test in tests/e2e/test_gated_release_e2e.py drives
+# the same transitions with an injected adapter, so the recipe and the code
+# cannot silently drift apart (the test asserts the environment name matches
+# DEFAULT_GATE_ENVIRONMENT).
+name: gated-release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Explicit version to release (leave empty to plan it)"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    name: plan + verify (ungated)
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.plan.outputs.version }}
+      head_sha: ${{ steps.plan.outputs.head_sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+      - run: uv venv --python 3.13
+      - run: uv pip install -e ".[test]"
+      - name: Plan the release (read-only)
+        id: plan
+        run: |
+          uv run --no-sync semantic-release plan --write release-plan.json
+          echo "version=$(uv run --no-sync python -c 'import json;print(json.load(open("release-plan.json"))["new_version"])')" >> "$GITHUB_OUTPUT"
+          echo "head_sha=$GITHUB_SHA" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        run: uv run --no-sync semantic-release verify --plan release-plan.json
+      - uses: actions/upload-artifact@bbbca2b2eb8f4b6ee903435a1630a100a4fd4227 # v7.0.0
+        with:
+          name: release-plan
+          path: release-plan.json
+
+  release:
+    name: publish (gated by environment approval)
+    needs: prepare
+    runs-on: ubuntu-latest
+    # THE GATE: GitHub pauses this job until a reviewer approves the
+    # environment. In bsr.gating terms this whole job IS the
+    # AWAITING_APPROVAL phase; job start = APPROVED, rejection = ABORTED.
+    environment: release-gate
+    permissions:
+      contents: write # tag + GitHub release
+      id-token: write # trusted publishing (OIDC)
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+      - run: uv venv --python 3.13
+      - run: uv pip install -e ".[test]"
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3d89aef350131 # v7.0.0
+        with:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+      - name: Verify the gate resolved on the planned head (fail closed on drift)
+        run: |
+          test "$GITHUB_SHA" = "${{ needs.prepare.outputs.head_sha }}" || {
+            echo "gate approved for a different head -- refusing to publish"
+            exit 1
+          }
+      - name: Publish the approved plan
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: uv run --no-sync semantic-release publish --plan release-plan.json

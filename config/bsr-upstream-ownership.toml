@@ -1444,3 +1444,43 @@ kind = "python-source"
 owner = "bsr-stock-patch"
 reason = "Performance optimization: replace any() generator with explicit for-loops"
 gates = ["python-lint", "python-format", "python-test", "python-type"]
+
+[[ownership]]
+path = "src/semantic_release/bsr/gating.py"
+status = "A"
+kind = "python-source"
+owner = "bsr-w2-gated-e2e"
+reason = "Wave-2 gated mode: approval gate state machine (W2.1). Covers prepare/approve/deny/timeout/finalize with sticky terminal semantics."
+gates = ["python-lint", "python-format", "python-type"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/test_gating.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-w2-gated-e2e"
+reason = "Wave-2 gated mode: unit coverage of the gate state machine transitions."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/e2e/test_gated_release_e2e.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-w2-gated-e2e"
+reason = "Wave-2 gated mode: end-to-end drive of every gate path with an injected adapter; pins recipe/code drift."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/e2e/gated/recipe.workflow.yml"
+status = "A"
+kind = "workflows"
+owner = "bsr-w2-gated-e2e"
+reason = "Wave-2 gated mode: act-compatible reference workflow for release.mode = gated."
+gates = ["workflows"]
+
+[[ownership]]
+path = "docs/recipes/gated_release.rst"
+status = "A"
+kind = "docs"
+owner = "bsr-w2-gated-e2e"
+reason = "Wave-2 gated mode: user-facing recipe tying config, workflow and state-machine semantics together."
+gates = ["docs"]

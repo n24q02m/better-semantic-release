@@ -12,4 +12,5 @@ Every recipe keeps the same control loop: **plan → verify → (gate) → publi
    Rust crate / workspace <rust_crate>
    Generic repository <generic_repo>
    Migrating from upstream PSR <migration>
+   Gated release recipe <gated_release>
    Fork maintenance guide <maintenance>
