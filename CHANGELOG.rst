@@ -4,6 +4,24 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.13.0-beta.2:
+
+v1.13.0-beta.2 (2026-10-06)
+===========================
+
+🪲 Bug Fixes
+------------
+
+* Classify wave-2 harness files as benign registry-freshness drift (`PR#208`_, `71ab041`_)
+
+* Gate release job on registry freshness inspect (`PR#209`_, `c1c4b9d`_)
+
+.. _71ab041: https://github.com/n24q02m/better-semantic-release/commit/71ab0419731b2e9c23f81034a5c88d80d9206f7b
+.. _c1c4b9d: https://github.com/n24q02m/better-semantic-release/commit/c1c4b9d488c0e9161ca6a0118c5103ed365e1926
+.. _PR#208: https://github.com/n24q02m/better-semantic-release/pull/208
+.. _PR#209: https://github.com/n24q02m/better-semantic-release/pull/209
+
+
 .. _changelog-v1.13.0-beta.1:
 
 v1.13.0-beta.1 (2026-10-06)
