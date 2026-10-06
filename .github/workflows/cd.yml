@@ -74,7 +74,10 @@ permissions:
 jobs:
   release:
     name: Release
-    if: inputs.operation == 'release'
+    needs: [inspect]
+    if: >-
+      inputs.operation == 'release' &&
+      (inputs.parent_run_id != '' || needs.inspect.outputs.refresh != 'true')
     runs-on: ubuntu-latest
     permissions:
       contents: write
