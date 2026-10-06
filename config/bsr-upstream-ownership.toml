@@ -1506,6 +1506,14 @@ reason = "Wave-2 commit presets (W2.3): builtin conventional/commitizen/gitmoji 
 gates = ["python-lint", "python-format", "python-type"]
 
 [[ownership]]
+path = "tests/unit/semantic_release/cli/test_verify_commit_preset.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-w2-presets"
+reason = "Wave-2 commit presets: CLI wiring coverage for the --commit-preset option rows."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
 path = "tests/unit/semantic_release/bsr/test_commit_presets.py"
 status = "A"
 kind = "python-test"
@@ -1537,10 +1545,3 @@ owner = "bsr-w2-upstream-sync"
 reason = "Wave-2 upstream sync: dispatch-only drift gate executing scripts/upstream_sync.py."
 gates = ["workflows"]
 
-[[ownership]]
-path = "config/bsr-upstream-sync-golden.json"
-status = "A"
-kind = "other"
-owner = "bsr-w2-upstream-sync"
-reason = "Wave-2 upstream sync: deterministic divergence golden pinned by scripts/upstream_sync.py --refresh."
-gates = ["other"]
