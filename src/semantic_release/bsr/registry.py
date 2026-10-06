@@ -56,6 +56,18 @@ def _http_status(
     if parsed_url.scheme not in ("http", "https"):
         return None
 
+    host = parsed_url.hostname
+    if host:
+        host = host.lower()
+        if host in (
+            "localhost",
+            "127.0.0.1",
+            "0.0.0.0",  # noqa: S104
+            "169.254.169.254",
+            "::1",
+        ) or host.endswith(".localhost"):
+            return None
+
     headers = {"User-Agent": "better-semantic-release-guard"}
     if extra_headers:
         headers.update(extra_headers)
