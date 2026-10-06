@@ -33,7 +33,11 @@ def test_release_is_dispatch_only() -> None:
     assert "push" not in triggers
     assert "pull_request" not in triggers
     assert document["env"]["RELEASE_TYPE"] == "${{ inputs.release_type }}"
-    assert document["jobs"]["release"]["if"] == "inputs.operation == 'release'"
+    assert (
+        document["jobs"]["release"]["if"]
+        == "inputs.operation == 'release' && (inputs.parent_run_id != '' || needs.inspect.outputs.refresh != 'true')"
+    )
+    assert document["jobs"]["release"]["needs"] == ["inspect"]
 
     release_type = triggers["workflow_dispatch"]["inputs"]["release_type"]
     assert release_type["type"] == "choice"
