@@ -44,7 +44,7 @@ class ProbeTarget:
     registry_url: str = ""
 
 
-def _http_status(
+def _http_status(  # noqa: C901
     url: str, timeout: float, extra_headers: dict[str, str] | None = None
 ) -> int | None:
     """
@@ -59,13 +59,32 @@ def _http_status(
     host = parsed_url.hostname
     if host:
         host = host.lower()
-        if host in (
-            "localhost",
-            "127.0.0.1",
-            "0.0.0.0",  # noqa: S104
-            "169.254.169.254",
-            "::1",
-        ) or host.endswith(".localhost"):
+        if host == "localhost" or host.endswith(".localhost"):
+            return None
+
+        import ipaddress
+        import socket
+
+        try:
+            # Use getaddrinfo to support both IPv4 and IPv6
+            addrinfo = socket.getaddrinfo(host, None, family=0, type=socket.SOCK_STREAM)
+            for family, _, _, _, sockaddr in addrinfo:
+                ip = str(sockaddr[0])
+                # Filter out IPv6 scope IDs from the address string before parsing
+                if family == socket.AF_INET6 and "%" in ip:
+                    ip = ip.split("%")[0]
+
+                addr = ipaddress.ip_address(ip)
+                # We specifically avoid is_private to allow internal enterprise registries.
+                # Only block loopback, link-local, unspecified, and the AWS metadata IP.
+                if (
+                    addr.is_loopback
+                    or addr.is_link_local
+                    or addr.is_unspecified
+                    or (addr.version == 4 and ip == "169.254.169.254")
+                ):
+                    return None
+        except (socket.gaierror, ValueError):
             return None
 
     headers = {"User-Agent": "better-semantic-release-guard"}

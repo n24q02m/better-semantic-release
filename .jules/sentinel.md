@@ -17,3 +17,13 @@
 **Vulnerability:** HTTP probes in the registry allow fetching arbitrary URLs without restricting private or local addresses, presenting a Server-Side Request Forgery (SSRF) risk.
 **Learning:** Probe adapters querying user-provided URLs can be abused to access internal metadata services (e.g. 169.254.169.254) or local endpoints.
 **Prevention:** Implement host validation in base HTTP request functions (like `_http_status`) to fail closed on internal/loopback hostnames.
+
+## 2026-09-08 - [SSRF Bypass via Alternative IP Formats]
+**Vulnerability:** The SSRF protection in HTTP probes relied on string-based comparisons of the hostname, which could be bypassed using decimal, octal, or hex representations of IP addresses (e.g., `2130706433` for `127.0.0.1`).
+**Learning:** Checking hostnames directly against blocklists is insufficient. The host must be resolved and parsed into an IP object, and then validated against IP range classes (like loopback, private, and link-local).
+**Prevention:** Always use `socket.gethostbyname` and `ipaddress.ip_address` to validate the resolved IP rather than the raw URL string.
+
+## 2026-09-08 - [SSRF Fix Dual-Stack and Private Network Constraints]
+**Vulnerability:** Fixing SSRF bypasses via IP formats using `socket.gethostbyname` breaks IPv6 support, and blocking `is_private` blocks valid internal enterprise network traffic.
+**Learning:** For dual-stack environments, always use `socket.getaddrinfo`. When securing enterprise tools against SSRF, blanket blocking `is_private` IP space (like 10.0.0.0/8) is a breaking change; only loopback, link-local, unspecified, and specific cloud metadata IPs (e.g. 169.254.169.254) should be universally blocked.
+**Prevention:** Use `socket.getaddrinfo` for IP resolution and selectively apply blocklists to avoid breaking valid intranet topologies.
