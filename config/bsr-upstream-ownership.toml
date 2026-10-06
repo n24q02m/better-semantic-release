@@ -1484,3 +1484,17 @@ kind = "docs"
 owner = "bsr-w2-gated-e2e"
 reason = "Wave-2 gated mode: user-facing recipe tying config, workflow and state-machine semantics together."
 gates = ["docs"]
+path = "src/semantic_release/bsr/oci_publisher.py"
+status = "A"
+kind = "python-source"
+owner = "bsr-w2-oci-publisher"
+reason = "Wave-2 OCI publisher (W2.2): OCI-layout tar artifact + docker/podman duck-typed builder + provenance fallback."
+gates = ["python-lint", "python-format", "python-type"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/test_oci_publisher.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-w2-oci-publisher"
+reason = "Wave-2 OCI publisher: registration validation, publish decision table, deterministic tar layout."
+gates = ["python-lint", "python-format", "python-test"]
