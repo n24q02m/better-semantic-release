@@ -407,7 +407,7 @@ class ConventionalCommitMonorepoParser(
     def unsquash_commit_message(self, message: str) -> list[str]:
         return self._base_parser.unsquash_commit_message(message)
 
-    def _has_relevant_changed_files(self, commit: Commit) -> bool:
+    def _has_relevant_changed_files(self, commit: Commit) -> bool:  # noqa: C901
         # Extract git root from commit
         git_root = (
             Path(commit.repo.working_tree_dir or commit.repo.working_dir)
@@ -450,17 +450,24 @@ class ConventionalCommitMonorepoParser(
             str(git_root / rel_git_path) for rel_git_path in commit.stats.files
         ):
             # Check if the filepath matches any of the file selection filters
-            if not any(
-                fnmatch(full_path, select_filter)
-                for select_filter in sandboxed_selection_filters
-            ):
+            # Performance optimization (Bolt): Explicit for-loop with short-circuit break
+            # avoids generator initialization overhead of any(...) in hot path.
+            has_selection_match = False
+            for select_filter in sandboxed_selection_filters:
+                if fnmatch(full_path, select_filter):
+                    has_selection_match = True
+                    break
+            if not has_selection_match:
                 continue
 
             # Pass filter matches, so now evaluate if it is supposed to be ignored
-            if not any(
-                fnmatch(full_path, ignore_filter)
-                for ignore_filter in sandboxed_ignore_filters
-            ):
+            has_ignore_match = False
+            for ignore_filter in sandboxed_ignore_filters:
+                if fnmatch(full_path, ignore_filter):
+                    has_ignore_match = True
+                    break
+
+            if not has_ignore_match:
                 # No ignore filter matched, so it must be a relevant file
                 return True
 

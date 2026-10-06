@@ -195,6 +195,7 @@ files = [
   "src/semantic_release/bsr",
   "src/semantic_release/__init__.py",
   "src/semantic_release/changelog/release_history.py",
+  "src/semantic_release/commit_parser/conventional/parser_monorepo.py",
   "src/semantic_release/cli/config.py",
   "src/semantic_release/cli/cli_context.py",
   "src/semantic_release/cli/commands/doctor.py",
@@ -213,6 +214,7 @@ files = [
   "src/semantic_release/helpers.py",
   "src/semantic_release/version/algorithm.py",
   "src/semantic_release/version/version.py",
+  "src/semantic_release/commit_parser/conventional/parser_monorepo.py",
 ]
 show_column_numbers = true
 show_error_context = true
