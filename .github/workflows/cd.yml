@@ -986,7 +986,7 @@ jobs:
                   publisher_change=true
                   stable_only=false
                   ;;
-                CHANGELOG.rst|pyproject.toml|.jules/*|.github/workflows/ci.yml|renovate.json) ;;
+                CHANGELOG.rst|pyproject.toml|.jules/*|.github/workflows/ci.yml|.github/workflows/upstream-sync.yml|renovate.json|docs/*|scripts/upstream_sync.py|scripts/check_upstream_ownership.py) ;;
                 *) stable_only=false; unknown_drift=true ;;
               esac
             done <<< "$changed_files"
