@@ -232,6 +232,13 @@ def build_publishers(
                     name=config.name,
                 )
             )
+        elif config.kind == "oci" and config.image:
+            # W2.2: OCI-image publisher (provenance tar / buildx / podman).
+            from semantic_release.bsr.oci_publisher import (
+                register_publisher as register_oci_publisher,
+            )
+
+            publishers.append(register_oci_publisher(config, repo_dir=repo_dir))
         else:
             publishers.append(
                 ShellPublisher(

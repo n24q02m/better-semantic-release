@@ -1548,3 +1548,11 @@ kind = "python-test"
 owner = "bsr-w2-upstream-sync"
 reason = "Wave-2 upstream sync harness (W2.4) unit coverage incl. golden."
 gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/test_wave2_integration.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-w2-integration"
+reason = "Wave-2 integration: real-config dispatch arm and gated-mode config surface coverage."
+gates = ["python-lint", "python-format", "python-test"]
