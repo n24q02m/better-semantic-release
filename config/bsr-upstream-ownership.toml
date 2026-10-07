@@ -1563,3 +1563,4 @@ status = "A"
 kind = "journal"
 owner = "bsr-tests"
 reason = "Agent persona journal"
+gates = ["other"]
