@@ -1556,3 +1556,10 @@ kind = "python-test"
 owner = "bsr-w2-integration"
 reason = "Wave-2 integration: real-config dispatch arm and gated-mode config surface coverage."
 gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = ".jules/palette.md"
+status = "A"
+kind = "journal"
+owner = "bsr-tests"
+reason = "Agent persona journal"
