@@ -17,3 +17,8 @@
 **Vulnerability:** HTTP probes in the registry allow fetching arbitrary URLs without restricting private or local addresses, presenting a Server-Side Request Forgery (SSRF) risk.
 **Learning:** Probe adapters querying user-provided URLs can be abused to access internal metadata services (e.g. 169.254.169.254) or local endpoints.
 **Prevention:** Implement host validation in base HTTP request functions (like `_http_status`) to fail closed on internal/loopback hostnames.
+
+## 2024-05-24 - [CRITICAL] Fixed SSRF Vulnerability in registry probes
+**Vulnerability:** The registry probe in `_http_status` used exact string matching to block localhost and sensitive IPs, allowing SSRF via alternative IP representations (e.g., `127.1`, `0x7f000001`).
+**Learning:** Basic string matching for hostnames is insufficient against SSRF. You must resolve the IP and use `ipaddress` for reliable validation. Avoid blanket blocking `is_private` to support valid intranet use.
+**Prevention:** Always use `socket.getaddrinfo` (not `gethostbyname`) to resolve IPs and `ipaddress` properties like `is_loopback`, `is_link_local`, and `is_unspecified` to secure outbound requests.
