@@ -16,6 +16,21 @@ if TYPE_CHECKING:
 
 
 @pytest.mark.parametrize(
+    "url",
+    [
+        "http://127.0.0.1",
+        "http://127.1",
+        "http://0177.0.0.1",
+        "http://localhost",
+        "http://169.254.169.254",
+        "http://[::1]",
+    ],
+)
+def test_http_status_blocks_ssrf_targets(url: str) -> None:
+    assert reg._http_status(url, timeout=1.0) is None
+
+
+@pytest.mark.parametrize(
     "status, expected",
     [
         (200, ProbeResult.EXISTS),
