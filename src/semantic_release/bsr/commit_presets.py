@@ -46,6 +46,8 @@ PresetMode = Literal["parse", "warn", "reject"]
 
 PRESET_MODES: tuple[PresetMode, ...] = ("parse", "warn", "reject")
 
+_NONASCII_RE = re.compile(r"[^\x00-\x7F]")
+
 DEFAULT_PRESET = "conventional"
 
 # Conventional Commits v1.0.0 subject line:
@@ -217,7 +219,7 @@ def _gitmoji_matcher(subject: str) -> ParsedSubject:
     token = stripped.split(" ", 1)[0] if " " in stripped else ""
     if (
         token
-        and any(ord(ch) > 127 for ch in token)
+        and _NONASCII_RE.search(token) is not None
         and not any(ch.isascii() and ch.isalnum() for ch in token)
     ):
         raw = token.rstrip("️")  # variation selector
