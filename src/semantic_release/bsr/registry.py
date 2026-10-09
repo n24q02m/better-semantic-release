@@ -58,14 +58,22 @@ def _http_status(
 
     host = parsed_url.hostname
     if host:
-        host = host.lower()
-        if host in (
-            "localhost",
-            "127.0.0.1",
-            "0.0.0.0",  # noqa: S104
-            "169.254.169.254",
-            "::1",
-        ) or host.endswith(".localhost"):
+        import ipaddress
+        import socket
+
+        try:
+            addrs = socket.getaddrinfo(host, None)
+            for addr in addrs:
+                ip_str = addr[4][0]
+                ip = ipaddress.ip_address(ip_str)
+                if (
+                    ip.is_loopback
+                    or ip.is_link_local
+                    or ip.is_unspecified
+                    or str(ip) == "169.254.169.254"
+                ):
+                    return None
+        except (socket.gaierror, ValueError):
             return None
 
     headers = {"User-Agent": "better-semantic-release-guard"}
