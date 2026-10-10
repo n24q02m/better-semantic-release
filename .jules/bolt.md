@@ -32,3 +32,7 @@
 ## 2024-05-18 - Generator Overhead in Hot Paths
 **Learning:** `any()` with a generator expression introduces significant initialization overhead in frequently executed hot paths (like evaluating every file in every commit).
 **Action:** Replace `any()` with explicit `for` loops and short-circuit breaks in high-frequency validation logic.
+
+## 2024-05-23 - Python Regex Search vs `any()` Generator Overhead in String Validation
+**Learning:** Using `any(ord(char) < 0x20 for char in string)` for string validation (e.g. checking for control characters) introduces generator overhead. In hot paths, this can slow down execution significantly compared to C-level regex validation.
+**Action:** Replace `any()` generator expressions for control character validation with a pre-compiled regular expression (e.g. `_CONTROL_CHAR_RE.search(string)`) to eliminate generator overhead.
