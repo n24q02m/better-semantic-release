@@ -27,3 +27,8 @@
 **Vulnerability:** N/A (CI fix)
 **Learning:** `ruff` versions might require `# noqa` comments for function definitions (like `C901` for complexity) to be placed on the line with the `def` keyword itself, rather than the closing parenthesis of the function signature, in order to be recognized by CI checks.
 **Prevention:** Place `# noqa` directly on the `def` line (e.g., `def _http_status(  # noqa: C901`).
+
+## 2026-10-12 - [mypy sockaddr Tuple Type]
+**Vulnerability:** N/A (CI fix)
+**Learning:** `socket.getaddrinfo` returns `sockaddr` structures as tuples containing IP strings and ports (e.g., `('127.0.0.1', 80)`). Mypy can struggle to infer that `sockaddr[0]` is explicitly a `str`, assuming it could be `Union[str, int]` which fails string operations like `.split("%")`.
+**Prevention:** Explicitly cast `sockaddr[0]` to string (`str(sockaddr[0])`) to appease mypy's type checker when operating on the returned IP.

@@ -67,7 +67,7 @@ def _http_status(  # noqa: C901
         try:
             addrinfo = socket.getaddrinfo(host, None)
             for _, _, _, _, sockaddr in addrinfo:
-                ip_str = sockaddr[0]
+                ip_str = str(sockaddr[0])
                 # Handle scoped IPv6 addresses
                 if "%" in ip_str:
                     ip_str = ip_str.split("%")[0]
