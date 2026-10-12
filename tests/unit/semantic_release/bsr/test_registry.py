@@ -136,6 +136,8 @@ def test_http_status_ssrf_returns_none():
     or internal AWS metadata IP, preventing SSRF.
     """
     assert reg._http_status("http://127.0.0.1:80/", timeout=2.0) is None
+    assert reg._http_status("http://0x7f.0.0.1:80/", timeout=2.0) is None
+    assert reg._http_status("http://2130706433:80/", timeout=2.0) is None
     assert reg._http_status("http://localhost:80/", timeout=2.0) is None
     assert (
         reg._http_status("http://169.254.169.254/latest/meta-data/", timeout=2.0)

@@ -10,6 +10,8 @@ already exist, is it free, or is the state ambiguous (fail closed to
 from __future__ import annotations
 
 import enum
+import ipaddress
+import socket
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -46,7 +48,7 @@ class ProbeTarget:
 
 def _http_status(
     url: str, timeout: float, extra_headers: dict[str, str] | None = None
-) -> int | None:
+) -> int | None:  # noqa: C901
     """
     HTTP GET a URL and return its status code.
 
@@ -59,13 +61,26 @@ def _http_status(
     host = parsed_url.hostname
     if host:
         host = host.lower()
-        if host in (
-            "localhost",
-            "127.0.0.1",
-            "0.0.0.0",  # noqa: S104
-            "169.254.169.254",
-            "::1",
-        ) or host.endswith(".localhost"):
+        if host == "localhost" or host.endswith(".localhost"):
+            return None
+
+        try:
+            addrinfo = socket.getaddrinfo(host, None)
+            for _, _, _, _, sockaddr in addrinfo:
+                ip_str = sockaddr[0]
+                # Handle scoped IPv6 addresses
+                if "%" in ip_str:
+                    ip_str = ip_str.split("%")[0]
+
+                ip = ipaddress.ip_address(ip_str)
+                if (
+                    ip.is_loopback
+                    or ip.is_link_local
+                    or ip.is_unspecified
+                    or str(ip) == "169.254.169.254"
+                ):
+                    return None
+        except (socket.gaierror, ValueError):
             return None
 
     headers = {"User-Agent": "better-semantic-release-guard"}
