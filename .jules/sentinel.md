@@ -17,3 +17,18 @@
 **Vulnerability:** HTTP probes in the registry allow fetching arbitrary URLs without restricting private or local addresses, presenting a Server-Side Request Forgery (SSRF) risk.
 **Learning:** Probe adapters querying user-provided URLs can be abused to access internal metadata services (e.g. 169.254.169.254) or local endpoints.
 **Prevention:** Implement host validation in base HTTP request functions (like `_http_status`) to fail closed on internal/loopback hostnames.
+
+## 2026-10-12 - [SSRF Protection in HTTP Probes]
+**Vulnerability:** HTTP probes in the registry allow fetching arbitrary URLs without restricting private or local addresses, presenting a Server-Side Request Forgery (SSRF) risk. The original mitigation merely checked if the hostname string was exactly `127.0.0.1` or `localhost`.
+**Learning:** String matching on hostnames is insufficient for SSRF protection because attackers can use alternate IP encodings (like decimal `2130706433`, octal, or hex `0x7f.0.0.1`) or point DNS records to internal IPs to bypass the check.
+**Prevention:** Use `socket.getaddrinfo` to resolve IPs and validate them with the `ipaddress` module to robustly block loopback, link-local, unspecified, and specific cloud metadata IPs.
+
+## 2026-10-12 - [Ruff noqa Comments]
+**Vulnerability:** N/A (CI fix)
+**Learning:** `ruff` versions might require `# noqa` comments for function definitions (like `C901` for complexity) to be placed on the line with the `def` keyword itself, rather than the closing parenthesis of the function signature, in order to be recognized by CI checks.
+**Prevention:** Place `# noqa` directly on the `def` line (e.g., `def _http_status(  # noqa: C901`).
+
+## 2026-10-12 - [mypy sockaddr Tuple Type]
+**Vulnerability:** N/A (CI fix)
+**Learning:** `socket.getaddrinfo` returns `sockaddr` structures as tuples containing IP strings and ports (e.g., `('127.0.0.1', 80)`). Mypy can struggle to infer that `sockaddr[0]` is explicitly a `str`, assuming it could be `Union[str, int]` which fails string operations like `.split("%")`.
+**Prevention:** Explicitly cast `sockaddr[0]` to string (`str(sockaddr[0])`) to appease mypy's type checker when operating on the returned IP.
