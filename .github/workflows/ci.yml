@@ -219,7 +219,12 @@ jobs:
         run: |
           dir="fx/$CASE"
           mkdir -p "$dir"
-          printf '[semantic_release]\ntag_format = "fx-{version}"\n' >"$dir/semantic-release.toml"
+          # registry = "none": on a release branch (main) the no-op run computes
+          # a version, and the registry-collision guard would otherwise probe
+          # PyPI for the repo's own name at that version and abort the run.
+          # Branches that are not release branches never reach the guard, which
+          # is how this passed on the PR and failed after the merge.
+          printf '[semantic_release]\ntag_format = "fx-{version}"\n\n[semantic_release.bsr]\nschema_version = 1\nregistry = "none"\n' >"$dir/semantic-release.toml"
           range='required-version = ">=0.11.32,<0.13"'
           release_dir="$dir"
           expect=range
