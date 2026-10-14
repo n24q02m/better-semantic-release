@@ -44,7 +44,7 @@ class ProbeTarget:
     registry_url: str = ""
 
 
-def _http_status(
+def _http_status(  # noqa: C901
     url: str, timeout: float, extra_headers: dict[str, str] | None = None
 ) -> int | None:
     """
