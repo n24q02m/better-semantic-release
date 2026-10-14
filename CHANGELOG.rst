@@ -4,6 +4,24 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.13.0-beta.4:
+
+v1.13.0-beta.4 (2026-10-14)
+===========================
+
+🪲 Bug Fixes
+------------
+
+* Install the uv version required by the release directory (`PR#234`_, `8b89c25`_)
+
+* Keep the uv-selection CI fixture off the registry-collision guard (`PR#236`_, `75c9155`_)
+
+.. _75c9155: https://github.com/n24q02m/better-semantic-release/commit/75c91557af551fd9c71c7f298a6bda60f8fb3b55
+.. _8b89c25: https://github.com/n24q02m/better-semantic-release/commit/8b89c25e2fe52231c4c5d83f66397a8d6c882299
+.. _PR#234: https://github.com/n24q02m/better-semantic-release/pull/234
+.. _PR#236: https://github.com/n24q02m/better-semantic-release/pull/236
+
+
 .. _changelog-v1.13.0:
 
 v1.13.0 (2026-10-06)
