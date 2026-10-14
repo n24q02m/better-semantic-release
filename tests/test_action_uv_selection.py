@@ -1,4 +1,5 @@
-"""Static policy tests for how the composite action selects the uv version.
+"""
+Static policy tests for how the composite action selects the uv version.
 
 The action runs ``semantic-release`` inside ``inputs.directory`` and that
 directory's own ``uv.toml`` / ``pyproject.toml`` may carry a
@@ -23,9 +24,10 @@ SETUP_UV_PREFIX = "astral-sh/setup-uv@"
 
 
 def _setup_uv_step() -> dict[str, object]:
-    document = yaml.load(  # noqa: S506 - BaseLoader never constructs objects
+    # BaseLoader only yields strings, lists and dicts: it never builds objects.
+    document = yaml.load(
         ACTION.read_text(encoding="utf-8"),
-        Loader=yaml.BaseLoader,
+        Loader=yaml.BaseLoader,  # noqa: S506
     )
     steps = document["runs"]["steps"]
     matches = [s for s in steps if str(s.get("uses", "")).startswith(SETUP_UV_PREFIX)]
