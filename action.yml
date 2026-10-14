@@ -201,6 +201,16 @@ runs:
   steps:
     - name: Install uv
       uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+      with:
+        # setup-uv looks for uv.toml, then pyproject.toml, only inside its
+        # working-directory and installs the highest uv satisfying the
+        # `required-version` it finds there (latest when there is none). The
+        # release runs in `directory`, whose project may pin a uv range its
+        # build command depends on; the workspace root knows nothing of it.
+        # Do not pass `version`, `version-file` or `python-version` here:
+        # they override that range, make setup-uv fail on a file without the
+        # key, or export UV_PYTHON over this action's own `uv venv --python`.
+        working-directory: ${{ github.workspace }}/${{ inputs.directory }}
 
     - name: Install better-semantic-release (forked source) into an isolated venv
       id: install

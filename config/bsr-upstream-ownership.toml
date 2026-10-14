@@ -941,6 +941,14 @@ reason = "Behavior coverage observes private-key creation mode and multiline inp
 gates = ["python-lint", "python-format", "python-test"]
 
 [[ownership]]
+path = "tests/test_action_uv_selection.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-tests"
+reason = "Static wiring coverage pinning that the action's uv install reads the release directory."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
 path = "config/bsr-upstream-ownership.toml"
 status = "A"
 kind = "other"
