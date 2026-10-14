@@ -170,6 +170,112 @@ jobs:
           changelog: "false"
           vcs_release: "false"
 
+  # Proves the action installs the uv its release directory asks for. A consumer
+  # (KnowledgePrism) pins `required-version = ">=0.11.32,<0.13"` in a sub-project;
+  # before this job the action installed the newest uv regardless, and that
+  # project's build command died with "Required uv version ... does not match".
+  # Each case builds its fixture under fx/ at run time (untracked, so the
+  # ownership manifest has nothing to account for), runs the real action against
+  # it, then reads the uv that ended up on PATH.
+  action-uv-version-selection:
+    name: composite action installs the uv required by its directory (${{ matrix.case }}, ${{ matrix.os }})
+    if: github.event_name != 'schedule'
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        case:
+          # [tool.uv] required-version in the directory's pyproject.toml
+          - project-range
+          # required-version in the directory's uv.toml
+          - uv-toml-range
+          # directory "." (the default): range in the workspace-root uv.toml
+          - root-uv-toml-range
+          # pyproject.toml with no [tool.uv]: nothing to honour, latest as before
+          - no-uv-table
+          # no pyproject.toml / uv.toml at all (KnowledgePrism's apps/web)
+          - config-only
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Check out the real branch (semantic-release can't match release groups on detached HEAD)
+        shell: bash
+        env:
+          HEAD_REF: ${{ github.head_ref || github.ref_name }}
+        run: |
+          case "$HEAD_REF" in
+            *[!A-Za-z0-9._/-]*) echo "invalid ref: $HEAD_REF"; exit 1 ;;
+          esac
+          git checkout -B "$HEAD_REF"
+
+      - name: Write the fixture for this case
+        id: fixture
+        shell: bash
+        env:
+          CASE: ${{ matrix.case }}
+        run: |
+          dir="fx/$CASE"
+          mkdir -p "$dir"
+          printf '[semantic_release]\ntag_format = "fx-{version}"\n' >"$dir/semantic-release.toml"
+          range='required-version = ">=0.11.32,<0.13"'
+          release_dir="$dir"
+          expect=range
+          case "$CASE" in
+            project-range)
+              printf '[project]\nname = "fx"\nversion = "0.0.0"\n\n[tool.uv]\n%s\n' "$range" >"$dir/pyproject.toml" ;;
+            uv-toml-range)
+              printf '%s\n' "$range" >"$dir/uv.toml" ;;
+            root-uv-toml-range)
+              printf '%s\n' "$range" >uv.toml
+              release_dir=. ;;
+            no-uv-table)
+              printf '[project]\nname = "fx"\nversion = "0.0.0"\n' >"$dir/pyproject.toml"
+              expect=latest ;;
+            config-only)
+              expect=latest ;;
+            *) echo "unknown case: $CASE"; exit 1 ;;
+          esac
+          printf 'directory=%s\nexpect=%s\n' "$release_dir" "$expect" >>"$GITHUB_OUTPUT"
+
+      - name: Run better-semantic-release against the fixture (no side effects)
+        uses: ./
+        with:
+          directory: ${{ steps.fixture.outputs.directory }}
+          # The action checks config_file before it cd's into `directory` and
+          # semantic-release reads it after, so only an absolute path works.
+          config_file: ${{ github.workspace }}/fx/${{ matrix.case }}/semantic-release.toml
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          no_operation_mode: "true"
+          commit: "false"
+          tag: "false"
+          push: "false"
+          changelog: "false"
+          vcs_release: "false"
+          build: "false"
+
+      - name: Assert the installed uv honours (or ignores) the range
+        shell: bash
+        env:
+          EXPECT: ${{ steps.fixture.outputs.expect }}
+        run: |
+          installed="$(uv --version | awk '{print $2}')"
+          echo "installed uv: $installed (expect: $EXPECT)"
+          # sort -V puts the smaller of two versions first.
+          at_least() { [ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | head -n1)" = "$1" ]; }
+          case "$EXPECT" in
+            range)
+              # >=0.11.32,<0.13: the case this action used to get wrong.
+              at_least 0.11.32 "$installed"
+              at_least "$installed" 0.13.0 && [ "$installed" != 0.13.0 ] ;;
+            latest)
+              # 0.13.0 is the first release outside the range the other cases
+              # pin, so "latest" means at least that; it only ever goes up.
+              at_least 0.13.0 "$installed" ;;
+          esac
+
   # The one job this repo forfeited by keeping its own ci.yml out of the shared
   # template's reach (see .repo-bootstrap.toml). Ported by hand rather than by
   # taking the template wholesale, which would have dropped the three jobs above.
