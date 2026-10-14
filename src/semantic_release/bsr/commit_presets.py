@@ -48,6 +48,8 @@ PRESET_MODES: tuple[PresetMode, ...] = ("parse", "warn", "reject")
 
 DEFAULT_PRESET = "conventional"
 
+_NON_ASCII_RE = re.compile(r"[^\x00-\x7f]")
+
 # Conventional Commits v1.0.0 subject line:
 #   type[(scope)][!]: description   -- description must be non-empty.
 _CONVENTIONAL_PATTERN = r"^(?P<type>[A-Za-z]+)(?:\((?P<scope>[^()\r\n]+)\))?(?P<breaking>!)?:\s(?P<description>\S.*)$"
@@ -217,7 +219,7 @@ def _gitmoji_matcher(subject: str) -> ParsedSubject:
     token = stripped.split(" ", 1)[0] if " " in stripped else ""
     if (
         token
-        and any(ord(ch) > 127 for ch in token)
+        and _NON_ASCII_RE.search(token)
         and not any(ch.isascii() and ch.isalnum() for ch in token)
     ):
         raw = token.rstrip("️")  # variation selector
