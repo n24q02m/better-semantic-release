@@ -141,6 +141,25 @@ def test_http_status_ssrf_returns_none():
         reg._http_status("http://169.254.169.254/latest/meta-data/", timeout=2.0)
         is None
     )
+    # Test decimal, octal, hex representations
+    assert reg._http_status("http://2130706433", timeout=2.0) is None  # 127.0.0.1
+    assert (
+        reg._http_status("http://0177.0000.0000.0001", timeout=2.0) is None
+    )  # 127.0.0.1
+    assert (
+        reg._http_status("http://0x7f.0x00.0x00.0x01", timeout=2.0) is None
+    )  # 127.0.0.1
+    assert reg._http_status("http://2852039166", timeout=2.0) is None  # 169.254.169.254
+
+
+def test_http_status_dns_resolution(monkeypatch) -> None:
+    def mock_getaddrinfo(host, port, *args, **kwargs):
+        if host == "malicious.com":
+            return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("127.0.0.1", 80))]
+        return socket.getaddrinfo(host, port, *args, **kwargs)
+
+    monkeypatch.setattr(socket, "getaddrinfo", mock_getaddrinfo)
+    assert reg._http_status("http://malicious.com", timeout=2.0) is None
 
 
 def test_http_status_invalid_scheme_returns_none():
