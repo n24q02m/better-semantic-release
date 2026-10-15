@@ -137,6 +137,8 @@ def test_http_status_ssrf_returns_none():
     """
     assert reg._http_status("http://127.0.0.1:80/", timeout=2.0) is None
     assert reg._http_status("http://localhost:80/", timeout=2.0) is None
+    assert reg._http_status("http://2130706433/", timeout=2.0) is None
+    assert reg._http_status("http://0177.0.0.1/", timeout=2.0) is None
     assert (
         reg._http_status("http://169.254.169.254/latest/meta-data/", timeout=2.0)
         is None
