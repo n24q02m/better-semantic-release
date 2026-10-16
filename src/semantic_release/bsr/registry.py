@@ -44,7 +44,7 @@ class ProbeTarget:
     registry_url: str = ""
 
 
-def _http_status(
+def _http_status(  # noqa: C901
     url: str, timeout: float, extra_headers: dict[str, str] | None = None
 ) -> int | None:
     """
@@ -59,14 +59,31 @@ def _http_status(
     host = parsed_url.hostname
     if host:
         host = host.lower()
-        if host in (
-            "localhost",
-            "127.0.0.1",
-            "0.0.0.0",  # noqa: S104
-            "169.254.169.254",
-            "::1",
-        ) or host.endswith(".localhost"):
+        if host == "localhost" or host.endswith(".localhost"):
             return None
+
+        import ipaddress
+        import socket
+
+        try:
+            addr_info = socket.getaddrinfo(host, None)
+        except OSError:
+            return None
+
+        for _, _, _, _, sockaddr in addr_info:
+            ip_str = sockaddr[0]
+            try:
+                ip = ipaddress.ip_address(ip_str)
+            except ValueError:
+                continue
+
+            if (
+                ip.is_loopback
+                or ip.is_link_local
+                or ip.is_unspecified
+                or ip_str == "169.254.169.254"
+            ):
+                return None
 
     headers = {"User-Agent": "better-semantic-release-guard"}
     if extra_headers:
