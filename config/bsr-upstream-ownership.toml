@@ -1564,3 +1564,18 @@ kind = "python-test"
 owner = "bsr-w2-integration"
 reason = "Wave-2 integration: real-config dispatch arm and gated-mode config surface coverage."
 gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "src/semantic_release/changelog/template.py"
+status = "M"
+kind = "source"
+owner = "bsr-stock-patch"
+reason = "Performance optimization to prune hidden directories in os.walk"
+gates = ["python-lint", "python-format", "python-type", "python-test"]
+
+[[ownership]]
+path = ".jules/bolt.md"
+status = "A"
+kind = "journal"
+owner = "bsr-tests"
+reason = "Journal entries for Bolt persona optimizations."
