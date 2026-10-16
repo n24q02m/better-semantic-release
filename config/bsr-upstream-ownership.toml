@@ -1575,7 +1575,7 @@ gates = ["python-lint", "python-format", "python-type", "python-test"]
 
 [[ownership]]
 path = ".jules/bolt.md"
-status = "M"
+status = "A"
 kind = "journal"
 owner = "bsr-tests"
 reason = "Journal entries for Bolt persona optimizations."

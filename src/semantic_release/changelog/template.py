@@ -88,6 +88,7 @@ class ComplexDirectorySandboxedEnvironment(SandboxedEnvironment):
         return str(PurePosixPath(parent).parent / template)
 
 
+# BSR-PATCH: avoid any() generator overhead in hot path (better-semantic-release)
 def recursive_render(
     template_dir: Path,
     environment: Environment,
