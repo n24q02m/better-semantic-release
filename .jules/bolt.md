@@ -32,3 +32,7 @@
 ## 2024-05-18 - Generator Overhead in Hot Paths
 **Learning:** `any()` with a generator expression introduces significant initialization overhead in frequently executed hot paths (like evaluating every file in every commit).
 **Action:** Replace `any()` with explicit `for` loops and short-circuit breaks in high-frequency validation logic.
+
+## 2024-10-17 - os.walk in-place directory mutation for performance
+**Learning:** When using `os.walk`, checking against hidden directories post-traversal using `any()` allows `os.walk` to traverse large hidden folders like `.git` or `.venv` unnecessarily.
+**Action:** Mutate `dirs[:]` in-place inside the loop (`dirs[:] = [d for d in dirs if not d.startswith(".")]`) to instruct `os.walk` to skip unwanted directories natively, vastly speeding up traversal.

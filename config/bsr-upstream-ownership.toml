@@ -1564,3 +1564,11 @@ kind = "python-test"
 owner = "bsr-w2-integration"
 reason = "Wave-2 integration: real-config dispatch arm and gated-mode config surface coverage."
 gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "src/semantic_release/changelog/template.py"
+owner = "bsr-stock-patch"
+reason = "Performance optimization: skip hidden directories during os.walk in recursive_render"
+gates = ["python-lint", "python-format", "python-test"]
+status = "M"
+kind = "other"
