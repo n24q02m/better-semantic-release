@@ -94,45 +94,49 @@ def recursive_render(
     _root_dir: str | os.PathLike[str] = ".",
 ) -> list[str]:
     rendered_paths: list[str] = []
-    for root, file in (
-        (Path(root), file)
-        for root, _, files in os.walk(template_dir)
-        for file in files
-        if not any(
-            elem.startswith(".") for elem in Path(root).relative_to(template_dir).parts
-        )
-        and not file.startswith(".")
-    ):
-        output_path = (_root_dir / root.relative_to(template_dir)).resolve()
-        logger.info("Rendering templates from %s to %s", root, output_path)
-        output_path.mkdir(parents=True, exist_ok=True)
-        if file.endswith(".j2"):
-            # We know the file ends with .j2 by the filter in the for-loop
-            output_filename = file[:-3]
-            # Strip off the template directory from the front of the root path -
-            # that's the output location relative to the repo root
-            src_file_path = str((root / file).relative_to(template_dir))
-            output_file_path = str((output_path / output_filename).resolve())
+    for root_str, dirs, files in os.walk(template_dir):
+        # Prevent descending into hidden directories (e.g. .git, .venv)
+        dirs[:] = [d for d in dirs if not d.startswith(".")]
 
-            # Although, file stream rendering is possible and preferred in most
-            # situations, here it is not desired as you cannot read the previous
-            # contents of a file during the rendering of the template. This mechanism
-            # is used for inserting into a current changelog. When using stream rendering
-            # of the same file, it always came back empty
-            logger.debug("rendering %s to %s", src_file_path, output_file_path)
-            rendered_file = environment.get_template(src_file_path).render().rstrip()
-            with open(output_file_path, "w", encoding="utf-8") as output_file:
-                output_file.write(f"{rendered_file}\n")
+        root = Path(root_str)
+        for file in files:
+            if file.startswith("."):
+                continue
 
-            rendered_paths.append(output_file_path)
+            output_path = (_root_dir / root.relative_to(template_dir)).resolve()
+            logger.info("Rendering templates from %s to %s", root, output_path)
+            output_path.mkdir(parents=True, exist_ok=True)
+            if file.endswith(".j2"):
+                # We know the file ends with .j2 by the filter in the for-loop
+                output_filename = file[:-3]
+                # Strip off the template directory from the front of the root path -
+                # that's the output location relative to the repo root
+                src_file_path = str((root / file).relative_to(template_dir))
+                output_file_path = str((output_path / output_filename).resolve())
 
-        else:
-            src_file = str((root / file).resolve())
-            target_file = str((output_path / file).resolve())
-            logger.debug(
-                "source file %s is not a template, copying to %s", src_file, target_file
-            )
-            shutil.copyfile(src_file, target_file)
-            rendered_paths.append(target_file)
+                # Although, file stream rendering is possible and preferred in most
+                # situations, here it is not desired as you cannot read the previous
+                # contents of a file during the rendering of the template. This mechanism
+                # is used for inserting into a current changelog. When using stream rendering
+                # of the same file, it always came back empty
+                logger.debug("rendering %s to %s", src_file_path, output_file_path)
+                rendered_file = (
+                    environment.get_template(src_file_path).render().rstrip()
+                )
+                with open(output_file_path, "w", encoding="utf-8") as output_file:
+                    output_file.write(f"{rendered_file}\n")
+
+                rendered_paths.append(output_file_path)
+
+            else:
+                src_file = str((root / file).resolve())
+                target_file = str((output_path / file).resolve())
+                logger.debug(
+                    "source file %s is not a template, copying to %s",
+                    src_file,
+                    target_file,
+                )
+                shutil.copyfile(src_file, target_file)
+                rendered_paths.append(target_file)
 
     return rendered_paths
