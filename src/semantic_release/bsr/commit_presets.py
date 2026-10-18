@@ -125,6 +125,8 @@ _GITMOJI_CODE_MAP: dict[str, str] = {
 }
 
 _GITMOJI_CODE_RE = re.compile(r"^:([a-z_]+):")
+_NON_ASCII_RE = re.compile(r"[^\x00-\x7f]")
+_ASCII_ALNUM_RE = re.compile(r"[A-Za-z0-9]")
 
 
 class CommitPresetError(Exception):
@@ -215,11 +217,7 @@ def _gitmoji_matcher(subject: str) -> ParsedSubject:
     # Unicode gitmoji: first token must be a non-ascii glyph cluster, so an
     # accented word like "naïve" never counts as an emoji.
     token = stripped.split(" ", 1)[0] if " " in stripped else ""
-    if (
-        token
-        and any(ord(ch) > 127 for ch in token)
-        and not any(ch.isascii() and ch.isalnum() for ch in token)
-    ):
+    if token and _NON_ASCII_RE.search(token) and not _ASCII_ALNUM_RE.search(token):
         raw = token.rstrip("️")  # variation selector
         return ParsedSubject(
             subject=subject,
