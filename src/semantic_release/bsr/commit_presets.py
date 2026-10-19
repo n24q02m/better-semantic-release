@@ -125,6 +125,8 @@ _GITMOJI_CODE_MAP: dict[str, str] = {
 }
 
 _GITMOJI_CODE_RE = re.compile(r"^:([a-z_]+):")
+_NONASCII_RE = re.compile(r"[^\x00-\x7f]")
+_ASCII_ALNUM_RE = re.compile(r"[a-zA-Z0-9]")
 
 
 class CommitPresetError(Exception):
@@ -217,8 +219,8 @@ def _gitmoji_matcher(subject: str) -> ParsedSubject:
     token = stripped.split(" ", 1)[0] if " " in stripped else ""
     if (
         token
-        and any(ord(ch) > 127 for ch in token)
-        and not any(ch.isascii() and ch.isalnum() for ch in token)
+        and _NONASCII_RE.search(token) is not None
+        and _ASCII_ALNUM_RE.search(token) is None
     ):
         raw = token.rstrip("️")  # variation selector
         return ParsedSubject(
