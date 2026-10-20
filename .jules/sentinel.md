@@ -17,3 +17,8 @@
 **Vulnerability:** HTTP probes in the registry allow fetching arbitrary URLs without restricting private or local addresses, presenting a Server-Side Request Forgery (SSRF) risk.
 **Learning:** Probe adapters querying user-provided URLs can be abused to access internal metadata services (e.g. 169.254.169.254) or local endpoints.
 **Prevention:** Implement host validation in base HTTP request functions (like `_http_status`) to fail closed on internal/loopback hostnames.
+
+## 2026-09-08 - [SSRF Obfuscated IP Protection]
+**Vulnerability:** String-matching IP addresses in URLs is vulnerable to SSRF bypasses via obfuscated IPs (e.g., decimal `2130706433` or octal `0177.0.0.1`).
+**Learning:** `urllib.parse` does not normalize obfuscated IP addresses, meaning simple string blocklists on `parsed_url.hostname` fail.
+**Prevention:** Use `socket.getaddrinfo` to properly resolve the host and then validate the resolved IPs using the `ipaddress` module to prevent loopback and internal metadata access.
