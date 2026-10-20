@@ -50,6 +50,11 @@ _DESCRIPTOR_STAGING = bool(
 )
 
 
+# Performance optimization: pre-compiled regex for control character detection
+# evaluates at C-level, avoiding generator initialization overhead from `any()`.
+_CTRL_RE = re.compile(r"[\x00-\x1f]")
+
+
 def _before_workspace_component_open(
     workspace: Path, parts: tuple[str, ...], scope: str
 ) -> None:
@@ -906,7 +911,7 @@ def _release_id(value: Mapping[str, Any]) -> int:
 
 def _release_url(value: Mapping[str, Any]) -> str:
     url = value.get("html_url")
-    if not isinstance(url, str) or not url or any(ord(char) < 0x20 for char in url):
+    if not isinstance(url, str) or not url or bool(_CTRL_RE.search(url)):
         raise ProviderError("release url")
     parsed = urllib.parse.urlsplit(url)
     if (
@@ -957,7 +962,7 @@ def _asset_from_provider(value: Any) -> tuple[str, int, str, str]:
     if (
         not isinstance(name, str)
         or not name
-        or any(ord(char) < 0x20 for char in name)
+        or bool(_CTRL_RE.search(name))
         or type(size) is not int
         or size < 0
         or not isinstance(digest, str)
@@ -966,7 +971,7 @@ def _asset_from_provider(value: Any) -> tuple[str, int, str, str]:
         or not isinstance(content_type, str)
         or not content_type
         or len(content_type) > 255
-        or any(ord(char) < 0x20 for char in content_type)
+        or bool(_CTRL_RE.search(content_type))
     ):
         raise ProviderError("asset response")
     return name, size, digest, content_type
@@ -1609,11 +1614,7 @@ class HttpGithubProvider:
         *,
         limits: PublishLimits | None = None,
     ) -> None:
-        if (
-            not isinstance(token, str)
-            or not token
-            or any(ord(char) < 0x20 for char in token)
-        ):
+        if not isinstance(token, str) or not token or bool(_CTRL_RE.search(token)):
             raise ProviderError("token input")
         self._token = token
         self._limits = limits or PublishLimits()
