@@ -17,3 +17,7 @@
 **Vulnerability:** HTTP probes in the registry allow fetching arbitrary URLs without restricting private or local addresses, presenting a Server-Side Request Forgery (SSRF) risk.
 **Learning:** Probe adapters querying user-provided URLs can be abused to access internal metadata services (e.g. 169.254.169.254) or local endpoints.
 **Prevention:** Implement host validation in base HTTP request functions (like `_http_status`) to fail closed on internal/loopback hostnames.
+## 2026-10-22 - SSRF bypass using obfuscated IP addresses
+**Vulnerability:** The HTTP probe utility `_http_status` validated hostnames by matching the parsed hostname string against a hardcoded blocklist (e.g. `127.0.0.1`), making it vulnerable to obfuscated IP addresses like octal `0177.0.0.1` or decimal `2130706433` hitting loopback via SSRF.
+**Learning:** Python's `urllib.parse` does not normalize IP address formatting. Relying on string matching for IP blocklists is insecure.
+**Prevention:** Use `socket.getaddrinfo` to resolve hostnames to IPs prior to connecting, and validate those resolved strings through the `ipaddress` module to robustly identify loopback, link-local, or cloud metadata addresses.
