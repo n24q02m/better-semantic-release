@@ -32,3 +32,10 @@
 ## 2024-05-18 - Generator Overhead in Hot Paths
 **Learning:** `any()` with a generator expression introduces significant initialization overhead in frequently executed hot paths (like evaluating every file in every commit).
 **Action:** Replace `any()` with explicit `for` loops and short-circuit breaks in high-frequency validation logic.
+## 2024-05-23 - Fast Disjoint Checking
+**Learning:** Using `any(part in {"", ".", ".."} for part in path.split("/"))` introduces generator overhead and executes in O(N) over the iterable. Checking disjointness directly using `not {"", ".", ".."}.isdisjoint(path.split("/"))` operates at C-level and removes generator overhead, improving execution time.
+**Action:** Replace `any(x in A for x in B)` where A is a set with the `not A.isdisjoint(B)` set method.
+
+## 2024-05-23 - Python `any()` Generator Overhead in String Validation
+**Learning:** Using `any(condition(x) for x in iterable)` for string validation (e.g. checking for control characters) introduces generator overhead. In a hot path like traversing large JSON-like manifests and registries, this can slow down execution significantly.
+**Action:** Replace `any()` containing generator expressions with C-level compiled regular expressions like `re.compile(r"[\x00-\x1f]").search(string)` to eliminate generator overhead.
