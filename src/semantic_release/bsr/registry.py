@@ -10,6 +10,8 @@ already exist, is it free, or is the state ambiguous (fail closed to
 from __future__ import annotations
 
 import enum
+import ipaddress
+import socket
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -44,9 +46,9 @@ class ProbeTarget:
     registry_url: str = ""
 
 
-def _http_status(
+def _http_status(  # noqa: C901
     url: str, timeout: float, extra_headers: dict[str, str] | None = None
-) -> int | None:
+) -> int | None:  # noqa: C901
     """
     HTTP GET a URL and return its status code.
 
@@ -59,14 +61,34 @@ def _http_status(
     host = parsed_url.hostname
     if host:
         host = host.lower()
-        if host in (
-            "localhost",
-            "127.0.0.1",
-            "0.0.0.0",  # noqa: S104
-            "169.254.169.254",
-            "::1",
-        ) or host.endswith(".localhost"):
+        if host == "localhost" or host.endswith(".localhost"):
             return None
+
+        try:
+            ip_obj = ipaddress.ip_address(host.strip("[]"))
+            if (
+                ip_obj.is_loopback
+                or ip_obj.is_link_local
+                or ip_obj.is_unspecified
+                or str(ip_obj) == "169.254.169.254"
+            ):
+                return None
+        except ValueError:
+            pass
+
+        try:
+            infos = socket.getaddrinfo(host, None)
+            for info in infos:
+                ip_obj = ipaddress.ip_address(info[4][0])
+                if (
+                    ip_obj.is_loopback
+                    or ip_obj.is_link_local
+                    or ip_obj.is_unspecified
+                    or str(ip_obj) == "169.254.169.254"
+                ):
+                    return None
+        except socket.gaierror:
+            return None  # Fail closed on DNS resolution failure
 
     headers = {"User-Agent": "better-semantic-release-guard"}
     if extra_headers:
