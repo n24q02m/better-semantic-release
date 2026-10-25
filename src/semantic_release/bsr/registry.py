@@ -10,6 +10,7 @@ already exist, is it free, or is the state ambiguous (fail closed to
 from __future__ import annotations
 
 import enum
+import ipaddress
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -44,6 +45,70 @@ class ProbeTarget:
     registry_url: str = ""
 
 
+_HEX_DIGITS = frozenset("0123456789abcdefABCDEFxX")
+
+
+def _parse_ipv4_shorthand(host: str) -> ipaddress.IPv4Address | None:
+    """
+    Parse the legacy ``inet_aton`` spellings of an IPv4 address.
+
+    Resolvers accept ``2130706433``, ``0x7f000001``, ``0177.0.0.1`` and ``127.1``
+    for 127.0.0.1, but :mod:`ipaddress` rejects them, so a plain string
+    compare or ``ip_address`` call lets them through.
+    """
+    parts = host.split(".")
+    if not 1 <= len(parts) <= 4:
+        return None
+    values: list[int] = []
+    for part in parts:
+        if not part or not _HEX_DIGITS.issuperset(part):
+            return None
+        try:
+            if part[:2] in ("0x", "0X"):
+                values.append(int(part[2:], 16))
+            elif len(part) > 1 and part[0] == "0":
+                values.append(int(part, 8))
+            else:
+                values.append(int(part, 10))
+        except ValueError:
+            return None
+    *head, last = values
+    tail_bytes = 5 - len(parts)
+    if any(value > 255 for value in head) or last >= 256**tail_bytes:
+        return None
+    packed = 0
+    for value in head:
+        packed = (packed << 8) | value
+    return ipaddress.IPv4Address((packed << (8 * tail_bytes)) | last)
+
+
+def _is_blocked_host(host: str) -> bool:
+    """
+    Return True for hosts the registry probe must never connect to.
+
+    Covers ``localhost``, and any IP literal -- in any spelling, including
+    IPv4-mapped IPv6 -- that is loopback, unspecified or link-local (which
+    includes the 169.254.169.254 cloud metadata address). Private ranges stay
+    reachable: ``kind = "http"`` probes may legitimately target an internal
+    registry. DNS names are not resolved here; a name that resolves to a
+    blocked address would need connection-time pinning, and the probe URL
+    comes from the repository's own ``[tool.bsr.publish.probe]`` config.
+    """
+    host = host.lower().rstrip(".")
+    if host == "localhost" or host.endswith(".localhost"):
+        return True
+    address: ipaddress.IPv4Address | ipaddress.IPv6Address | None
+    try:
+        address = ipaddress.ip_address(host)
+    except ValueError:
+        address = _parse_ipv4_shorthand(host)
+    if address is None:
+        return False
+    if isinstance(address, ipaddress.IPv6Address) and address.ipv4_mapped:
+        address = address.ipv4_mapped
+    return address.is_loopback or address.is_unspecified or address.is_link_local
+
+
 def _http_status(
     url: str, timeout: float, extra_headers: dict[str, str] | None = None
 ) -> int | None:
@@ -57,16 +122,8 @@ def _http_status(
         return None
 
     host = parsed_url.hostname
-    if host:
-        host = host.lower()
-        if host in (
-            "localhost",
-            "127.0.0.1",
-            "0.0.0.0",  # noqa: S104
-            "169.254.169.254",
-            "::1",
-        ) or host.endswith(".localhost"):
-            return None
+    if host and _is_blocked_host(host):
+        return None
 
     headers = {"User-Agent": "better-semantic-release-guard"}
     if extra_headers:

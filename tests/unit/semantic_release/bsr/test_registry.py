@@ -143,6 +143,73 @@ def test_http_status_ssrf_returns_none():
     )
 
 
+@pytest.mark.parametrize(
+    "host",
+    [
+        "localhost.",
+        "app.localhost",
+        "2130706433",  # decimal 127.0.0.1
+        "0x7f000001",  # hex
+        "0177.0.0.1",  # octal
+        "127.1",  # short form
+        "0",  # 0.0.0.0
+        "127.255.255.254",  # anywhere in 127/8
+        "2852039166",  # decimal 169.254.169.254
+        "[::1]",
+        "[::ffff:127.0.0.1]",  # IPv4-mapped loopback
+        "[::ffff:7f00:1]",
+        "[::ffff:a9fe:a9fe]",  # IPv4-mapped metadata address
+        "[fe80::1]",
+    ],
+)
+def test_http_status_blocks_obfuscated_internal_hosts(monkeypatch, host):
+    """
+    Every spelling of a loopback, unspecified or link-local address is refused
+    before any connection is attempted.
+    """
+
+    def _no_network(*_args, **_kwargs):
+        raise AssertionError("urlopen must not be reached for a blocked host")
+
+    monkeypatch.setattr(reg.urllib.request, "urlopen", _no_network)
+    assert reg._http_status(f"http://{host}/x", timeout=2.0) is None
+
+
+@pytest.mark.parametrize(
+    "host",
+    [
+        "151.101.0.223",
+        "10.0.0.1",  # private ranges stay reachable for internal registries
+        "192.168.1.1",
+        "[2606:4700::1111]",
+        "registry.example.com",
+        "127.0.0.1.example.com",  # a name, not a literal
+        "256.1.1.1",  # not an address, falls through to DNS
+        "0x",
+    ],
+)
+def test_http_status_allows_non_internal_hosts(monkeypatch, host):
+    """Hosts that are not loopback/unspecified/link-local reach the network call."""
+    reached = []
+
+    class _Response:
+        status = 200
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_exc):
+            return False
+
+    def _fake_urlopen(req, timeout=None):  # noqa: ARG001
+        reached.append(req.full_url)
+        return _Response()
+
+    monkeypatch.setattr(reg.urllib.request, "urlopen", _fake_urlopen)
+    assert reg._http_status(f"https://{host}/x", timeout=2.0) == 200
+    assert reached == [f"https://{host}/x"]
+
+
 def test_http_status_invalid_scheme_returns_none():
     """
     `_http_status` returns `None` when given a URL with an invalid scheme,
