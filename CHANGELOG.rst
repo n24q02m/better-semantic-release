@@ -4,6 +4,24 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.13.0-beta.6:
+
+v1.13.0-beta.6 (2026-10-25)
+===========================
+
+🪲 Bug Fixes
+------------
+
+* Block obfuscated loopback and link-local hosts in registry probe (`PR#263`_, `07f0613`_)
+
+* Make publisher image digest independent of build date (`PR#264`_, `43d182d`_)
+
+.. _07f0613: https://github.com/n24q02m/better-semantic-release/commit/07f0613a47db82878114eaa314ea816764f9e2ff
+.. _43d182d: https://github.com/n24q02m/better-semantic-release/commit/43d182de00ea972505def242fc991ae087a35aee
+.. _PR#263: https://github.com/n24q02m/better-semantic-release/pull/263
+.. _PR#264: https://github.com/n24q02m/better-semantic-release/pull/264
+
+
 .. _changelog-v1.13.0-beta.5:
 
 v1.13.0-beta.5 (2026-10-19)
