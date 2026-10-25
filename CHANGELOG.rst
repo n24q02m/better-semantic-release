@@ -4,6 +4,20 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.13.0-beta.7:
+
+v1.13.0-beta.7 (2026-10-25)
+===========================
+
+🪲 Bug Fixes
+------------
+
+* Pin the date-independent publisher image digest (`PR#265`_, `ac7ebd4`_)
+
+.. _ac7ebd4: https://github.com/n24q02m/better-semantic-release/commit/ac7ebd420065a5cfdcb92eb3046f3a691097a11e
+.. _PR#265: https://github.com/n24q02m/better-semantic-release/pull/265
+
+
 .. _changelog-v1.13.0-beta.6:
 
 v1.13.0-beta.6 (2026-10-25)
