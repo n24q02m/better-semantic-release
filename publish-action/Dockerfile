@@ -18,7 +18,12 @@ RUN set -eux; \
     test "$PUBLISHER_GID" -le 65534; \
     addgroup --system --gid "$PUBLISHER_GID" publisher; \
     adduser --system --uid "$PUBLISHER_UID" --ingroup publisher \
-      --no-create-home --shell /usr/sbin/nologin publisher
+      --no-create-home --shell /usr/sbin/nologin publisher; \
+    # adduser stamps today's date (days since epoch) into /etc/shadow, which made
+    # the image digest change every day for identical inputs. Blank the field:
+    # the account is locked and has no password, so aging is irrelevant.
+    sed -i -E 's/^(publisher:[^:]*:)[0-9]*:/\1:/' /etc/shadow; \
+    grep -Eq '^publisher:!::' /etc/shadow
 
 # Copy only the stdlib runtime and its tiny action adapter. No package install,
 # build tooling, source checkout, token, or dependency graph enters the image.
