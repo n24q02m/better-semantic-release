@@ -35,3 +35,7 @@
 ## 2024-05-14 - String validation optimization
 **Learning:** For string validation checking for control characters, using `any()` with a generator expression introduces significant overhead due to generator initialization.
 **Action:** Replace `any(ord(char) < 0x20 for char in string)` with a pre-compiled regular expression `re.compile(r"[\x00-\x1f]").search(string)` to evaluate at C-level for a substantial performance speedup in hot paths.
+
+## 2024-10-09 - Rejected regex string validation micro-optimization
+**Learning:** While replacing `any()` generator expressions with pre-compiled regex for string validation saves time (0.4-0.9 us per token, 1.6-3.6 us per publisher validation), the absolute gain per release is well under a millisecond. If the file is baked into a publisher image (e.g., `release_publisher.py`), the change forces a heavy image rebuild and registry refresh, outweighing the negligible runtime performance benefit.
+**Action:** Do not propose micro-optimizations that require container image rebuilds unless the runtime performance gain is substantial (measurable in seconds, not microseconds).
