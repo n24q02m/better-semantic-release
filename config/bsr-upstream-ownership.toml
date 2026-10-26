@@ -23,14 +23,6 @@ reason = "Current fork difference is intentionally retained and declared for own
 gates = ["other"]
 
 [[ownership]]
-path = ".jules/sentinel.md"
-status = "A"
-kind = "other"
-owner = "bsr-tests"
-reason = "Agent persona journal explicitly authorized."
-gates = ["other"]
-
-[[ownership]]
 path = ".github/ISSUE_TEMPLATE/bug_report.md"
 status = "A"
 kind = "other"
@@ -1427,15 +1419,6 @@ kind = "test"
 owner = "bsr-stock-patch"
 reason = "Removing assertions against standard output for ssh-agent and ssh-add because CI logs should not contain ssh metadata."
 gates = ["other"]
-
-[[ownership]]
-path = ".jules/bolt.md"
-status = "A"
-kind = "journal"
-owner = "bsr-tests"
-reason = "Agent persona journal"
-gates = ["other"]
-
 
 [[ownership]]
 path = "src/semantic_release/bsr/component_graph.py"
