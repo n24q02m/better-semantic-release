@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -15,6 +16,17 @@ REGISTRY_SCRIPT = ROOT / "scripts" / "action_pin_registry.py"
 PUBLISHER_DIGEST = (
     "sha256:6fe899fd3dac530a0e041fee2e694abf44333e75a3ba7430f1190bd6c872e09b"
 )
+
+
+def assert_pinned_action(uses: str, action: str) -> None:
+    """Require ``action`` at a full commit SHA, whichever release the SHA is.
+
+    Renovate bumps the SHA through ``pinDigests``; the contract is that the
+    reference stays an immutable commit of the expected action, not one
+    particular release.
+    """
+    assert re.fullmatch(rf"{re.escape(action)}@[0-9a-f]{{40}}", uses), uses
+
 
 
 def _load_workflow() -> dict[str, object]:
@@ -55,9 +67,7 @@ def test_manual_cd_operations_are_mutually_exclusive_and_gated() -> None:
         for step in image["steps"]
         if step.get("name") == "Set up isolated BuildKit builder"
     )
-    assert buildx["uses"] == (
-        "docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f"
-    )
+    assert_pinned_action(buildx["uses"], "docker/setup-buildx-action")
 
     registry = document["jobs"]["registry-g1"]
     assert registry["if"] == (
@@ -113,9 +123,7 @@ def test_registry_action_is_a_self_contained_remote_loader() -> None:
         action["outputs"]["registry"]["value"] == "${{ steps.load.outputs.registry }}"
     )
     installer, loader = action["runs"]["steps"]
-    assert installer["uses"] == (
-        "sigstore/cosign-installer@7e8b541eb2e61bf99390e1afd4be13a184e9ebc5"
-    )
+    assert_pinned_action(installer["uses"], "sigstore/cosign-installer")
     assert loader["id"] == "load"
     command = loader["run"]
     assert "scripts/action_pin_registry.py" in command
@@ -164,9 +172,7 @@ def test_g1_job_signs_publishes_and_fresh_loads_create_once_pair() -> None:
         for step in registry["steps"]
         if step.get("name") == "Upload signed G1 evidence"
     )
-    assert upload["uses"] == (
-        "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a"
-    )
+    assert_pinned_action(upload["uses"], "actions/upload-artifact")
     assert upload["with"]["if-no-files-found"] == "error"
 
 
@@ -244,9 +250,7 @@ def test_candidate_job_verifies_provenance_and_exports_exact_handoff() -> None:
         if step.get("name") == "Attest candidate image provenance"
     )
     assert provenance["id"] == "provenance"
-    assert provenance["uses"] == (
-        "actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8"
-    )
+    assert_pinned_action(provenance["uses"], "actions/attest-build-provenance")
 
     handoff = next(
         step
@@ -269,16 +273,20 @@ def test_candidate_job_verifies_provenance_and_exports_exact_handoff() -> None:
     upload = next(
         step for step in steps if step.get("name") == "Upload candidate handoff"
     )
-    assert upload["uses"] == (
-        "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a"
-    )
+    assert_pinned_action(upload["uses"], "actions/upload-artifact")
     assert upload["with"]["path"] == "publisher-image-candidate.json"
     assert upload["with"]["if-no-files-found"] == "error"
 
 
 def test_workflow_validator_pin_supports_attestations() -> None:
     content = (ROOT / ".pre-commit-config.yaml").read_text(encoding="utf-8")
-    assert 'rev: "0.30.0"' in content
+    match = re.search(
+        r"python-jsonschema/check-jsonschema\s+rev:\s*[\"']?v?(\d+)\.(\d+)\.(\d+)",
+        content,
+    )
+    assert match, "check-jsonschema must stay pinned in pre-commit"
+    # 0.30.0 is the first release whose workflow schema accepts attestations.
+    assert tuple(map(int, match.groups())) >= (0, 30, 0)
 
 
 def test_pinned_non_root_image_runtime() -> None:
