@@ -4,6 +4,37 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.13.0-beta.8:
+
+v1.13.0-beta.8 (2026-10-26)
+===========================
+
+🪲 Bug Fixes
+------------
+
+* Accept renovate action bumps and filter dependency updates by requires-python (`PR#268`_,
+  `9c9020a`_)
+
+* Drop the removed Jules journals from the ownership manifest (`PR#269`_, `dc47844`_)
+
+* Remove stale Jules journal files (`PR#269`_, `dc47844`_)
+
+* Satisfy docstring lint in pinned action helper (`PR#268`_, `9c9020a`_)
+
+* **deps**: Update docker/setup-buildx-action action to v4 (`PR#217`_, `1d87d2f`_)
+
+* **deps**: Update non-major dependencies (`PR#213`_, `09020c4`_)
+
+.. _09020c4: https://github.com/n24q02m/better-semantic-release/commit/09020c4f60b0646de7eca9177c61e1f64d611a8e
+.. _1d87d2f: https://github.com/n24q02m/better-semantic-release/commit/1d87d2f2a3e9a6018810999e86498f3f550ee6a4
+.. _9c9020a: https://github.com/n24q02m/better-semantic-release/commit/9c9020afb1eac97638225b2285a2586becd86828
+.. _dc47844: https://github.com/n24q02m/better-semantic-release/commit/dc478448a04177027a061e7f05eeba91f47e557e
+.. _PR#213: https://github.com/n24q02m/better-semantic-release/pull/213
+.. _PR#217: https://github.com/n24q02m/better-semantic-release/pull/217
+.. _PR#268: https://github.com/n24q02m/better-semantic-release/pull/268
+.. _PR#269: https://github.com/n24q02m/better-semantic-release/pull/269
+
+
 .. _changelog-v1.13.0-beta.7:
 
 v1.13.0-beta.7 (2026-10-25)
