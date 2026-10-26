@@ -19,14 +19,14 @@ PUBLISHER_DIGEST = (
 
 
 def assert_pinned_action(uses: str, action: str) -> None:
-    """Require ``action`` at a full commit SHA, whichever release the SHA is.
+    """
+    Require ``action`` at a full commit SHA, whichever release the SHA is.
 
     Renovate bumps the SHA through ``pinDigests``; the contract is that the
     reference stays an immutable commit of the expected action, not one
     particular release.
     """
     assert re.fullmatch(rf"{re.escape(action)}@[0-9a-f]{{40}}", uses), uses
-
 
 
 def _load_workflow() -> dict[str, object]:
