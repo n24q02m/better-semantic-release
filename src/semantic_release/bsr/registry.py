@@ -95,6 +95,9 @@ def _is_blocked_host(host: str) -> bool:
     comes from the repository's own ``[tool.bsr.publish.probe]`` config.
     """
     host = host.lower().rstrip(".")
+    if host.startswith("[") and host.endswith("]"):
+        host = host[1:-1]
+    host = host.split("%")[0]
     if host == "localhost" or host.endswith(".localhost"):
         return True
     address: ipaddress.IPv4Address | ipaddress.IPv6Address | None
