@@ -216,6 +216,7 @@ files = [
   "src/semantic_release/version/algorithm.py",
   "src/semantic_release/version/version.py",
   "src/semantic_release/commit_parser/conventional/parser_monorepo.py",
+  "src/semantic_release/changelog/template.py",
 ]
 show_column_numbers = true
 show_error_context = true

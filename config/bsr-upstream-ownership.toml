@@ -1561,4 +1561,4 @@ status = "M"
 kind = "python-source"
 owner = "bsr-stock-patch"
 reason = "Performance optimization: prune hidden directories in-place during os.walk to avoid traversing .git/.venv."
-gates = ["python-lint", "python-format"]
+gates = ["python-lint", "python-format", "python-type"]
