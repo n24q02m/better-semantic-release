@@ -1554,3 +1554,11 @@ status = "A"
 kind = "journal"
 owner = "bsr-tests"
 reason = "Journaling learnings for AI developer agent."
+
+[[ownership]]
+path = "src/semantic_release/changelog/template.py"
+status = "M"
+kind = "python-source"
+owner = "bsr-stock-patch"
+reason = "Performance optimization: prune hidden directories in-place during os.walk to avoid traversing .git/.venv."
+gates = ["python-lint", "python-format"]

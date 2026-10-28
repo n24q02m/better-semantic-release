@@ -94,15 +94,17 @@ def recursive_render(
     _root_dir: str | os.PathLike[str] = ".",
 ) -> list[str]:
     rendered_paths: list[str] = []
-    for root, file in (
-        (Path(root), file)
-        for root, _, files in os.walk(template_dir)
-        for file in files
-        if not any(
-            elem.startswith(".") for elem in Path(root).relative_to(template_dir).parts
-        )
-        and not file.startswith(".")
-    ):
+
+    def _iter_template_files() -> Iterable[tuple[Path, str]]:
+        for root_str, dirs, files in os.walk(template_dir):
+            # BSR-PATCH: Performance optimization - pruning hidden directories in-place prevents descending into them
+            dirs[:] = [d for d in dirs if not d.startswith(".")]
+            root = Path(root_str)
+            for file in files:
+                if not file.startswith("."):
+                    yield root, file
+
+    for root, file in _iter_template_files():
         output_path = (_root_dir / root.relative_to(template_dir)).resolve()
         logger.info("Rendering templates from %s to %s", root, output_path)
         output_path.mkdir(parents=True, exist_ok=True)
