@@ -309,7 +309,7 @@ def _entry_errors(manifest: OwnershipManifest) -> list[str]:
             errors.append(f"{entry.path}: unknown gates: {', '.join(unknown_gates)}")
         if entry.status not in _OWNERSHIP_STATUSES:
             errors.append(f"{entry.path}: unknown ownership status: {entry.status}")
-        if not entry.gates:
+        if not entry.gates and entry.kind != "journal":
             errors.append(f"{entry.path}: no ownership gates declared")
         if entry.kind == "python-source" and not entry.reason.strip():
             errors.append(f"{entry.path}: stock source ownership requires a reason")
