@@ -4,6 +4,27 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.13.1-beta.1:
+
+v1.13.1-beta.1 (2026-10-28)
+===========================
+
+🪲 Bug Fixes
+------------
+
+* **deps**: Update python:3.13-slim-bookworm Docker digest to a1165e2 (`PR#244`_, `c6a0e79`_)
+
+⚡ Performance Improvements
+---------------------------
+
+* Optimize commit preset parsing with regexes (`PR#273`_, `6a2fc4e`_)
+
+.. _6a2fc4e: https://github.com/n24q02m/better-semantic-release/commit/6a2fc4ea26f6c02c46e998f7eb1ac25fee6b66ad
+.. _c6a0e79: https://github.com/n24q02m/better-semantic-release/commit/c6a0e7936e3806da0fe530a048435b932753276b
+.. _PR#244: https://github.com/n24q02m/better-semantic-release/pull/244
+.. _PR#273: https://github.com/n24q02m/better-semantic-release/pull/273
+
+
 .. _changelog-v1.13.1:
 
 v1.13.1 (2026-10-28)
