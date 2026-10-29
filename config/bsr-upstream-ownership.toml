@@ -406,11 +406,11 @@ gates = ["python-lint", "python-format", "python-type"]
 
 [[ownership]]
 path = "src/semantic_release/bsr/registry.py"
-status = "A"
+status = "M"
 kind = "python-source"
-owner = "bsr-core"
-reason = "Fork-owned implementation in semantic_release.bsr; covered as a first-class BSR addition."
-gates = ["python-lint", "python-format", "python-type"]
+owner = "bsr-stock-patch"
+reason = "Mitigate SSRF by stripping interface zone identifiers from hostnames before validating IP addresses."
+gates = ["python-lint", "python-format", "python-type", "python-test"]
 
 [[ownership]]
 path = "src/semantic_release/bsr/stable_notes.py"
@@ -1550,6 +1550,13 @@ gates = ["python-lint", "python-format", "python-test"]
 
 [[ownership]]
 path = ".jules/bolt.md"
+status = "A"
+kind = "journal"
+owner = "bsr-tests"
+reason = "Journaling learnings for AI developer agent."
+
+[[ownership]]
+path = ".jules/sentinel.md"
 status = "A"
 kind = "journal"
 owner = "bsr-tests"
