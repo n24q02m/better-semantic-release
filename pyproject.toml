@@ -91,7 +91,7 @@ test = [
   "requests-mock ~=1.12",
 ]
 dev = [
-  "pre-commit >=3.8.0, <5.0.0",
+  "pre-commit >=4.7.0, <5.0.0",
   "tox ~=4.67",
   "ruff == 0.6.1"
 ]
