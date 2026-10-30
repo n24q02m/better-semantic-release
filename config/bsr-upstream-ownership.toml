@@ -1554,3 +1554,10 @@ status = "A"
 kind = "journal"
 owner = "bsr-tests"
 reason = "Journaling learnings for AI developer agent."
+
+[[ownership]]
+path = ".jules/sentinel.md"
+status = "A"
+kind = "journal"
+owner = "bsr-tests"
+reason = "Journaling learnings for AI security agent."

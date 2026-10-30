@@ -10,6 +10,7 @@ already exist, is it free, or is the state ambiguous (fail closed to
 from __future__ import annotations
 
 import enum
+import http.client
 import ipaddress
 import urllib.error
 import urllib.parse
@@ -95,6 +96,10 @@ def _is_blocked_host(host: str) -> bool:
     comes from the repository's own ``[tool.bsr.publish.probe]`` config.
     """
     host = host.lower().rstrip(".")
+    if host.startswith("[") and host.endswith("]"):
+        host = host[1:-1]
+    host = host.split("%")[0]
+
     if host == "localhost" or host.endswith(".localhost"):
         return True
     address: ipaddress.IPv4Address | ipaddress.IPv6Address | None
@@ -122,6 +127,9 @@ def _http_status(
         return None
 
     host = parsed_url.hostname
+    if host is None: # urlparse failed
+        return None
+
     if host and _is_blocked_host(host):
         return None
 
@@ -137,7 +145,7 @@ def _http_status(
             return status if status is not None else resp.getcode()
     except urllib.error.HTTPError as exc:
         return exc.code
-    except (urllib.error.URLError, TimeoutError, OSError):
+    except (urllib.error.URLError, TimeoutError, OSError, http.client.InvalidURL):
         return None
 
 

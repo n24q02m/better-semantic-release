@@ -160,6 +160,9 @@ def test_http_status_ssrf_returns_none():
         "[::ffff:7f00:1]",
         "[::ffff:a9fe:a9fe]",  # IPv4-mapped metadata address
         "[fe80::1]",
+        "127.0.0.1%en0",  # IPv4 with zone id
+        "::1%en0",  # IPv6 with zone id
+        "[::1%en0]",  # bracketed IPv6 with zone id
     ],
 )
 def test_http_status_blocks_obfuscated_internal_hosts(monkeypatch, host):
