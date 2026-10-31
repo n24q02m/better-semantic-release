@@ -97,11 +97,15 @@ def _is_blocked_host(host: str) -> bool:
     host = host.lower().rstrip(".")
     if host == "localhost" or host.endswith(".localhost"):
         return True
+    # BSR-PATCH: strictly strip IPv6 brackets and network interface zone identifiers
+    # (e.g. `%en0`) before passing to ipaddress to prevent urllib bypasses
+    # resolving obfuscated loopback IPs.
+    clean_host = host.strip("[]").split("%")[0]
     address: ipaddress.IPv4Address | ipaddress.IPv6Address | None
     try:
-        address = ipaddress.ip_address(host)
+        address = ipaddress.ip_address(clean_host)
     except ValueError:
-        address = _parse_ipv4_shorthand(host)
+        address = _parse_ipv4_shorthand(clean_host)
     if address is None:
         return False
     if isinstance(address, ipaddress.IPv6Address) and address.ipv4_mapped:
