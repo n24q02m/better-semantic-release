@@ -138,7 +138,11 @@ def _http_status(
             host = netloc.rsplit(":", 1)[0] if not netloc.endswith("]") else netloc
         else:
             # unbracketed IPv6 with zone ID (and maybe port)
-            if ":" in netloc and "%" in netloc and netloc.rfind(":") > netloc.rfind("%"):
+            if (
+                ":" in netloc
+                and "%" in netloc
+                and netloc.rfind(":") > netloc.rfind("%")
+            ):
                 host = netloc.rsplit(":", 1)[0]
             else:
                 host = netloc

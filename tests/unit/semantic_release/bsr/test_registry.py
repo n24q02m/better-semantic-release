@@ -162,7 +162,7 @@ def test_http_status_ssrf_returns_none():
         "[fe80::1]",
         "127.0.0.1%en0",  # Unbracketed IPv4 with zone id
         "[fe80::1%en0]",  # Bracketed IPv6 with zone id
-        "fe80::1%en0",    # Unbracketed IPv6 with zone id
+        "fe80::1%en0",  # Unbracketed IPv6 with zone id
     ],
 )
 def test_http_status_blocks_obfuscated_internal_hosts(monkeypatch, host):
