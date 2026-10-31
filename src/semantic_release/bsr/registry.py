@@ -94,14 +94,20 @@ def _is_blocked_host(host: str) -> bool:
     blocked address would need connection-time pinning, and the probe URL
     comes from the repository's own ``[tool.bsr.publish.probe]`` config.
     """
+    # BSR-PATCH: strictly extract bare host from obfuscated IP literals
+    # to avoid SSRF bypass (like 127.0.0.1%en0)
     host = host.lower().rstrip(".")
     if host == "localhost" or host.endswith(".localhost"):
         return True
+
+    # Strip bracket and zone identifiers (e.g., [fe80::1%en0] or unbracketed)
+    bare_host = host.split("%")[0].strip("[]")
+
     address: ipaddress.IPv4Address | ipaddress.IPv6Address | None
     try:
-        address = ipaddress.ip_address(host)
+        address = ipaddress.ip_address(bare_host)
     except ValueError:
-        address = _parse_ipv4_shorthand(host)
+        address = _parse_ipv4_shorthand(bare_host)
     if address is None:
         return False
     if isinstance(address, ipaddress.IPv6Address) and address.ipv4_mapped:
@@ -122,6 +128,21 @@ def _http_status(
         return None
 
     host = parsed_url.hostname
+
+    # urlparse returns None or truncated hostnames for some malformed IP literals
+    # (e.g. unbracketed IPv6 with zone ID).
+    # Fall back to netloc parsing to avoid SSRF bypasses.
+    if (host is None or "%" not in host) and "%" in parsed_url.netloc:
+        netloc = parsed_url.netloc.split("@")[-1]
+        if "]" in netloc:
+            host = netloc.rsplit(":", 1)[0] if not netloc.endswith("]") else netloc
+        else:
+            # unbracketed IPv6 with zone ID (and maybe port)
+            if ":" in netloc and "%" in netloc and netloc.rfind(":") > netloc.rfind("%"):
+                host = netloc.rsplit(":", 1)[0]
+            else:
+                host = netloc
+
     if host and _is_blocked_host(host):
         return None
 
