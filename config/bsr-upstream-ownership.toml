@@ -406,7 +406,7 @@ gates = ["python-lint", "python-format", "python-type"]
 
 [[ownership]]
 path = "src/semantic_release/bsr/registry.py"
-status = "M"
+status = "A"
 kind = "python-source"
 owner = "bsr-stock-patch"
 reason = "Mitigate SSRF by stripping interface zone identifiers from hostnames before validating IP addresses."
