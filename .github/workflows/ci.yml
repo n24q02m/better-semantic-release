@@ -12,8 +12,6 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
-  schedule:
-    - cron: "17 3 * * 1" # weekly CodeQL scan, Monday 03:17 UTC
 
 permissions:
   contents: read
@@ -27,8 +25,8 @@ jobs:
   # metadata check in CI as well as pre-commit and CD.
   readme-sync:
     name: Verify README registry metadata
-    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
@@ -43,8 +41,8 @@ jobs:
 
   lint-type-test:
     name: lint + type + test (linux)
-    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -90,7 +88,6 @@ jobs:
   # assumptions in the test suite.
   test-windows:
     name: test (windows)
-    if: github.event_name != 'schedule'
     runs-on: windows-latest
     # The Linux job runs manifest-scoped tests. Windows is far
     # slower here because the full suite spawns git constantly and process
@@ -115,8 +112,8 @@ jobs:
 
   action-smoke-test:
     name: composite action installs + runs forked source (linux)
-    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -179,8 +176,8 @@ jobs:
   # it, then reads the uv that ended up on PATH.
   action-uv-version-selection:
     name: composite action installs the uv required by its directory (${{ matrix.case }}, ${{ matrix.os }})
-    if: github.event_name != 'schedule'
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -288,6 +285,7 @@ jobs:
     name: Dependency Review
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
       pull-requests: write # comment-summary-in-pr
@@ -306,6 +304,7 @@ jobs:
   codeql:
     name: CodeQL analyze (python)
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       security-events: write
       contents: read
@@ -354,6 +353,7 @@ jobs:
       pull-requests: write
       contents: read
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Detect and govern bot PRs
         env:
