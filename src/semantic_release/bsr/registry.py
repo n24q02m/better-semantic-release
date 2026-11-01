@@ -97,6 +97,9 @@ def _is_blocked_host(host: str) -> bool:
     host = host.lower().rstrip(".")
     if host == "localhost" or host.endswith(".localhost"):
         return True
+    # A zone id (``%en0``) is not part of the address: drop it so a literal
+    # that a resolver may still accept cannot dodge the blocklist.
+    host = host.split("%", 1)[0]
     address: ipaddress.IPv4Address | ipaddress.IPv6Address | None
     try:
         address = ipaddress.ip_address(host)
