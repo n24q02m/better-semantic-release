@@ -9,8 +9,6 @@
 name: cd
 
 on:
-  schedule:
-    - cron: "17 3 * * 1"
   workflow_dispatch:
     inputs:
       operation:
@@ -22,6 +20,7 @@ on:
           - release
           - publisher-image
           - registry-g1
+          - upstream-sync
       release_type:
         description: Release type (beta-first -- pick stable only when ready to publish for real)
         type: choice
@@ -59,7 +58,18 @@ on:
         description: Run ID of the parent inspect/refresh run that dispatched this run (nested-run discriminator)
         type: string
         required: false
+      upstream_ref:
+        description: "upstream-sync only: upstream ref to compare against (owner:ref or plain ref)"
+        type: string
+        required: false
+        default: "python-semantic-release:master"
+      upstream_refresh:
+        description: "upstream-sync only: re-pin the golden to the current inventory"
+        type: boolean
+        required: false
+        default: false
 
+# ci-policy: allow concurrency reason: serialize release routes and nested refresh runs, never cancel one mid-publish
 concurrency:
   group: release-${{ github.event_name == 'workflow_dispatch' && inputs.operation || 'push' }}-${{ inputs.parent_run_id || 'top' }}
   cancel-in-progress: false
@@ -79,6 +89,7 @@ jobs:
       inputs.operation == 'release' &&
       (inputs.parent_run_id != '' || needs.inspect.outputs.refresh != 'true')
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: write
       id-token: write
@@ -149,6 +160,7 @@ jobs:
     name: Build candidate publisher image
     if: inputs.operation == 'publisher-image' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     environment:
       name: beta-publish
     permissions:
@@ -408,13 +420,14 @@ jobs:
           name: publisher-image-candidate-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: publisher-image-candidate.json
           if-no-files-found: error
-          retention-days: 30
+          retention-days: 5
           compression-level: 0
 
   registry-g1:
     name: Publish and fresh-load signed G1 registry
     if: inputs.operation == 'registry-g1' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     environment:
       name: beta-publish
     permissions:
@@ -902,7 +915,7 @@ jobs:
             g1-publication-handoff.json
             tampered-verification.stderr
           if-no-files-found: error
-          retention-days: 90
+          retention-days: 5
           compression-level: 0
 # No downstream notification is dispatched from here, and that is a decision
 # rather than an omission -- worth writing down, because a shared library cutting
@@ -920,12 +933,13 @@ jobs:
 # workflow is not pretending otherwise.
 
   # ============================================================================
-  # Registry freshness (merged from registry-freshness.yml; schedule + dispatch)
+  # Registry freshness (merged from registry-freshness.yml; dispatch only)
   # ============================================================================
   inspect:
     name: Verify registry freshness
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' && inputs.operation != 'upstream-sync'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: read
     outputs:
@@ -989,7 +1003,7 @@ jobs:
                   publisher_change=true
                   stable_only=false
                   ;;
-                CHANGELOG.rst|pyproject.toml|.jules/*|.github/workflows/ci.yml|.github/workflows/upstream-sync.yml|renovate.json|docs/*|scripts/upstream_sync.py|scripts/check_upstream_ownership.py) ;;
+                CHANGELOG.rst|pyproject.toml|.jules/*|.github/workflows/ci.yml|renovate.json|docs/*|scripts/upstream_sync.py|scripts/check_upstream_ownership.py) ;;
                 *) stable_only=false; unknown_drift=true ;;
               esac
             done <<< "$changed_files"
@@ -1108,6 +1122,7 @@ jobs:
     needs: inspect
     if: needs.inspect.outputs.refresh == 'true' && inputs.parent_run_id == ''
     runs-on: ubuntu-latest
+    timeout-minutes: 150
     permissions:
       actions: write
       contents: read
@@ -1402,3 +1417,44 @@ jobs:
           echo "::error::forced beta maintenance route completed without a new prerelease tag; no registry-g1 dispatch"
           echo "Inspect beta-publish approval and semantic-release force=prerelease output; no stable release or same-tag renewal was attempted."
           exit 1
+
+  # Upstream sync drift gate (W2.4, folded in from upstream-sync.yml).
+  #
+  # Recomputes the fork-vs-upstream module divergence inventory and compares
+  # it against config/bsr-upstream-sync-golden.json. Run after pulling the
+  # upstream remote; a stale golden means upstream moved or local stock files
+  # drifted -- refresh deliberately (upstream_refresh), never silently.
+  upstream-sync:
+    name: Compare fork vs upstream
+    if: inputs.operation == 'upstream-sync'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set up upstream remote
+        run: |
+          git remote add upstream             https://github.com/python-semantic-release/python-semantic-release.git
+          git config user.name "bsr-upstream-sync"
+          git config user.email "bsr-upstream-sync@users.noreply.github.com"
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          python-version: "3.13"
+      - name: Install project
+        run: uv sync --frozen
+      - name: Compare against golden
+        env:
+          UPSTREAM_REF: ${{ inputs.upstream_ref }}
+          UPSTREAM_MODE: ${{ inputs.upstream_refresh && '--refresh' || '--check' }}
+        run: |
+          uv run python scripts/upstream_sync.py             --ref "$UPSTREAM_REF"             "$UPSTREAM_MODE"
+      - name: Upload refreshed golden
+        if: inputs.upstream_refresh
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: bsr-upstream-sync-golden
+          path: config/bsr-upstream-sync-golden.json
+          retention-days: 5

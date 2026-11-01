@@ -1437,14 +1437,6 @@ reason = "Performance optimization: replace any() generator with explicit for-lo
 gates = ["python-lint", "python-format", "python-test", "python-type"]
 
 [[ownership]]
-path = ".github/workflows/upstream-sync.yml"
-status = "A"
-kind = "workflows"
-owner = "bsr-w2-upstream-sync"
-reason = "Wave-2 upstream sync harness (W2.4): scheduled upstream detection PR workflow."
-gates = ["workflows"]
-
-[[ownership]]
 path = "scripts/upstream_sync.py"
 status = "A"
 kind = "python-source"

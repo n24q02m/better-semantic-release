@@ -43,7 +43,12 @@ def test_manual_cd_operations_are_mutually_exclusive_and_gated() -> None:
     dispatch = document["on"]["workflow_dispatch"]
     operation = dispatch["inputs"]["operation"]
     assert operation["default"] == "release"
-    assert operation["options"] == ["release", "publisher-image", "registry-g1"]
+    assert operation["options"] == [
+        "release",
+        "publisher-image",
+        "registry-g1",
+        "upstream-sync",
+    ]
     for input_name in ("registry_tag", "candidate_run_id", "candidate_run_attempt"):
         assert dispatch["inputs"][input_name]["required"] == "false"
 
