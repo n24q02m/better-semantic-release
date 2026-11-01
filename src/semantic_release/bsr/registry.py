@@ -125,7 +125,7 @@ def _http_status(
         return None
 
     host = parsed_url.hostname
-    if host and _is_blocked_host(host):
+    if host is None or _is_blocked_host(host):
         return None
 
     headers = {"User-Agent": "better-semantic-release-guard"}
