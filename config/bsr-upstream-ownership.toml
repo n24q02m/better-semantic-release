@@ -1553,3 +1553,11 @@ status = "A"
 kind = "journal"
 owner = "bsr-tests"
 reason = "Journaling learnings for AI developer agent."
+
+[[ownership]]
+path = "src/semantic_release/changelog/template.py"
+status = "M"
+kind = "python-source"
+owner = "bsr-stock-patch"
+reason = "Performance optimization: Avoid os.walk descending into hidden directories during template rendering."
+gates = ["python-lint", "python-format", "python-type"]
