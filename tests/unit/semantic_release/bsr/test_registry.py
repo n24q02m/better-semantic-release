@@ -165,6 +165,8 @@ def test_http_status_ssrf_returns_none():
         "2130706433%en0",  # decimal loopback with a zone id suffix
         "[::1%lo0]",  # bracketed IPv6 with an interface-name zone id
         "[fe80::1%en0]",
+        "::1:80",
+        "[::1]:80",
     ],
 )
 def test_http_status_blocks_obfuscated_internal_hosts(monkeypatch, host):
