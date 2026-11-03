@@ -1560,11 +1560,4 @@ status = "M"
 kind = "python-source"
 owner = "bsr-stock-patch"
 reason = "Performance optimization: prevent os.walk from descending into hidden directories."
-gates = ["python-lint", "python-format"]
-
-[[ownership]]
-path = ".jules/bolt.md"
-status = "A"
-kind = "journal"
-owner = "bsr-tests"
-reason = "Record learning about os.walk optimization."
+gates = ["python-lint", "python-format", "python-type"]
