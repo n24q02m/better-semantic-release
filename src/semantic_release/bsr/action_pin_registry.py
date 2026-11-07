@@ -1317,7 +1317,10 @@ def _matching_attestation_bundle_url(row: Any, attestation_id: str) -> str | Non
         len(parts) < 5
         or parts[:2] != ["", "attestations"]
         or parts[2] != str(repository_id)
-        or any(not part for part in parts[3:])
+        or ""
+        in parts[
+            3:
+        ]  # Performance optimization: explicit 'in' check is faster than any() with generator
     ):
         raise RegistryError("provider attestation")
     filename = parts[-1]
