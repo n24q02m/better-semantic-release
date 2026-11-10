@@ -72,5 +72,5 @@ Release. It is a drop-in fork, so configuration keys are unchanged
 - A performance change needs a measurement in the pull request body: the command, the
   before and after, and the input size.
 
-The per-bot ledgers under `.jules/` record which proposals were rejected and why. Read
-the entry for your area before opening a pull request.
+Accepted and rejected proposals are recorded in `docs/engineering-lessons.md`. Read
+the entries for your area before opening a pull request.
