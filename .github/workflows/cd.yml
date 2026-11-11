@@ -472,7 +472,7 @@ jobs:
           test -s candidate/publisher-image-candidate.json
 
       - name: Install cosign for registry signing
-        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+        uses: sigstore/cosign-installer@756fe2d284c7292c4e9b62c8a28f1e5629c59532 # v4.1.3
 
       - name: Resolve signed registry chain head
         env:
@@ -954,7 +954,7 @@ jobs:
           fetch-depth: 0
 
       - name: Install cosign for registry verification
-        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+        uses: sigstore/cosign-installer@756fe2d284c7292c4e9b62c8a28f1e5629c59532 # v4.1.3
 
       - name: Fresh-load live registry and select refresh route
         id: inspect
@@ -1440,7 +1440,7 @@ jobs:
           git remote add upstream             https://github.com/python-semantic-release/python-semantic-release.git
           git config user.name "bsr-upstream-sync"
           git config user.email "bsr-upstream-sync@users.noreply.github.com"
-      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
         with:
           python-version: "3.13"
       - name: Install project
