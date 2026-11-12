@@ -30,5 +30,12 @@ RUN set -eux; \
 COPY --chown=publisher:publisher src/semantic_release/bsr/release_publisher.py /opt/publisher/release_publisher.py
 COPY --chown=publisher:publisher publish-action/main.py /opt/publisher/main.py
 
+# Pin the clock for any PEP 517 build the action runs. Without it, two builds of
+# identical source produce wheels whose zip member timestamps differ, so the
+# published artifact hash changes for no reason; with it they are byte-identical
+# (measured locally: two `uv build` runs differ, two runs with this variable set
+# match).
+ENV SOURCE_DATE_EPOCH=0
+
 USER publisher
 ENTRYPOINT ["/usr/local/bin/python", "-I", "-S", "-B", "-u", "/opt/publisher/main.py"]
