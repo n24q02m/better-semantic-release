@@ -299,6 +299,7 @@ def test_pinned_non_root_image_runtime() -> None:
     assert "FROM python:3.13-slim-bookworm@sha256:" in content
     assert "ARG PUBLISHER_UID=" in content
     assert "ARG PUBLISHER_GID=" in content
+    assert "ENV SOURCE_DATE_EPOCH=0" in content
     assert "USER publisher" in content
     assert (
         'ENTRYPOINT ["/usr/local/bin/python", "-I", "-S", "-B", "-u", "/opt/publisher/main.py"]'
