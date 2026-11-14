@@ -125,5 +125,5 @@
   "commitMessageTopic": "{{depName}}",
   "semanticCommitType": "fix",
   "semanticCommitScope": "deps",
-  "platformAutomerge": true
+  "platformAutomerge": false
 }
