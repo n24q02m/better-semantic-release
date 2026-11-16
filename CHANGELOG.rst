@@ -4,6 +4,107 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.13.1-beta.2:
+
+v1.13.1-beta.2 (2026-11-16)
+===========================
+
+🪲 Bug Fixes
+------------
+
+* Align workflows with hosted dispatch-only CI policy (`PR#288`_, `0827856`_)
+
+* Let renovate merge only after every check is green (`PR#306`_, `955f02f`_)
+
+* Move .jules ledgers to docs/engineering-lessons.md (`PR#302`_, `9832b0d`_)
+
+* Pin the build clock in the publisher image (`PR#303`_, `93a05e0`_)
+
+* Refresh the registry on publisher drift even when unlisted paths also moved (`PR#309`_,
+  `8b7fea6`_)
+
+* Remove the bot pull request rate-limit job (`PR#301`_, `d2b77c3`_)
+
+* Restore template invariants in the exempt ci.yml (`PR#307`_, `62b5095`_)
+
+* Upload coverage to codecov over oidc and fail the job when it is refused (`PR#308`_, `4fca004`_)
+
+* **deps**: Allow any mypy 2.x from 2.4.0 (`PR#266`_, `c75d9ba`_)
+
+* **deps**: Update mypy to v2 (`PR#266`_, `c75d9ba`_)
+
+* **deps**: Update non-major dependencies (`PR#305`_, `85e81cb`_)
+
+* **deps**: Update non-major dependencies (`PR#295`_, `2db76a2`_)
+
+* **deps**: Update non-major dependencies (`PR#276`_, `8d0a688`_)
+
+* **deps**: Update non-major dependencies (`PR#274`_, `e6905ff`_)
+
+* **deps**: Update pre-commit to v4 (`PR#280`_, `766ed22`_)
+
+* **deps**: Update pytest to v9 (`PR#281`_, `504c334`_)
+
+* **deps**: Update pytest-cov to v7 (`PR#284`_, `ea2a292`_)
+
+* **deps**: Update python-gitlab to v8 (`PR#289`_, `086c008`_)
+
+* **deps**: Update python:3.13-slim-bookworm Docker digest to a5a7017 (`PR#304`_, `07ad0d5`_)
+
+* **deps**: Update sigstore/cosign-installer action to v4 (`PR#290`_, `7843c28`_)
+
+* **deps**: Update sphinx to v9 (`PR#293`_, `fa5c193`_)
+
+* **deps**: Update sphinx-autobuild to v2025 (`PR#298`_, `79d67b7`_)
+
+* **registry**: Strip zone id before the SSRF blocklist check (`PR#287`_, `109cf17`_)
+
+.. _07ad0d5: https://github.com/n24q02m/better-semantic-release/commit/07ad0d579ed4a5a9292605aa4a6240e303e2d43f
+.. _0827856: https://github.com/n24q02m/better-semantic-release/commit/0827856da577e66423604a845dcf98b9e500106a
+.. _086c008: https://github.com/n24q02m/better-semantic-release/commit/086c00828865ada9251483d4d4202e3465e99dd8
+.. _109cf17: https://github.com/n24q02m/better-semantic-release/commit/109cf173c7965606aef87dbed778a70cdd05999f
+.. _2db76a2: https://github.com/n24q02m/better-semantic-release/commit/2db76a21ab8a27d61b68b58b95dd4298a9906b64
+.. _4fca004: https://github.com/n24q02m/better-semantic-release/commit/4fca004f4f366837ae583a7de04cdb8adbbe9740
+.. _504c334: https://github.com/n24q02m/better-semantic-release/commit/504c3341627645377ac8b1d71a0408ca86d31b96
+.. _62b5095: https://github.com/n24q02m/better-semantic-release/commit/62b5095e5980a766e9b029a11d0e241c1291b31f
+.. _766ed22: https://github.com/n24q02m/better-semantic-release/commit/766ed22d9a6f312067b0cd6a376ba0009f366084
+.. _7843c28: https://github.com/n24q02m/better-semantic-release/commit/7843c28044a73a512aad09df1d5ef97f982e3f4a
+.. _79d67b7: https://github.com/n24q02m/better-semantic-release/commit/79d67b75a4fc7ab219b227f6c3794e15fd1b4c34
+.. _85e81cb: https://github.com/n24q02m/better-semantic-release/commit/85e81cb9a29ff77a5e759d434cbc4ccc952ab2c7
+.. _8b7fea6: https://github.com/n24q02m/better-semantic-release/commit/8b7fea637e178ff51960d939f18051979578d289
+.. _8d0a688: https://github.com/n24q02m/better-semantic-release/commit/8d0a6886a712f617aabc9f08a67480e62af43eae
+.. _93a05e0: https://github.com/n24q02m/better-semantic-release/commit/93a05e082ddfc4d6c286344e792b0860e9dd3891
+.. _955f02f: https://github.com/n24q02m/better-semantic-release/commit/955f02f541f6f26fc6eeacdd6913903fcfc1f09a
+.. _9832b0d: https://github.com/n24q02m/better-semantic-release/commit/9832b0d8c1bbccea663bb3af123f136b3d273efa
+.. _c75d9ba: https://github.com/n24q02m/better-semantic-release/commit/c75d9ba72bd829a61524844a148ec3cda484766c
+.. _d2b77c3: https://github.com/n24q02m/better-semantic-release/commit/d2b77c3fcf6fb0a19a54e2b2eeb68b9b681fd36d
+.. _e6905ff: https://github.com/n24q02m/better-semantic-release/commit/e6905fffd445513ba09a34a4923d28b8981da070
+.. _ea2a292: https://github.com/n24q02m/better-semantic-release/commit/ea2a292ba0b57dc2df8e584914af07c0809a7348
+.. _fa5c193: https://github.com/n24q02m/better-semantic-release/commit/fa5c1932394494b7538b36feb3b49a4a40b8a01f
+.. _PR#266: https://github.com/n24q02m/better-semantic-release/pull/266
+.. _PR#274: https://github.com/n24q02m/better-semantic-release/pull/274
+.. _PR#276: https://github.com/n24q02m/better-semantic-release/pull/276
+.. _PR#280: https://github.com/n24q02m/better-semantic-release/pull/280
+.. _PR#281: https://github.com/n24q02m/better-semantic-release/pull/281
+.. _PR#284: https://github.com/n24q02m/better-semantic-release/pull/284
+.. _PR#287: https://github.com/n24q02m/better-semantic-release/pull/287
+.. _PR#288: https://github.com/n24q02m/better-semantic-release/pull/288
+.. _PR#289: https://github.com/n24q02m/better-semantic-release/pull/289
+.. _PR#290: https://github.com/n24q02m/better-semantic-release/pull/290
+.. _PR#293: https://github.com/n24q02m/better-semantic-release/pull/293
+.. _PR#295: https://github.com/n24q02m/better-semantic-release/pull/295
+.. _PR#298: https://github.com/n24q02m/better-semantic-release/pull/298
+.. _PR#301: https://github.com/n24q02m/better-semantic-release/pull/301
+.. _PR#302: https://github.com/n24q02m/better-semantic-release/pull/302
+.. _PR#303: https://github.com/n24q02m/better-semantic-release/pull/303
+.. _PR#304: https://github.com/n24q02m/better-semantic-release/pull/304
+.. _PR#305: https://github.com/n24q02m/better-semantic-release/pull/305
+.. _PR#306: https://github.com/n24q02m/better-semantic-release/pull/306
+.. _PR#307: https://github.com/n24q02m/better-semantic-release/pull/307
+.. _PR#308: https://github.com/n24q02m/better-semantic-release/pull/308
+.. _PR#309: https://github.com/n24q02m/better-semantic-release/pull/309
+
+
 .. _changelog-v1.13.1-beta.1:
 
 v1.13.1-beta.1 (2026-10-28)
