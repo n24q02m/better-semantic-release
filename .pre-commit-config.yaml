@@ -6,10 +6,11 @@ default_language_version:
 #   CHANGELOG.rst is generated. (This fork's docs toolchain is reStructuredText;
 #   the pattern used to name CHANGELOG.md, which does not exist here, so nothing
 #   was actually excluded.)
-#   scripts/repo-bootstrap/ is vendored byte-for-byte from a canonical copy that
-#   lives outside this repo. A fixer touching it there would put the two copies
-#   silently out of step, and the next vendoring pass would undo the fix anyway.
-exclude: "^(CHANGELOG\\.rst|scripts/repo-bootstrap/.*)$"
+#   scripts/repo-bootstrap/ and scripts/main_integrity.py are vendored
+#   byte-for-byte from a canonical copy that lives outside this repo. A fixer
+#   touching them there would put the two copies silently out of step, and the
+#   next vendoring pass would undo the fix anyway.
+exclude: "^(CHANGELOG\\.rst|scripts/repo-bootstrap/.*|scripts/main_integrity\\.py)$"
 
 repos:
   # Meta hooks

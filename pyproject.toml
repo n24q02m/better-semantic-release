@@ -256,11 +256,12 @@ ignore_missing_imports = true
 [tool.ruff]
 line-length = 88
 target-version = "py38"
-# scripts/repo-bootstrap/ is vendored, not written here: apply.py copies it in
-# byte-for-byte from the canonical copy and would keep overwriting whatever
-# `--fix` rewrote. Reformatting it locally buys nothing and loses the property
-# that makes the vendoring checkable -- that the two copies are identical.
-extend-exclude = ["scripts/repo-bootstrap"]
+# scripts/repo-bootstrap/ and scripts/main_integrity.py are vendored, not written
+# here: apply.py copies them in byte-for-byte from the canonical copy and would
+# keep overwriting whatever `--fix` rewrote. Reformatting them locally buys nothing
+# and loses the property that makes the vendoring checkable -- that the two copies
+# are identical.
+extend-exclude = ["scripts/repo-bootstrap", "scripts/main_integrity.py"]
 force-exclude = true
 output-format = "grouped"
 show-fixes = true

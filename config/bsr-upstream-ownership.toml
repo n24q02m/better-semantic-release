@@ -149,6 +149,14 @@ reason = "Current fork difference is intentionally retained and declared for own
 gates = ["other"]
 
 [[ownership]]
+path = ".sot-baseline.json"
+status = "A"
+kind = "other"
+owner = "repo-maintainers"
+reason = "Frozen Project SOT debt for sot_check.py: README.rst is the published README, so missing:README.md is recorded, not fixed with a Markdown twin."
+gates = ["other"]
+
+[[ownership]]
 path = "AGENTS.md"
 status = "A"
 kind = "other"
@@ -277,11 +285,27 @@ reason = "Current fork difference is intentionally retained and declared for own
 gates = ["other"]
 
 [[ownership]]
+path = "scripts/main_integrity.py"
+status = "A"
+kind = "other"
+owner = "repo-maintainers"
+reason = "Vendored byte-for-byte by repo-bootstrap for the main-integrity job in ci.yml; not authored in this fork."
+gates = ["other"]
+
+[[ownership]]
 path = "scripts/repo-bootstrap/_lib.py"
 status = "A"
 kind = "other"
 owner = "repo-maintainers"
 reason = "Current fork difference is intentionally retained and declared for ownership accounting."
+gates = ["other"]
+
+[[ownership]]
+path = "scripts/repo-bootstrap/sot_check.py"
+status = "A"
+kind = "other"
+owner = "repo-maintainers"
+reason = "Vendored byte-for-byte by repo-bootstrap for the Project SOT step in ci.yml; not authored in this fork."
 gates = ["other"]
 
 [[ownership]]
