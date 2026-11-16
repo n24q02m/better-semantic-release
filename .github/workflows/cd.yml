@@ -1007,16 +1007,19 @@ jobs:
                 *) stable_only=false; unknown_drift=true ;;
               esac
             done <<< "$changed_files"
-            if [ "$unknown_drift" = true ]; then
-              echo "::error::unclassified source drift; registry freshness refuses to infer publisher equivalence"
-              printf '%s\n' "$changed_files"
-              exit 1
-            elif [ "$publisher_change" = true ]; then
+            # A publisher change refreshes from HEAD, so no equivalence is
+            # inferred and unlisted paths cannot hide a stale publisher. Only
+            # the keep-the-registry routes below must refuse unlisted drift.
+            if [ "$publisher_change" = true ]; then
               refresh=true
               refresh_mode=publisher-change
               release_force=prerelease
               echo "::warning::publisher-bound source moved since $TAG; automatic beta refresh is required"
               printf '%s\n' "$changed_files"
+            elif [ "$unknown_drift" = true ]; then
+              echo "::error::unclassified source drift; registry freshness refuses to infer publisher equivalence"
+              printf '%s\n' "$changed_files"
+              exit 1
             elif [ "$stable_only" = true ] && [ -n "$changed_files" ]; then
               python3 - "$TAG_SHA" "$HEAD_SHA" <<'PY'
           import subprocess
