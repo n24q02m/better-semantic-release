@@ -32,7 +32,7 @@ outputs:
 
 runs:
   using: docker
-  image: docker://ghcr.io/n24q02m/better-semantic-release-publisher@sha256:6fe899fd3dac530a0e041fee2e694abf44333e75a3ba7430f1190bd6c872e09b
+  image: docker://ghcr.io/n24q02m/better-semantic-release-publisher@sha256:93f7c8780a8b6e6a6c21c7eac38cbde94bbe90c1123211273cdcfaa505aa5427
   env:
     INPUT_TOKEN: ${{ inputs.token }}
   args:
