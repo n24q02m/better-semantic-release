@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import os
 import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
 
+import pytest
 import yaml
 
 ROOT = Path(__file__).parents[1]
@@ -281,6 +284,112 @@ def test_candidate_job_verifies_provenance_and_exports_exact_handoff() -> None:
     assert_pinned_action(upload["uses"], "actions/upload-artifact")
     assert upload["with"]["path"] == "publisher-image-candidate.json"
     assert upload["with"]["if-no-files-found"] == "error"
+
+
+_BETA_TAG = "v1.0.0-beta.1"
+_GH_STUB = f"""#!/usr/bin/env bash
+case "$1 $2" in
+  "release list") echo "{_BETA_TAG}" ;;
+  "release view") echo "bsr-action-registry.json" ;;
+  *) echo "gh stub: refused $*" >&2; exit 97 ;;
+esac
+"""
+
+
+def _run_freshness_route(tmp_path: Path, changed: list[str]) -> str:
+    """
+    Run the real freshness-inspect step over a two-commit repository.
+
+    The base commit carries the newest beta tag; the head commit edits
+    ``changed``. ``gh`` is a stub that names that tag as the newest beta with a
+    registry asset and refuses the registry download, so the step stops right
+    after it has picked the drift route. Returns the combined output.
+    """
+    bash = shutil.which("bash")
+    if bash is None:
+        pytest.skip("bash is required to run the workflow step")
+    repo = tmp_path / "repo"
+    repo.mkdir()
+
+    def git(*args: str) -> None:
+        subprocess.run(  # noqa: S603
+            ["git", *args],  # noqa: S607
+            cwd=repo,
+            check=True,
+            capture_output=True,
+        )
+
+    git("init", "-q", "-b", "main")
+    git("config", "user.name", "route test")
+    git("config", "user.email", "route-test@example.invalid")
+    git("config", "commit.gpgsign", "false")
+    for path in changed:
+        (repo / path).parent.mkdir(parents=True, exist_ok=True)
+        (repo / path).write_text("base\n", encoding="utf-8")
+    git("add", "-A")
+    git("commit", "-q", "-m", "base")
+    git("tag", _BETA_TAG)
+    git("remote", "add", "origin", str(repo))
+    for path in changed:
+        (repo / path).write_text("head\n", encoding="utf-8")
+    git("commit", "-q", "-am", "head")
+
+    stub_dir = tmp_path / "bin"
+    stub_dir.mkdir()
+    stub = stub_dir / "gh"
+    stub.write_text(_GH_STUB, encoding="utf-8", newline="\n")
+    stub.chmod(0o755)
+
+    inspect = next(
+        step
+        for step in _load_workflow()["jobs"]["inspect"]["steps"]
+        if step.get("id") == "inspect"
+    )
+    env = {
+        **os.environ,
+        "PATH": f"{stub_dir}{os.pathsep}{os.environ['PATH']}",
+        "WARN_DAYS": "14",
+        "GITHUB_OUTPUT": str(tmp_path / "github-output"),
+        "GITHUB_REPOSITORY": "owner/repo",
+    }
+    completed = subprocess.run(  # noqa: S603
+        [bash, "-c", inspect["run"]],
+        cwd=repo,
+        env=env,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    return completed.stdout + completed.stderr
+
+
+def test_publisher_drift_refreshes_even_with_unlisted_paths(tmp_path: Path) -> None:
+    # The 2026-11-16 beta dispatch: publisher-bound files moved alongside
+    # harness files the route had no entry for. A refresh rebuilds from HEAD,
+    # so no publisher equivalence is inferred and the unlisted paths must not
+    # block the release.
+    output = _run_freshness_route(
+        tmp_path,
+        [
+            "AGENTS.md",
+            ".pre-commit-config.yaml",
+            "scripts/main_integrity.py",
+            "publish-action/Dockerfile",
+            "src/semantic_release/bsr/registry.py",
+        ],
+    )
+    assert "unclassified source drift" not in output
+    assert "publisher-bound source moved" in output
+
+
+def test_unlisted_drift_without_publisher_change_still_fails_closed(
+    tmp_path: Path,
+) -> None:
+    # With no publisher-bound change the route would keep the signed registry,
+    # which means inferring equivalence: an unlisted path must stop it.
+    output = _run_freshness_route(tmp_path, ["AGENTS.md"])
+    assert "unclassified source drift" in output
+    assert "publisher-bound source moved" not in output
 
 
 def test_workflow_validator_pin_supports_attestations() -> None:
