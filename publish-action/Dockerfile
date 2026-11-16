@@ -1,7 +1,7 @@
 # Authoritative readback (2026-08-29):
 #   docker buildx imagetools inspect python:3.13-slim-bookworm
 #   index digest = sha256:c45a22ea000adfd9cda29364bbe7edd23001ce5cc2ad15857cfbf7766943b9ca
-FROM python:3.13-slim-bookworm@sha256:a1165e272e578941b84abc79e4ab38a0305cd12803a5c4247979ac7655f4d641
+FROM python:3.13-slim-bookworm@sha256:a5a7017efc5969e00ae2b91c8eb0631049a569652aa4ffc4501769049ae45c72
 
 WORKDIR /opt/publisher
 
