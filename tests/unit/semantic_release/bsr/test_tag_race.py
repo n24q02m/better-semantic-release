@@ -10,6 +10,7 @@ remote state unconfirmable (TAG_RACE_UNCONFIRMED, fail closed).
 from __future__ import annotations
 
 from pathlib import Path
+from unittest.mock import MagicMock
 
 import pytest
 from git import Actor, Repo
@@ -19,6 +20,8 @@ from semantic_release.bsr.tag_race import (
     _parse_ls_remote,
     check_tag_race,
 )
+
+from tests.util import prepare_mocked_git_command_wrapper_type
 
 _AUTHOR = Actor("demo", "demo@example.com")
 _DATE = "2024-01-15T12:00:00 +0000"
@@ -156,3 +159,32 @@ def test_noop_skips_the_check(workspace: tuple[Repo, Repo]) -> None:
         planned_head_sha=head,
         noop=True,
     )
+
+
+def test_the_e2e_git_mock_replaces_the_ls_remote_the_guard_runs(
+    workspace: Repo, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """
+    The e2e suite fakes the remote with `prepare_mocked_git_command_wrapper_type`.
+    GitPython 3.2 defines `Git.ls_remote` as a real method, so a mock that only
+    answers through `__getattr__` never replaces it, and every e2e `version` run
+    sends this guard to the network.
+    """
+    work = workspace
+    head = _commit(work, "feat: pending", "b.txt")
+    fake_ls_remote = MagicMock(return_value="")
+    monkeypatch.setattr(
+        Repo,
+        "GitCommandWrapperType",
+        prepare_mocked_git_command_wrapper_type(ls_remote=fake_ls_remote),
+    )
+
+    check_tag_race(
+        str(work.working_dir),  # type: ignore[arg-type]
+        remote_name="nonexistent-remote",
+        branch="main",
+        planned_tag="v0.2.0",
+        planned_head_sha=head,
+    )
+
+    fake_ls_remote.assert_called_once_with("nonexistent-remote")
