@@ -69,11 +69,25 @@ def post_mocker(requests_mock: Mocker) -> Mocker:
     return requests_mock
 
 
+def _empty_remote_ls_remote() -> MagicMock:
+    # BSR-PATCH: fake `git ls-remote` alongside push/fetch (better-semantic-release).
+    # `version` runs the tag-race guard (`bsr/tag_race.py`) right before it pushes,
+    # and the guard reads the remote with one `git ls-remote`. The example repos
+    # point `origin` at a URL that does not exist, and push/fetch are mocked, so the
+    # remote these tests talk to is a fake that never receives anything: an empty
+    # listing. Without this the guard reaches the network and fails closed with
+    # TAG_RACE_UNCONFIRMED. The guard itself is tested against real local remotes
+    # in `tests/unit/semantic_release/bsr/test_tag_race.py`.
+    return MagicMock(return_value="")
+
+
 @pytest.fixture
 def mocked_git_push(monkeypatch: MonkeyPatch) -> MagicMock:
     """Mock the `Repo.git.push()` method in `semantic_release.cli.main`."""
     mocked_push = MagicMock()
-    cls = prepare_mocked_git_command_wrapper_type(push=mocked_push)
+    cls = prepare_mocked_git_command_wrapper_type(
+        push=mocked_push, ls_remote=_empty_remote_ls_remote()
+    )
     monkeypatch.setattr(cli_config_module.Repo, "GitCommandWrapperType", cls)
     return mocked_push
 
@@ -85,7 +99,9 @@ def mocked_git_fetch(monkeypatch: MonkeyPatch) -> MagicMock:
     `git.Repo.remotes.Remote.fetch()`.
     """
     mocked_fetch = MagicMock()
-    cls = prepare_mocked_git_command_wrapper_type(fetch=mocked_fetch)
+    cls = prepare_mocked_git_command_wrapper_type(
+        fetch=mocked_fetch, ls_remote=_empty_remote_ls_remote()
+    )
     monkeypatch.setattr(cli_config_module.Repo, "GitCommandWrapperType", cls)
 
     # define a small wrapper so the MagicMock does not receive `self`

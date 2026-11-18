@@ -309,6 +309,12 @@ def prepare_mocked_git_command_wrapper_type(
 
     for name, method in mocked_methods.items():
         setattr(MockGitCommandWrapperType, f"mocked_{name}", method)
+        # BSR-PATCH: also shadow commands `Git` defines as real methods
+        # (better-semantic-release). `__getattr__` only runs for names the class
+        # does not define, and GitPython 3.2 defines `ls_remote`, so without this a
+        # mocked `ls_remote` silently runs the real command.
+        if hasattr(Git, name):
+            setattr(MockGitCommandWrapperType, name, method)
     return MockGitCommandWrapperType
 
 
