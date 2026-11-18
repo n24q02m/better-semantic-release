@@ -501,6 +501,14 @@ reason = "Read-only release-plan CLI (universal-release-engine Task 2); offline 
 gates = ["python-lint", "python-format", "python-type"]
 
 [[ownership]]
+path = "src/semantic_release/cli/commands/changelog.py"
+status = "M"
+kind = "python-source"
+owner = "bsr-stock-patch"
+reason = "Release-notes license lookup reads pyproject.toml at the tag verbatim so CRLF files parse."
+gates = ["python-lint", "python-format", "python-type"]
+
+[[ownership]]
 path = "src/semantic_release/cli/commands/version.py"
 status = "M"
 kind = "python-source"
@@ -1019,6 +1027,14 @@ kind = "python-tool"
 owner = "bsr-g1-publisher"
 reason = "Phase A standalone Docker action adapter for the stdlib publisher runtime."
 gates = ["python-lint", "python-format"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/test_release_notes_license.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-tests"
+reason = "Release-notes license lookup coverage for LF and CRLF pyproject.toml at a tag."
+gates = ["python-lint", "python-format", "python-test"]
 
 [[ownership]]
 path = "tests/unit/semantic_release/bsr/test_release_publisher.py"
