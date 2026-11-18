@@ -136,6 +136,10 @@ jobs:
   # which this fork does not use, so before this job no CI run here had ever
   # executed them. That is how the tag-race guard's `git ls-remote` broke the
   # end-to-end `version` runs without anyone seeing it.
+  #
+  # Same split as the upstream workflow: every variation (`--comprehensive`) on
+  # Linux, the default end-to-end selection on Windows, `COLUMNS` fixed on both
+  # so rich-formatted output wraps the same way the expectations do.
   test-e2e:
     name: test e2e (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
@@ -143,7 +147,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            pytest-args: --comprehensive
+          - os: windows-latest
+            pytest-args: ""
+    env:
+      COLUMNS: 150
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -158,7 +168,7 @@ jobs:
         run: uv pip install -e ".[test]"
 
       - name: Pytest (end-to-end suite)
-        run: uv run --no-sync pytest -q -nauto -m e2e
+        run: uv run --no-sync pytest -q -nauto -m e2e ${{ matrix.pytest-args }}
 
   action-smoke-test:
     name: composite action installs + runs forked source (linux)
