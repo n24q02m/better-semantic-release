@@ -290,36 +290,37 @@ versions:
 These options are forceful overrides, but there is no action required for subsequent releases
 performed using the usual calculation algorithm.
 
-Supplying ``--prerelease`` will cause Python Semantic Release to scan your project history
-for any previous prereleases with the same major, minor and patch versions as the latest
-version and the same :ref:`prerelease token<cmd-version-option-prerelease-token>` as the
-one passed by command-line or configuration. If one is not found, ``--prerelease`` will
-produce the next version according to the following format:
+When the latest version is a normal (non-prerelease) version, ``--prerelease`` moves to the
+next patch version first, so that the new prerelease sorts above the release it follows by
+`SemVer precedence rules`_:
 
 .. code-block:: python
 
-    f"{latest_version.major}.{latest_version.minor}.{latest_version.patch}-{prerelease_token}.1"
+    f"{latest_version.major}.{latest_version.minor}.{latest_version.patch + 1}-{prerelease_token}.1"
 
-However, if Python Semantic Release identifies a previous *prerelease* version with the same
-major, minor and patch digits as the latest version, *and* the same prerelease token as the
-one supplied by command-line or configuration, then Python Semantic Release will increment
-the revision found on that previous prerelease version in its new version.
-
-For example, if ``"0.2.1-rc.1"`` and already exists as a previous version, and the latest version
-is ``"0.2.1"``, invoking the following command will produce ``"0.2.1-rc.2"``:
+For example, if the latest version is ``"0.2.1"``, invoking the following command will produce
+``"0.2.2-rc.1"``, whether or not ``"0.2.1-rc.1"`` was released before ``"0.2.1"``:
 
 .. code-block:: bash
 
    semantic-release version --prerelease --prerelease-token "rc" --print
 
-.. warning::
+.. note::
 
-   This is true irrespective of the branch from which ``"0.2.1-rc.1"`` was released from.
-   The check for previous prereleases "leading up to" this normal version is intended to
-   help prevent collisions in git tags to an extent, but isn't foolproof. As the example
-   shows it is possible to release a prerelease for a normal version that's already been
-   released when using this flag, which would in turn be ignored by tools selecting
-   versions by `SemVer precedence rules`_.
+   This differs from upstream Python Semantic Release, which adds the prerelease suffix to
+   the latest normal version itself (``"0.2.1-rc.2"`` in the example above). That version
+   sorts below ``"0.2.1"``, so tools that select versions by SemVer precedence, such as
+   ``pip install --pre`` or an npm ``beta`` dist-tag, would offer users a downgrade.
+
+When the latest version is already a prerelease, ``--prerelease`` scans your project history
+for previous prereleases with the same major, minor and patch versions as the latest version
+and the same :ref:`prerelease token<cmd-version-option-prerelease-token>` as the one passed by
+command-line or configuration, and increments the revision of the newest one it finds. If none
+uses that token, it produces the next version according to the following format:
+
+.. code-block:: python
+
+    f"{latest_version.major}.{latest_version.minor}.{latest_version.patch}-{prerelease_token}.1"
 
 
 .. _SemVer precedence rules: https://semver.org/#spec-item-11
