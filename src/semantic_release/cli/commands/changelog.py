@@ -33,8 +33,13 @@ def get_license_name_for_release(tag_name: str, project_root: Path) -> str:
     for allowed_dir in allowed_directories:
         proj_toml = allowed_dir.joinpath("pyproject.toml")
         with Repo(project_root) as git_repo, suppress(GitCommandError):
+            # BSR-PATCH: read the blob verbatim (better-semantic-release).
+            # GitPython strips the final newline by default, which leaves a lone
+            # carriage return when the file was committed with CRLF endings, and
+            # tomlkit rejects a lone carriage return.
             toml_contents = git_repo.git.show(
-                f"{tag_name}:{proj_toml.relative_to(project_root)}"
+                f"{tag_name}:{proj_toml.relative_to(project_root)}",
+                strip_newline_in_stdout=False,
             )
             config_toml = tomlkit.parse(toml_contents)
             project_metadata = config_toml.unwrap().get("project", project_metadata)

@@ -199,6 +199,7 @@ files = [
   "src/semantic_release/commit_parser/conventional/parser_monorepo.py",
   "src/semantic_release/cli/config.py",
   "src/semantic_release/cli/cli_context.py",
+  "src/semantic_release/cli/commands/changelog.py",
   "src/semantic_release/cli/commands/doctor.py",
   "src/semantic_release/cli/commands/main.py",
   "src/semantic_release/cli/commands/plan.py",
