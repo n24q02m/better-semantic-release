@@ -66,14 +66,16 @@ if TYPE_CHECKING:
             # Dynamic version bump determination (based on commits) with build metadata
             (["--build-metadata", "build.12345"], "0.2.0+build.12345"),
             # Forced version bump
-            (["--prerelease"], "0.1.1-rc.1"),
+            # BSR-PATCH: a forced prerelease after a final release moves to the
+            # next patch (better-semantic-release), so it never sorts below it.
+            (["--prerelease"], "0.1.2-rc.1"),
             (["--patch"], "0.1.2"),
             (["--minor"], "0.2.0"),
             (["--major"], "1.0.0"),
             # Forced version bump with --build-metadata
             (["--patch", "--build-metadata", "build.12345"], "0.1.2+build.12345"),
             # Forced version bump with --as-prerelease
-            (["--prerelease", "--as-prerelease"], "0.1.1-rc.1"),
+            (["--prerelease", "--as-prerelease"], "0.1.2-rc.1"),
             (["--patch", "--as-prerelease"], "0.1.2-rc.1"),
             (["--minor", "--as-prerelease"], "0.2.0-rc.1"),
             (["--major", "--as-prerelease"], "1.0.0-rc.1"),
@@ -180,14 +182,16 @@ def test_version_print_next_version(
                 # Dynamic version bump determination (based on commits) with build metadata
                 (["--build-metadata", "build.12345"], "0.2.0+build.12345"),
                 # Forced version bump
-                (["--prerelease"], "0.1.1-rc.1"),
+                # BSR-PATCH: a forced prerelease after a final release moves to the
+                # next patch (better-semantic-release), so it never sorts below it.
+                (["--prerelease"], "0.1.2-rc.1"),
                 (["--patch"], "0.1.2"),
                 (["--minor"], "0.2.0"),
                 (["--major"], "1.0.0"),
                 # Forced version bump with --build-metadata
                 (["--patch", "--build-metadata", "build.12345"], "0.1.2+build.12345"),
                 # Forced version bump with --as-prerelease
-                (["--prerelease", "--as-prerelease"], "0.1.1-rc.1"),
+                (["--prerelease", "--as-prerelease"], "0.1.2-rc.1"),
                 (["--patch", "--as-prerelease"], "0.1.2-rc.1"),
                 (["--minor", "--as-prerelease"], "0.2.0-rc.1"),
                 (["--major", "--as-prerelease"], "1.0.0-rc.1"),

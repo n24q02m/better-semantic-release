@@ -1595,3 +1595,27 @@ kind = "python-test"
 owner = "bsr-w2-integration"
 reason = "Wave-2 integration: real-config dispatch arm and gated-mode config surface coverage."
 gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/e2e/cmd_version/test_version_bump.py"
+status = "M"
+kind = "python-test"
+owner = "bsr-tests"
+reason = "A forced prerelease after a final release now moves to the next patch, so the expected versions of the --prerelease cases follow it."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/e2e/cmd_version/test_version_print.py"
+status = "M"
+kind = "python-test"
+owner = "bsr-tests"
+reason = "A forced prerelease after a final release now moves to the next patch, so the expected versions of the --prerelease cases follow it."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/cli/test_version.py"
+status = "M"
+kind = "python-test"
+owner = "bsr-tests"
+reason = "Regression coverage for a forced prerelease after a final release, which must sort above the release it follows."
+gates = ["python-lint", "python-format", "python-test"]

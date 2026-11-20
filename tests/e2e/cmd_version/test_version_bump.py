@@ -127,7 +127,9 @@ if TYPE_CHECKING:
                     # New build-metadata forces a new release
                     (["--build-metadata", "build.12345"], "0.1.1+build.12345"),
                     # Forced version bump
-                    (["--prerelease"], "0.1.1-rc.1"),
+                    # BSR-PATCH: a forced prerelease after a final release moves to the
+                    # next patch (better-semantic-release), so it never sorts below it.
+                    (["--prerelease"], "0.1.2-rc.1"),
                     (["--patch"], "0.1.2"),
                     (["--minor"], "0.2.0"),
                     (["--major"], "1.0.0"),
@@ -137,7 +139,7 @@ if TYPE_CHECKING:
                         "0.1.2+build.12345",
                     ),
                     # Forced version bump with --as-prerelease
-                    (["--prerelease", "--as-prerelease"], "0.1.1-rc.1"),
+                    (["--prerelease", "--as-prerelease"], "0.1.2-rc.1"),
                     (["--patch", "--as-prerelease"], "0.1.2-rc.1"),
                     (["--minor", "--as-prerelease"], "0.2.0-rc.1"),
                     (["--major", "--as-prerelease"], "1.0.0-rc.1"),
@@ -164,8 +166,9 @@ if TYPE_CHECKING:
                     # New build-metadata forces a new release
                     (["--build-metadata", "build.12345"], "0.2.0+build.12345"),
                     # Forced version bump
-                    # NOTE: There is already a 0.2.0-rc.1
-                    (["--prerelease"], "0.2.0-rc.2"),
+                    # BSR-PATCH: a forced prerelease after a final release moves to the
+                    # next patch (better-semantic-release), so it never sorts below it.
+                    (["--prerelease"], "0.2.1-rc.1"),
                     (["--patch"], "0.2.1"),
                     (["--minor"], "0.3.0"),
                     (["--major"], "1.0.0"),
@@ -175,7 +178,7 @@ if TYPE_CHECKING:
                         "0.2.1+build.12345",
                     ),
                     # Forced version bump with --as-prerelease
-                    (["--prerelease", "--as-prerelease"], "0.2.0-rc.2"),
+                    (["--prerelease", "--as-prerelease"], "0.2.1-rc.1"),
                     (["--patch", "--as-prerelease"], "0.2.1-rc.1"),
                     (["--minor", "--as-prerelease"], "0.3.0-rc.1"),
                     (["--major", "--as-prerelease"], "1.0.0-rc.1"),
@@ -202,7 +205,9 @@ if TYPE_CHECKING:
                     # New build-metadata forces a new release
                     (["--build-metadata", "build.12345"], "1.1.0+build.12345"),
                     # Forced version bump
-                    (["--prerelease"], "1.1.0-rc.1"),
+                    # BSR-PATCH: a forced prerelease after a final release moves to the
+                    # next patch (better-semantic-release), so it never sorts below it.
+                    (["--prerelease"], "1.1.1-rc.1"),
                     (["--patch"], "1.1.1"),
                     (["--minor"], "1.2.0"),
                     (["--major"], "2.0.0"),
@@ -212,7 +217,7 @@ if TYPE_CHECKING:
                         "1.1.1+build.12345",
                     ),
                     # Forced version bump with --as-prerelease
-                    (["--prerelease", "--as-prerelease"], "1.1.0-rc.1"),
+                    (["--prerelease", "--as-prerelease"], "1.1.1-rc.1"),
                     (["--patch", "--as-prerelease"], "1.1.1-rc.1"),
                     (["--minor", "--as-prerelease"], "1.2.0-rc.1"),
                     (["--major", "--as-prerelease"], "2.0.0-rc.1"),
@@ -276,7 +281,9 @@ if TYPE_CHECKING:
                     # New build-metadata forces a new release
                     (["--build-metadata", "build.12345"], "1.1.0+build.12345"),
                     # Forced version bump
-                    (["--prerelease"], "1.1.0-rc.3"),
+                    # BSR-PATCH: a forced prerelease after a final release moves to the
+                    # next patch (better-semantic-release), so it never sorts below it.
+                    (["--prerelease"], "1.1.1-rc.1"),
                     (["--patch"], "1.1.1"),
                     (["--minor"], "1.2.0"),
                     (["--major"], "2.0.0"),
@@ -286,7 +293,7 @@ if TYPE_CHECKING:
                         "1.1.1+build.12345",
                     ),
                     # Forced version bump with --as-prerelease
-                    (["--prerelease", "--as-prerelease"], "1.1.0-rc.3"),
+                    (["--prerelease", "--as-prerelease"], "1.1.1-rc.1"),
                     (["--patch", "--as-prerelease"], "1.1.1-rc.1"),
                     (["--minor", "--as-prerelease"], "1.2.0-rc.1"),
                     (["--major", "--as-prerelease"], "2.0.0-rc.1"),

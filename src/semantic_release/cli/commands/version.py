@@ -151,6 +151,15 @@ def version_from_forced_level(
     if forced_level_bump is not LevelBump.PRERELEASE_REVISION:
         return latest_version.bump(forced_level_bump)
 
+    # BSR-PATCH: forced prerelease after a final release (better-semantic-release).
+    # Upstream suffixes the latest final version (1.13.1 -> 1.13.1-beta.1), which
+    # sorts BELOW the release it follows, so `pip install --pre` and npm `@beta`
+    # users get a downgrade. Move to the next patch first: 1.13.1 -> 1.13.2-beta.1.
+    if not latest_version.is_prerelease:
+        return latest_version.bump(LevelBump.PATCH).to_prerelease(
+            token=translator.prerelease_token, revision=1
+        )
+
     # We need to find the latest version with the prerelease token
     # we're looking for, and return that version + an increment to
     # the prerelease revision.
