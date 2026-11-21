@@ -285,3 +285,112 @@ def test_check_version_consistency_empty_source(tmp_path) -> None:
     )
     assert result.status == "fail"
     assert "no version found" in result.why
+
+
+def test_tag_format_counts_tags_outside_the_configured_format(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    proj = _build_repo(tmp_path, monkeypatch)
+    from git import Repo
+
+    repo = Repo(str(proj))
+    repo.create_tag("nightly")
+    result = check_tag_format(repo, _translator())
+    assert result.status == "fail"
+    assert "1 tag(s)" in result.what
+    assert "nightly" in result.what
+
+
+def test_version_targets_reads_toml_declarations(tmp_path: Path) -> None:
+    from semantic_release.version.declarations.enum import VersionStampType
+    from semantic_release.version.declarations.toml import TomlVersionDeclaration
+
+    pyproject = tmp_path / "pyproject.toml"
+    pyproject.write_text('[project]\nversion = "0.1.0"\n', encoding="utf-8")
+
+    class _Runtime:
+        version_declarations = (
+            TomlVersionDeclaration(
+                pyproject, "project.version", VersionStampType.NUMBER_FORMAT
+            ),
+        )
+
+    assert check_version_targets(_Runtime(), "0.1.0").status == "pass"
+    stale = check_version_targets(_Runtime(), "0.2.0")
+    assert stale.status == "fail"
+    assert str(pyproject.resolve()) in stale.why
+
+
+def test_version_targets_flags_unreadable_toml_declarations(tmp_path: Path) -> None:
+    from semantic_release.version.declarations.enum import VersionStampType
+    from semantic_release.version.declarations.toml import TomlVersionDeclaration
+
+    no_key = tmp_path / "no-key.toml"
+    no_key.write_text('[project]\nname = "x"\n', encoding="utf-8")
+    absent = tmp_path / "absent.toml"
+
+    class _Runtime:
+        version_declarations = tuple(
+            TomlVersionDeclaration(
+                path, "project.version", VersionStampType.NUMBER_FORMAT
+            )
+            for path in (no_key, absent)
+        )
+
+    result = check_version_targets(_Runtime(), "0.1.0")
+    assert result.status == "fail"
+    assert str(no_key.resolve()) in result.why
+    assert str(absent.resolve()) in result.why
+
+
+def test_version_targets_treats_a_broken_declaration_as_stale() -> None:
+    class _BrokenDecl:
+        path = "VERSION"
+
+        def parse(self):
+            raise ValueError("unreadable declaration")
+
+    class _Runtime:
+        version_declarations = (_BrokenDecl(),)
+
+    result = check_version_targets(_Runtime(), "0.1.0")
+    assert result.status == "fail"
+    assert "VERSION" in result.why
+
+
+def test_version_targets_without_declarations_passes() -> None:
+    class _Runtime:
+        version_declarations = ()
+
+    result = check_version_targets(_Runtime(), "0.1.0")
+    assert result.status == "pass"
+    assert result.what == "no version declarations configured"
+
+
+def test_check_version_consistency_without_sources_skips() -> None:
+    from semantic_release.bsr.doctor import check_version_consistency
+
+    assert check_version_consistency([]).status == "skip"
+    assert check_version_consistency([object()]).status == "skip"
+
+
+def test_check_version_consistency_reports_unreadable_sources(tmp_path) -> None:
+    from semantic_release.bsr.doctor import check_version_consistency
+    from semantic_release.bsr.version_sources import (
+        JsonVersionSource,
+        TextVersionSource,
+    )
+
+    (tmp_path / "package.json").write_text("{not json", encoding="utf-8")
+    (tmp_path / "VERSION").write_text("1.0.0\n", encoding="utf-8")
+    result = check_version_consistency(
+        [
+            JsonVersionSource(tmp_path / "package.json", "version"),
+            TextVersionSource(tmp_path / "VERSION", "{version}"),
+        ]
+    )
+    assert result.status == "fail"
+    assert result.what == "one or more version sources carry no version"
+    assert "package.json" in result.why
+    assert ": unreadable" in result.why
+    assert "agreed elsewhere: text:" in result.why

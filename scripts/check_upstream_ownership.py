@@ -413,6 +413,7 @@ def _gate_command(manifest: OwnershipManifest, gate: str) -> list[str]:
             "-q",
             "--cov=semantic_release.bsr",
             "--cov-report=xml",
+            "--cov-fail-under=95",
             *scope,
         ]
     raise ValueError(f"gate {gate} has no executable command")

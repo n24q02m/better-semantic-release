@@ -84,6 +84,16 @@ def test_commit_touches_paths_exact_file_path(tmp_path: Path) -> None:
     assert commit_touches_paths(commit, ("apps/api/x.py",)) is True
 
 
+@pytest.mark.parametrize("root_prefix", [".", "./", ".\\"])
+def test_commit_touches_paths_repository_root_prefix_matches_any_change(
+    tmp_path: Path, root_prefix: str
+) -> None:
+    repo = Repo.init(tmp_path)
+    commit = _commit(repo, "docs/readme.md", "x", "docs: readme")
+
+    assert commit_touches_paths(commit, ("apps/api", root_prefix)) is True
+
+
 def test_commit_touches_paths_empty_diff_returns_false(tmp_path: Path) -> None:
     repo = Repo.init(tmp_path)
     parent = _commit(repo, "apps/api/x.py", "x", "feat: api")

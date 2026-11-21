@@ -418,3 +418,306 @@ def test_guard_tag_race_flag(tmp_path: Path):
         "schema_version = 1\n",
     )
     assert load_bsr_config(cfg_file2).guard_tag_race is True
+
+
+_BSR_HEADER = "[tool.semantic_release.bsr]\nschema_version = 1\n"
+_PUBLISHER = "[[tool.semantic_release.bsr.publish.publishers]]\n"
+
+
+@pytest.mark.parametrize(
+    "body,message",
+    [
+        pytest.param(
+            _BSR_HEADER + "components = 1\n",
+            "components must be an array",
+            id="components-not-array",
+        ),
+        pytest.param(
+            _BSR_HEADER + "components = [1]\n",
+            r"components\[0\] must be a table",
+            id="component-not-table",
+        ),
+        pytest.param(
+            _BSR_HEADER + 'components = [{ name = "api", owner = "x" }]\n',
+            r"components\[0\] has unknown fields: owner",
+            id="component-unknown-field",
+        ),
+        pytest.param(
+            _BSR_HEADER + 'components = [{ name = " " }]\n',
+            r"components\[0\]\.name must be a non-empty string",
+            id="component-blank-name",
+        ),
+        pytest.param(
+            _BSR_HEADER + 'components = [{ name = "api" }, { name = "api" }]\n',
+            "duplicate component id: api",
+            id="component-duplicate",
+        ),
+        pytest.param(
+            _BSR_HEADER + 'components = [{ name = "api", paths = [""] }]\n',
+            r"components\[0\]\.paths must be an array of strings",
+            id="component-blank-path",
+        ),
+        pytest.param(
+            _BSR_HEADER + "registry = 1\n",
+            r"\.registry must be a string",
+            id="registry-not-string",
+        ),
+        pytest.param(
+            _BSR_HEADER + 'mode = "yolo"\n',
+            r"\.mode must be one of: gated, release",
+            id="unknown-mode",
+        ),
+        pytest.param(
+            _BSR_HEADER + "gated = 1\n",
+            r"\[tool\.semantic_release\.bsr\.gated\] must be a table",
+            id="gated-not-table",
+        ),
+        pytest.param(
+            _BSR_HEADER + "[tool.semantic_release.bsr.gated]\nreviewers = 2\n",
+            r"unknown \[tool\.semantic_release\.bsr\.gated\] fields: reviewers",
+            id="gated-unknown-field",
+        ),
+        pytest.param(
+            _BSR_HEADER + '[tool.semantic_release.bsr.gated]\nenvironment = " "\n',
+            "bsr.gated.environment must be a non-empty string",
+            id="gated-blank-environment",
+        ),
+        pytest.param(
+            _BSR_HEADER + "component_graph = [1]\n",
+            r"invalid \[tool\.semantic_release\.bsr\.component_graph\]: "
+            "component graph: entry 0 must be a table",
+            id="component-graph-entry-not-table",
+        ),
+        pytest.param(
+            _BSR_HEADER + "[tool.semantic_release.bsr.component_path_map]\n"
+            "schema_version = 2\n",
+            r"invalid \[tool\.semantic_release\.bsr\.component_path_map\]: "
+            "component_path_map.schema_version must be 1",
+            id="component-path-map-wrong-schema",
+        ),
+        pytest.param(
+            _BSR_HEADER + "notes = 1\n",
+            r"invalid \[tool\.semantic_release\.bsr\.notes\]",
+            id="notes-not-table",
+        ),
+        pytest.param(
+            _BSR_HEADER + "hooks = 1\n",
+            r"invalid \[tool\.semantic_release\.bsr\.hooks\]",
+            id="hooks-not-table",
+        ),
+    ],
+)
+def test_invalid_bsr_tables_fail_closed(
+    tmp_path: Path, body: str, message: str
+) -> None:
+    cfg_file = _write(tmp_path, body)
+
+    with pytest.raises(InvalidConfiguration, match=message):
+        load_bsr_config(cfg_file)
+
+
+@pytest.mark.parametrize(
+    "body,message",
+    [
+        pytest.param(
+            _BSR_HEADER + "version = 1\n",
+            r"\[tool\.semantic_release\.bsr\.version\] must be a table",
+            id="version-not-table",
+        ),
+        pytest.param(
+            _BSR_HEADER + "[tool.semantic_release.bsr.version]\nformat = 1\n",
+            r"unknown \[tool\.semantic_release\.bsr\.version\] fields: format",
+            id="version-unknown-field",
+        ),
+        pytest.param(
+            _BSR_HEADER + "[tool.semantic_release.bsr.version]\nsources = 1\n",
+            "bsr.version.sources must be an array of tables",
+            id="sources-not-array",
+        ),
+        pytest.param(
+            _BSR_HEADER + "[tool.semantic_release.bsr.version]\ntargets = [1]\n",
+            r"bsr\.version\.targets\[0\] must be a table",
+            id="target-not-table",
+        ),
+        pytest.param(
+            _BSR_HEADER + "[[tool.semantic_release.bsr.version.sources]]\n"
+            'kind = "git-tag"\n'
+            'regex = ".*"\n',
+            r"bsr\.version\.sources\[0\] has unknown fields: regex",
+            id="source-unknown-field",
+        ),
+    ],
+)
+def test_invalid_version_tables_fail_closed(
+    tmp_path: Path, body: str, message: str
+) -> None:
+    cfg_file = _write(tmp_path, body)
+
+    with pytest.raises(InvalidConfiguration, match=message):
+        load_bsr_config(cfg_file)
+
+
+@pytest.mark.parametrize(
+    "body,message",
+    [
+        pytest.param(
+            _BSR_HEADER + "publish = 1\n",
+            r"\[tool\.semantic_release\.bsr\.publish\] must be a table",
+            id="publish-not-table",
+        ),
+        pytest.param(
+            _BSR_HEADER + "[tool.semantic_release.bsr.publish]\ndry_run = true\n",
+            r"unknown \[tool\.semantic_release\.bsr\.publish\] fields: dry_run",
+            id="publish-unknown-field",
+        ),
+        pytest.param(
+            _BSR_HEADER + "[tool.semantic_release.bsr.publish]\nprobe = 1\n",
+            "bsr.publish.probe must be a table",
+            id="probe-not-table",
+        ),
+        pytest.param(
+            _BSR_HEADER + "[tool.semantic_release.bsr.publish.probe]\n"
+            'kind = "pypi"\n'
+            "timeout = 5\n",
+            "bsr.publish.probe has unknown fields: timeout",
+            id="probe-unknown-field",
+        ),
+        pytest.param(
+            _BSR_HEADER + "[tool.semantic_release.bsr.publish]\npublishers = 1\n",
+            "bsr.publish.publishers must be an array of tables",
+            id="publishers-not-array",
+        ),
+        pytest.param(
+            _BSR_HEADER + "[tool.semantic_release.bsr.publish]\npublishers = [1]\n",
+            r"bsr\.publish\.publishers\[0\] must be a table",
+            id="publisher-not-table",
+        ),
+        pytest.param(
+            _BSR_HEADER + _PUBLISHER + 'kind = "shell"\nretries = 2\n',
+            r"publishers\[0\] has unknown fields: retries",
+            id="publisher-unknown-field",
+        ),
+        pytest.param(
+            _BSR_HEADER + _PUBLISHER + 'kind = "ftp"\n',
+            r"publishers\[0\]\.kind must be one of",
+            id="publisher-unknown-kind",
+        ),
+        pytest.param(
+            _BSR_HEADER + _PUBLISHER + 'kind = "shell"\ncommand = "make publish"\n',
+            r"publishers\[0\]\.command must be an array of strings",
+            id="publisher-command-not-array",
+        ),
+        pytest.param(
+            _BSR_HEADER + _PUBLISHER + 'kind = "oci"\nimage = 1\n',
+            r"publishers\[0\]\.image must be a string",
+            id="oci-image-not-string",
+        ),
+        pytest.param(
+            _BSR_HEADER + _PUBLISHER + 'kind = "oci"\nimage = "ghcr.io/a/b"\n'
+            'tags = "latest"\n',
+            r"publishers\[0\]\.tags must be an array of strings",
+            id="oci-tags-not-array",
+        ),
+        pytest.param(
+            _BSR_HEADER + _PUBLISHER + 'kind = "oci"\nimage = "ghcr.io/a/b"\n'
+            "dockerfile = 1\n",
+            r"publishers\[0\]\.dockerfile must be a string",
+            id="oci-dockerfile-not-string",
+        ),
+        pytest.param(
+            _BSR_HEADER + _PUBLISHER + 'kind = "oci"\nimage = "ghcr.io/a/b"\n'
+            'push = "yes"\n',
+            r"publishers\[0\]\.push must be a boolean",
+            id="oci-push-not-boolean",
+        ),
+    ],
+)
+def test_invalid_publish_tables_fail_closed(
+    tmp_path: Path, body: str, message: str
+) -> None:
+    cfg_file = _write(tmp_path, body)
+
+    with pytest.raises(InvalidConfiguration, match=message):
+        load_bsr_config(cfg_file)
+
+
+def test_loads_oci_publisher_fields(tmp_path: Path) -> None:
+    cfg_file = _write(
+        tmp_path,
+        _BSR_HEADER + _PUBLISHER + 'kind = "oci"\n'
+        'image = "ghcr.io/acme/widget"\n'
+        'tags = ["{version}", "latest"]\n'
+        'dockerfile = "docker/Dockerfile"\n'
+        'context = "services/widget"\n'
+        "push = true\n"
+        'output = "dist/widget.oci.tar"\n',
+    )
+
+    cfg = load_bsr_config(cfg_file)
+
+    assert cfg.publish is not None
+    assert cfg.publish.probe is None
+    [publisher] = cfg.publish.publishers
+    assert publisher.kind == "oci"
+    assert publisher.image == "ghcr.io/acme/widget"
+    assert publisher.tags == ("{version}", "latest")
+    assert publisher.dockerfile == "docker/Dockerfile"
+    assert publisher.context == "services/widget"
+    assert publisher.push is True
+    assert publisher.output == "dist/widget.oci.tar"
+
+
+def test_loads_gated_mode_and_environment(tmp_path: Path) -> None:
+    cfg_file = _write(
+        tmp_path,
+        _BSR_HEADER + 'mode = "gated"\n'
+        "[tool.semantic_release.bsr.gated]\n"
+        'environment = "prod-approval"\n',
+    )
+
+    cfg = load_bsr_config(cfg_file)
+
+    assert cfg.mode == "gated"
+    assert cfg.gated is not None
+    assert cfg.gated.environment == "prod-approval"
+
+
+def test_gated_environment_defaults_when_omitted(tmp_path: Path) -> None:
+    from semantic_release.bsr.gating import DEFAULT_GATE_ENVIRONMENT
+
+    cfg_file = _write(
+        tmp_path, _BSR_HEADER + 'mode = "gated"\n[tool.semantic_release.bsr.gated]\n'
+    )
+
+    cfg = load_bsr_config(cfg_file)
+
+    assert cfg.gated is not None
+    assert cfg.gated.environment == DEFAULT_GATE_ENVIRONMENT
+
+
+def test_bsr_value_that_is_not_a_table_fails_closed(tmp_path: Path) -> None:
+    cfg_file = _write(tmp_path, "[tool.semantic_release]\nbsr = 1\n")
+
+    with pytest.raises(InvalidConfiguration, match=r"bsr\] must be a table"):
+        load_bsr_config(cfg_file)
+
+
+def test_json_config_that_is_not_a_table_fails_closed(tmp_path: Path) -> None:
+    cfg_file = tmp_path / "releaserc.json"
+    cfg_file.write_text('{"semantic_release": ["not", "a", "table"]}', encoding="utf-8")
+
+    with pytest.raises(InvalidConfiguration, match="configuration must be a table"):
+        load_bsr_config(cfg_file)
+
+
+def test_unparseable_config_shape_is_reported_against_the_file(
+    tmp_path: Path,
+) -> None:
+    cfg_file = tmp_path / "releaserc.json"
+    cfg_file.write_text("[1, 2]", encoding="utf-8")
+
+    with pytest.raises(InvalidConfiguration) as excinfo:
+        load_bsr_config(cfg_file)
+
+    assert str(excinfo.value).startswith(f"{cfg_file}: ")
+    assert isinstance(excinfo.value.__cause__, TypeError)

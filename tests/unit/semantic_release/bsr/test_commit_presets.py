@@ -152,6 +152,34 @@ class TestTomlPack:
         with pytest.raises(CommitPresetError, match="unknown commit preset"):
             load_preset(str(tmp_path / "ghost.toml"))
 
+    @pytest.mark.parametrize(
+        "content,message",
+        [
+            pytest.param(
+                'name = "x"\npattern = \n', "invalid TOML preset pack", id="bad-toml"
+            ),
+            pytest.param(
+                'name = "x"\nmode = "loud"\npattern = "x"\n',
+                "`mode` must be one of",
+                id="unknown-mode",
+            ),
+            pytest.param('name = "x"\n', "requires a `pattern` regex", id="no-pattern"),
+            pytest.param(
+                'name = "x"\npattern = "x"\ntypes = ["feat"]\n',
+                "`types` must be a table",
+                id="types-not-table",
+            ),
+        ],
+    )
+    def test_malformed_pack_names_the_problem(
+        self, tmp_path: Path, content: str, message: str
+    ) -> None:
+        pack = tmp_path / "bad.toml"
+        pack.write_text(content, encoding="utf-8")
+        with pytest.raises(CommitPresetError, match=message) as excinfo:
+            load_preset(str(pack))
+        assert str(excinfo.value).startswith(str(pack))
+
 
 class TestValidate:
     def test_audit_counts_and_histogram(self) -> None:

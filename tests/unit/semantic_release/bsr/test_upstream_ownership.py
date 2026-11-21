@@ -97,7 +97,10 @@ def test_manifest_gate_scope_is_non_empty(gate: str) -> None:
         ("python-lint", ("ruff", "check")),
         ("python-format", ("ruff", "format", "--check")),
         ("python-type", ("mypy",)),
-        ("python-test", ("pytest", "-q")),
+        (
+            "python-test",
+            ("pytest", "-q", "--cov=semantic_release.bsr", "--cov-fail-under=95"),
+        ),
     ],
 )
 def test_gate_command_uses_expected_engine_and_manifest_scope(
