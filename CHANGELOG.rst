@@ -4,6 +4,44 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.13.3-beta.1:
+
+v1.13.3-beta.1 (2026-11-21)
+===========================
+
+🪲 Bug Fixes
+------------
+
+* Fail the test gate below 95% coverage of the fork-owned code (`PR#316`_, `2dc26ae`_)
+
+* Fake git ls-remote in the e2e remote mocks and run the e2e suite in CI (`PR#312`_, `aea55c5`_)
+
+* Let Renovate digest updates clear the release-age hold (`PR#315`_, `50c95f8`_)
+
+* Move a forced prerelease after a final release to the next patch (`PR#314`_, `6e97373`_)
+
+* Open the main-integrity job with harden-runner (`PR#311`_, `7b1bbdc`_)
+
+* Read pyproject.toml at a release tag verbatim so CRLF files parse (`PR#313`_, `08ae627`_)
+
+* Run the e2e suite with every variation on Linux, like upstream (`PR#312`_, `aea55c5`_)
+
+* Type-check the changelog command alongside the other stock patches (`PR#313`_, `08ae627`_)
+
+.. _08ae627: https://github.com/n24q02m/better-semantic-release/commit/08ae62710293619a48e4131b9a2e093454a33cae
+.. _2dc26ae: https://github.com/n24q02m/better-semantic-release/commit/2dc26ae86c6f44a283edf41b3dde23b66c4996f0
+.. _50c95f8: https://github.com/n24q02m/better-semantic-release/commit/50c95f81a4dfdec28e0ab834236982f2db9bdf13
+.. _6e97373: https://github.com/n24q02m/better-semantic-release/commit/6e973737d8b13fcbe8e3f64d4b294792aa07ea07
+.. _7b1bbdc: https://github.com/n24q02m/better-semantic-release/commit/7b1bbdcdf23a8454a1048e9648934529e0538a57
+.. _aea55c5: https://github.com/n24q02m/better-semantic-release/commit/aea55c592e8275dee7be66413c42f73c9b2c7c71
+.. _PR#311: https://github.com/n24q02m/better-semantic-release/pull/311
+.. _PR#312: https://github.com/n24q02m/better-semantic-release/pull/312
+.. _PR#313: https://github.com/n24q02m/better-semantic-release/pull/313
+.. _PR#314: https://github.com/n24q02m/better-semantic-release/pull/314
+.. _PR#315: https://github.com/n24q02m/better-semantic-release/pull/315
+.. _PR#316: https://github.com/n24q02m/better-semantic-release/pull/316
+
+
 .. _changelog-v1.13.2:
 
 v1.13.2 (2026-11-17)
