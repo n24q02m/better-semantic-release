@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 import pytest
@@ -14,6 +15,7 @@ from semantic_release.bsr.publishers import (
     OUTCOME_RETRYABLE,
     OUTCOME_SKIPPED,
     PUBLISHER_KINDS,
+    GithubReleasePublisher,
     NoopPublisher,
     PublishOutcome,
     ShellPublisher,
@@ -165,6 +167,70 @@ def test_github_release_publisher_bridges_manifest(
     manifest, workspace = calls[0]
     assert manifest == tmp_path / "dist" / "manifest.json"
     assert workspace == tmp_path / ".bsr-workspace"
+
+
+def test_github_release_publisher_noop_does_not_touch_the_manifest(tmp_path) -> None:
+    calls: list[object] = []
+    publisher = GithubReleasePublisher(
+        tmp_path,
+        manifest_path="dist/manifest.json",
+        workspace=".bsr-workspace",
+        publish_manifest=lambda *args, **kwargs: calls.append((args, kwargs)),
+    )
+    outcome = publisher.publish("1.0.0", probe=None, noop=True)
+    assert outcome.state == OUTCOME_SKIPPED
+    assert calls == []
+
+
+def test_github_release_publisher_reports_manifest_failures_by_code(tmp_path) -> None:
+    (tmp_path / ".bsr-workspace").mkdir()
+    publisher = GithubReleasePublisher(
+        tmp_path,
+        manifest_path=tmp_path / "dist" / "missing.json",
+        workspace=".bsr-workspace",
+        name="gh",
+    )
+    outcome = publisher.publish("1.0.0", probe=None, noop=False)
+    assert outcome.state == OUTCOME_FAILED
+    assert outcome.detail.startswith("gh: manifest ")
+    assert str(tmp_path) not in outcome.detail
+
+
+def test_github_release_publisher_reports_plain_errors_by_message(tmp_path) -> None:
+    def broken_publish_manifest(*args, **kwargs):
+        raise RuntimeError("provider unavailable")
+
+    publisher = GithubReleasePublisher(
+        tmp_path,
+        manifest_path="manifest.json",
+        workspace=tmp_path,
+        publish_manifest=broken_publish_manifest,
+    )
+    outcome = publisher.publish("1.0.0", probe=None, noop=False)
+    assert outcome == PublishOutcome(
+        OUTCOME_FAILED, "github-release: provider unavailable"
+    )
+
+
+@pytest.mark.parametrize(
+    "exit_code,state",
+    [(0, OUTCOME_ATTEMPTED), (75, OUTCOME_RETRYABLE), (3, OUTCOME_FAILED)],
+)
+def test_shell_publisher_default_runner_runs_in_the_repo_dir(
+    tmp_path, exit_code: int, state: str
+) -> None:
+    marker = tmp_path / "ran.txt"
+    script = (
+        "import pathlib, sys; "
+        "pathlib.Path('ran.txt').write_text('yes'); "
+        f"sys.exit({exit_code})"
+    )
+    publisher = ShellPublisher(
+        "shell", tmp_path, command=[sys.executable, "-c", script]
+    )
+    outcome = publisher.publish("1.0.0", probe=None, noop=False)
+    assert outcome.state == state
+    assert marker.read_text() == "yes"
 
 
 def test_run_publishers_collects_outcomes(tmp_path) -> None:

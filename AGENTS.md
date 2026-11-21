@@ -61,7 +61,8 @@ Release. It is a drop-in fork, so configuration keys are unchanged
 ## Conventions
 
 - Commits: only `feat:` and `fix:` prefixes, enforced by the pre-commit `commit-msg` hook.
-- Test coverage: aim for >= 95% on `src/semantic_release/bsr/`, the code this fork owns.
+- Test coverage: `scripts/check_upstream_ownership.py --run-gate python-test` fails below
+  95% line coverage of `src/semantic_release/bsr/`, the code this fork owns.
 - No secrets in code or commit history.
 - CLI output is a downstream contract. Twenty-one repositories read this tool's output
   from their CI logs, and the `--print` / `--print-tag` exits emit one datum on stdout

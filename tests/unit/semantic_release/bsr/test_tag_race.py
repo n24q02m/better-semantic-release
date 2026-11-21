@@ -188,3 +188,33 @@ def test_the_e2e_git_mock_replaces_the_ls_remote_the_guard_runs(
     )
 
     fake_ls_remote.assert_called_once_with("nonexistent-remote")
+
+
+def test_parse_ls_remote_skips_blank_lines() -> None:
+    refs = _parse_ls_remote("\n  abc123\trefs/heads/main  \n\n")
+    assert refs == {"refs/heads/main": "abc123"}
+
+
+def test_non_text_ls_remote_output_fails_closed(
+    workspace: Repo, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    work = workspace
+    head = _commit(work, "feat: pending", "b.txt")
+    monkeypatch.setattr(
+        Repo,
+        "GitCommandWrapperType",
+        prepare_mocked_git_command_wrapper_type(
+            ls_remote=MagicMock(return_value=b"abc123\trefs/heads/main\n")
+        ),
+    )
+
+    with pytest.raises(TagRaceGuardError) as excinfo:
+        check_tag_race(
+            str(work.working_dir),  # type: ignore[arg-type]
+            remote_name="origin",
+            branch="main",
+            planned_tag="v0.2.0",
+            planned_head_sha=head,
+        )
+    assert excinfo.value.code == "TAG_RACE_UNCONFIRMED"
+    assert "unexpected ls_remote output type bytes" in excinfo.value.message

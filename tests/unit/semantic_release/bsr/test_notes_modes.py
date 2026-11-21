@@ -35,6 +35,16 @@ def test_collect_fragments_missing_dir_is_empty(tmp_path) -> None:
     assert collect_fragments(tmp_path / "nope") == ()
 
 
+def test_collect_fragments_skips_files_that_are_not_utf8(tmp_path) -> None:
+    changes = tmp_path / "changes"
+    changes.mkdir()
+    (changes / "a.md").write_text("kept", encoding="utf-8")
+    (changes / "b.md").write_bytes(bytes([0xFF, 0xFE]) + b" latin-1")
+
+    fragments = collect_fragments(changes)
+    assert [fragment.path.name for fragment in fragments] == ["a.md"]
+
+
 # ------------------------------------------------------------------ config
 def test_parse_notes_defaults() -> None:
     cfg = parse_notes_config(None)
@@ -55,6 +65,19 @@ def test_parse_notes_command_mode_requires_command() -> None:
 def test_parse_notes_bad_require_value_fails_closed() -> None:
     with pytest.raises(InvalidConfiguration, match="require_manual_notes"):
         parse_notes_config({"require_manual_notes": "sometimes"})
+
+
+def test_parse_notes_table_shape_fails_closed() -> None:
+    with pytest.raises(InvalidConfiguration, match="bsr.notes must be a table"):
+        parse_notes_config(["mode", "commits"])
+    with pytest.raises(InvalidConfiguration, match="bsr.notes.command must be a list"):
+        parse_notes_config({"mode": "command", "command": 5})
+
+
+def test_parse_notes_single_string_command() -> None:
+    cfg = parse_notes_config({"mode": "command", "command": "./notes.sh"})
+    assert cfg.mode == "command"
+    assert cfg.command == ("./notes.sh",)
 
 
 def test_config_loads_notes_table(tmp_path) -> None:

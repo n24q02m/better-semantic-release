@@ -52,6 +52,19 @@ def test_parse_hooks_none_is_no_hooks() -> None:
     assert parse_hooks(None) == ()
 
 
+def test_parse_hooks_single_string_command() -> None:
+    (spec,) = parse_hooks([{"point": "pre_plan", "command": "./check.sh"}])
+    assert spec.point == "pre_plan"
+    assert tuple(spec.command) == ("./check.sh",)
+
+
+def test_parse_hooks_shape_fails_closed() -> None:
+    with pytest.raises(InvalidConfiguration, match="must be an array of tables"):
+        parse_hooks({"point": "pre_plan", "command": ["x"]})
+    with pytest.raises(InvalidConfiguration, match="entry 1 must be a table"):
+        parse_hooks([{"point": "pre_plan", "command": ["x"]}, "pre_publish"])
+
+
 def test_run_hooks_only_fires_matching_point(tmp_path) -> None:
     ran: list[str] = []
 
