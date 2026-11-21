@@ -197,3 +197,48 @@ def test_build_summary_without_graph_keeps_rows() -> None:
             allow_zero_version=True,
         )
     assert out == (plan,)
+
+
+def test_single_string_dependency_and_unknown_lookups() -> None:
+    graph = _graph(
+        [
+            {"name": "core"},
+            {"name": " api ", "depends_on": "core"},
+            {"name": "web", "depends_on": ["core", "core", " api "]},
+        ]
+    )
+    assert graph is not None
+    assert graph.names == ("core", "api", "web")
+    assert graph.dependencies_of("api") == ("core",)
+    assert graph.dependencies_of("web") == ("core", "api")
+    assert graph.dependencies_of("ghost") == ()
+    assert graph.dependents_of("ghost") == ()
+
+
+@pytest.mark.parametrize(
+    "entries,message",
+    [
+        pytest.param(["api"], "entry 0 must be a table", id="entry-not-table"),
+        pytest.param(
+            [{"name": "core"}, {"depends_on": ["core"]}],
+            "entry 1 needs a non-empty 'name'",
+            id="missing-name",
+        ),
+        pytest.param(
+            [{"name": "  "}], "entry 0 needs a non-empty 'name'", id="blank-name"
+        ),
+        pytest.param(
+            [{"name": "core"}, {"name": "api", "depends_on": ["core", " "]}],
+            "empty name in component 'api' depends_on",
+            id="blank-dependency",
+        ),
+        pytest.param(
+            [{"name": "api", "depends_on": {"core": True}}],
+            "'api' depends_on must be a list",
+            id="dependency-table",
+        ),
+    ],
+)
+def test_malformed_graph_entries_fail_closed(entries, message: str) -> None:
+    with pytest.raises(InvalidConfiguration, match=message):
+        _graph(entries)

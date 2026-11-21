@@ -64,6 +64,21 @@ def test_none_and_github_release_trivially_ready() -> None:
         assert result.ready is True
 
 
+def test_shell_needs_no_credential_and_has_no_provenance_posture() -> None:
+    result = assess_publish_readiness("shell", environment={})
+    assert result.ready is True
+    assert result.supports_provenance is None
+
+
+def test_oci_readiness_follows_the_registry_password() -> None:
+    ready = assess_publish_readiness(
+        "oci", environment={"OCI_REGISTRY_PASSWORD": "placeholder"}
+    )
+    assert ready.ready is True
+    assert ready.supports_provenance is False
+    assert assess_publish_readiness("oci", environment={}).ready is False
+
+
 def test_unknown_kind_fails_closed() -> None:
     with pytest.raises(ValueError, match="unknown publish kind"):
         # unknown kinds have no posture defined -> must not silently pass

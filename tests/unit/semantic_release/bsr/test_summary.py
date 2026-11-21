@@ -222,6 +222,27 @@ def test_build_component_plan_matching_feat_commit_reports_minor_release(
     assert plan.resulting_version == Version.parse("0.2.0")
 
 
+def test_build_component_plan_samples_three_distinct_paths(tmp_path: Path) -> None:
+    repo = Repo.init(tmp_path)
+    _commit(repo, "apps/api/x.py", "x", "feat: initial api")
+    repo.create_tag("v0.1.0")
+    for name in ("a", "b", "c", "d"):
+        _commit(repo, f"apps/web/{name}.py", "1", f"fix: first {name}")
+        _commit(repo, f"apps/web/{name}.py", "2", f"fix: second {name}")
+
+    plan = build_component_plan(
+        BsrComponent(name="web", paths=("apps/web",)),
+        repo=repo,
+        translator=VersionTranslator(),
+        commit_parser=AngularCommitParser(),  # type: ignore[arg-type]
+        prerelease=False,
+        major_on_zero=True,
+        allow_zero_version=True,
+    )
+    assert plan.commit_count == 8
+    assert plan.sample_paths == ("apps/web/d.py", "apps/web/c.py", "apps/web/b.py")
+
+
 def test_build_summary_returns_one_plan_per_component(tmp_path: Path) -> None:
     repo = _build_two_component_repo(tmp_path)
     components = (

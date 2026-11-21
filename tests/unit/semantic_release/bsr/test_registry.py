@@ -110,6 +110,48 @@ def test_http_status_real_server_returns_status(status_code, monkeypatch):
         assert reg._http_status(url, timeout=5.0) == status_code
 
 
+def test_http_status_sends_extra_headers_to_a_real_server(monkeypatch):
+    """Probes that need a specific Accept header get it on the wire."""
+    import urllib.parse
+
+    seen: dict[str, str | None] = {}
+
+    class _HeaderCheckingHandler(BaseHTTPRequestHandler):
+        def do_GET(self) -> None:  # noqa: N802
+            seen["accept"] = self.headers.get("Accept")
+            seen["user_agent"] = self.headers.get("User-Agent")
+            ok = seen["accept"] == "application/vnd.oci.image.index.v1+json"
+            self.send_response(200 if ok else 406)
+            self.end_headers()
+
+        def log_message(self, log_format: str, *args: object) -> None:  # noqa: ARG002
+            pass
+
+    original_urlparse = urllib.parse.urlparse
+
+    def _mock_urlparse(url_str):
+        parsed = original_urlparse(url_str)
+        if parsed.hostname == "127.0.0.1":
+            return parsed._replace(netloc="example.com:0")
+        return parsed
+
+    monkeypatch.setattr(urllib.parse, "urlparse", _mock_urlparse)
+
+    server = HTTPServer(("127.0.0.1", 0), _HeaderCheckingHandler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        url = f"http://127.0.0.1:{server.server_port}/"
+        headers = {"Accept": "application/vnd.oci.image.index.v1+json"}
+        assert reg._http_status(url, timeout=5.0, extra_headers=headers) == 200
+        assert reg._http_status(url, timeout=5.0) == 406
+    finally:
+        server.shutdown()
+        thread.join()
+        server.server_close()
+    assert seen["user_agent"] == "better-semantic-release-guard"
+
+
 def test_http_status_connection_failure_returns_none(monkeypatch):
     """
     `_http_status` returns `None` (fails closed) on a real connection

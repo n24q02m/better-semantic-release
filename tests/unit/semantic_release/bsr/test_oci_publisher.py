@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import dataclasses
 import json
+import sys
 import tarfile
 from pathlib import Path
 
@@ -124,6 +125,27 @@ class TestRegistration:
     def test_explicit_output_wins(self, tmp_path: Path) -> None:
         pub, _ = _publisher(tmp_path, image=IMAGE, output="out/img.oci.tar")
         assert pub._artifact_path() == tmp_path / "out" / "img.oci.tar"
+
+    def test_push_must_be_a_boolean(self, tmp_path: Path) -> None:
+        with pytest.raises(InvalidConfiguration, match=r"oci\.push must be a boolean"):
+            register_publisher(
+                _Cfg(image=IMAGE, push="yes"),  # type: ignore[arg-type]
+                repo_dir=tmp_path,
+            )
+
+    def test_output_must_be_a_string_path(self, tmp_path: Path) -> None:
+        with pytest.raises(
+            InvalidConfiguration, match=r"oci\.output must be a non-empty string"
+        ):
+            register_publisher(
+                _Cfg(image=IMAGE, output=7),  # type: ignore[arg-type]
+                repo_dir=tmp_path,
+            )
+
+    def test_absolute_paths_are_kept(self, tmp_path: Path) -> None:
+        dockerfile = tmp_path / "elsewhere" / "Dockerfile"
+        pub, _ = _publisher(tmp_path, image=IMAGE, dockerfile=str(dockerfile))
+        assert pub._config.dockerfile == dockerfile
 
 
 class TestRefs:
@@ -265,3 +287,105 @@ class TestConfigDataclass:
         assert config.tags == ("{version}",)
         assert config.push is False
         assert config.dockerfile == Path("Dockerfile")
+
+
+class TestPodmanBuilder:
+    def _podman(
+        self, tmp_path: Path, codes: dict[tuple[str, ...], int] | None = None, **kwargs
+    ) -> tuple[OciPublisher, list[list[str]]]:
+        runner, calls = _recording_runner(codes)
+        pub = register_publisher(
+            _Cfg(image=IMAGE, **kwargs),
+            repo_dir=tmp_path,
+            runner=runner,
+            detector=_detector(("podman",)),
+        )
+        assert isinstance(pub, OciPublisher)
+        return pub, calls
+
+    def test_build_saves_an_oci_archive_without_pushing(self, tmp_path: Path) -> None:
+        pub, calls = self._podman(tmp_path)
+        outcome = pub.publish("2.0.0", probe=ProbeResult.FREE, noop=False)
+        assert outcome.state == OUTCOME_ATTEMPTED
+        assert outcome.detail == "oci: wrote widgets.oci.tar"
+        artifact = tmp_path / "dist" / "widgets.oci.tar"
+        assert calls == [
+            [
+                "podman",
+                "build",
+                "-f",
+                str(tmp_path / "Dockerfile"),
+                "-t",
+                f"{IMAGE}:2.0.0",
+                str(tmp_path / "."),
+            ],
+            [
+                "podman",
+                "save",
+                "--format",
+                "oci-archive",
+                "--output",
+                str(artifact),
+                f"{IMAGE}:2.0.0",
+            ],
+        ]
+        assert artifact.parent.is_dir()
+
+    def test_failed_build_stops_before_save(self, tmp_path: Path) -> None:
+        pub, calls = self._podman(tmp_path, {("podman", "build"): 75})
+        outcome = pub.publish("2.0.0", probe=ProbeResult.FREE, noop=False)
+        assert outcome.state == OUTCOME_RETRYABLE
+        assert outcome.detail == "oci: exited 75 (tempfail)"
+        assert [call[:2] for call in calls] == [["podman", "build"]]
+
+    def test_push_sends_every_ref(self, tmp_path: Path) -> None:
+        pub, calls = self._podman(tmp_path, tags=["{version}", "latest"], push=True)
+        outcome = pub.publish("2.0.0", probe=ProbeResult.FREE, noop=False)
+        assert outcome.state == OUTCOME_ATTEMPTED
+        assert outcome.detail == "oci: pushed 2 ref(s)"
+        assert [call for call in calls if call[1] == "push"] == [
+            ["podman", "push", f"{IMAGE}:2.0.0"],
+            ["podman", "push", f"{IMAGE}:latest"],
+        ]
+
+    def test_failed_push_stops_at_the_first_ref(self, tmp_path: Path) -> None:
+        pub, calls = self._podman(
+            tmp_path,
+            {("podman", "push"): 1},
+            tags=["{version}", "latest"],
+            push=True,
+        )
+        outcome = pub.publish("2.0.0", probe=ProbeResult.FREE, noop=False)
+        assert outcome.state == OUTCOME_FAILED
+        assert outcome.detail == "oci: exited 1"
+        assert [call for call in calls if call[1] == "push"] == [
+            ["podman", "push", f"{IMAGE}:2.0.0"],
+        ]
+
+
+class TestDefaultSeams:
+    def test_without_builders_on_path_the_default_detector_falls_back(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        empty_bin = tmp_path / "empty-bin"
+        empty_bin.mkdir()
+        monkeypatch.setenv("PATH", str(empty_bin))
+        pub = OciPublisher(OciPublisherConfig(image=IMAGE), tmp_path)
+        outcome = pub.publish("2.0.0", probe=ProbeResult.FREE, noop=False)
+        assert outcome.state == OUTCOME_ATTEMPTED
+        assert "provenance-only" in outcome.detail
+        assert (tmp_path / "dist" / "widgets.oci.tar").is_file()
+
+    def test_default_runner_runs_in_the_repo_dir_and_returns_the_exit_code(
+        self, tmp_path: Path
+    ) -> None:
+        from semantic_release.bsr.oci_publisher import _default_runner
+
+        script = (
+            "import os, sys; "
+            "sys.exit(7 if os.path.samefile(os.getcwd(), sys.argv[1]) else 1)"
+        )
+        assert (
+            _default_runner([sys.executable, "-c", script, str(tmp_path)], tmp_path)
+            == 7
+        )
