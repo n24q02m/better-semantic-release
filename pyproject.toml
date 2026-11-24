@@ -36,7 +36,7 @@ dependencies = [
   "pydantic ~=2.14",
   "rich ~= 15.0",
   "shellingham ~=1.5",
-  "Deprecated ~=3.0",
+  "Deprecated >=1.2.18, <4",
 ]
 
 [project.scripts]
