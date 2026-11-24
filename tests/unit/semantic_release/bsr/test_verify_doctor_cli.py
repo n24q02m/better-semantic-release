@@ -167,3 +167,39 @@ def test_plan_verify_doctor_never_mutate(
     repo = Repo(str(proj))
     assert [str(t) for t in repo.tags] == ["v0.1.0"]
     assert str(repo.head.commit) == head_before
+
+
+def test_verify_repair_check_offline_reports_repair_rows(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _build_repo(tmp_path, monkeypatch)
+    result = _invoke("verify", "--offline", "--repair-check", "--format", "json")
+    assert result.exit_code == 0
+    doc = json.loads(str(result.stdout))
+    codes = {c["code"] for c in doc["checks"]}
+    assert {
+        "REPAIR_LOCAL_TAG",
+        "REPAIR_REGISTRY_STATE",
+        "REPAIR_NEXT_ACTION",
+    } <= codes
+
+
+def test_doctor_reports_undeclared_monorepo_manifest(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    proj = _build_repo(tmp_path, monkeypatch)
+    pyproject = proj / "pyproject.toml"
+    pyproject.write_text(
+        pyproject.read_text(encoding="utf-8")
+        + "\n[tool.semantic_release.bsr]\nschema_version = 1\n"
+        + '[[tool.semantic_release.bsr.components]]\nname = "api"\npaths = ["apps/api/**"]\n',
+        encoding="utf-8",
+    )
+    _write(proj / "apps" / "web" / "package.json", '{"name": "web"}\n')
+    result = _invoke("doctor", "--format", "json")
+    assert result.exit_code == 0
+    doc = json.loads(str(result.stdout))
+    manifest_row = next(c for c in doc["checks"] if c["code"] == "MONOREPO_MANIFESTS")
+    assert manifest_row["status"] == "fail"
+    assert manifest_row["severity"] == "warning"
+    assert "apps/web/package.json" in manifest_row["why"]

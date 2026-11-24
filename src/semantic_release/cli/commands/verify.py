@@ -49,6 +49,7 @@ from semantic_release.bsr.plan_drift import (
     verify_plan_drift,
 )
 from semantic_release.bsr.preflight import compute_release_state
+from semantic_release.bsr.repair import evaluate_repair_status
 from semantic_release.cli.config import RuntimeContext
 from semantic_release.errors import MissingGitRemote, NotAReleaseBranch
 
@@ -269,6 +270,13 @@ def _print_report(report: DoctorReport, output_format: str) -> None:
     metavar="SPEC",
     help="Validate commits since the latest tag against a commit-message preset.",
 )
+@click.option(
+    "--repair-check",
+    "repair_check",
+    is_flag=True,
+    default=False,
+    help="Inspect partial-release state from git tags and registry probes without a state file.",
+)
 @click.pass_obj
 def verify(
     cli_ctx: CliContextObj,
@@ -276,6 +284,7 @@ def verify(
     offline: bool = False,
     plan_path: str | None = None,
     commit_preset: str | None = None,
+    repair_check: bool = False,
 ) -> None:
     """
     Enforce the release-safety policy against the current repository state.
@@ -381,6 +390,19 @@ def verify(
             probe=None if offline else _LIVE_PROBE,
         )
     )
+
+    if repair_check:
+        tag_name = runtime.version_translator.str_to_tag(str(state.new_version))
+        checks.extend(
+            evaluate_repair_status(
+                repo_dir=runtime.repo_dir,
+                bsr_config=_bsr_cfg,
+                project_name=project_name,
+                target_version=str(state.new_version),
+                tag_name=tag_name,
+                probe=None if offline else _LIVE_PROBE,
+            )
+        )
 
     report = DoctorReport(checks=tuple(checks))
     _print_report(report, output_format)

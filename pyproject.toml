@@ -20,6 +20,7 @@ classifiers = [
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: 3.15",
 ]
 readme = "README.rst"
 authors = [
@@ -49,6 +50,8 @@ dependencies = [
 ]
 
 [project.scripts]
+bsr = "semantic_release.__main__:main"
+better-semantic-release = "semantic_release.__main__:main"
 python-semantic-release = "semantic_release.__main__:main"
 semantic-release = "semantic_release.__main__:main"
 psr = "semantic_release.__main__:main"
