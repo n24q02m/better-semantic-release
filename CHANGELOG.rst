@@ -4,6 +4,22 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.13.4-beta.2:
+
+v1.13.4-beta.2 (2026-11-24)
+===========================
+
+🪲 Bug Fixes
+------------
+
+* Relax Deprecated pin for python 3.11 and mock tls min version (`PR#319`_, `785806e`_)
+
+* Require python 3.11+ and add 3.11-3.15 lts ci matrix (`PR#319`_, `785806e`_)
+
+.. _785806e: https://github.com/n24q02m/better-semantic-release/commit/785806e70e7122aab274132181dda17dff388abe
+.. _PR#319: https://github.com/n24q02m/better-semantic-release/pull/319
+
+
 .. _changelog-v1.13.4-beta.1:
 
 v1.13.4-beta.1 (2026-11-24)
