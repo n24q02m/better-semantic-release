@@ -4,6 +4,27 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.13.4-beta.1:
+
+v1.13.4-beta.1 (2026-11-24)
+===========================
+
+✨ Features
+-----------
+
+* Add bsr entrypoints and p11 recovery diagnostics (`PR#318`_, `b8b6e34`_)
+
+🪲 Bug Fixes
+------------
+
+* **deps**: Update click-option-group to ~=0.5.10 (`PR#317`_, `372f501`_)
+
+.. _372f501: https://github.com/n24q02m/better-semantic-release/commit/372f5012055d7b4c557e6c00fdbf011310d2c0cd
+.. _b8b6e34: https://github.com/n24q02m/better-semantic-release/commit/b8b6e34f5984da7d6b277c6b231adaf95e1618a6
+.. _PR#317: https://github.com/n24q02m/better-semantic-release/pull/317
+.. _PR#318: https://github.com/n24q02m/better-semantic-release/pull/318
+
+
 .. _changelog-v1.13.3:
 
 v1.13.3 (2026-11-22)
