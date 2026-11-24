@@ -1000,6 +1000,7 @@ def test_github_provider_uses_pinned_api_version_and_bounded_json(
             return response
 
     tls_context = publisher.ssl.create_default_context()
+    tls_context.minimum_version = publisher.ssl.TLSVersion.TLSv1_2
     monkeypatch.setattr(publisher, "_github_ssl_context", lambda: tls_context)
 
     def build_opener(*handlers: Any) -> Opener:
