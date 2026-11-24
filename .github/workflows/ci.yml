@@ -44,16 +44,20 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
-          python-version: "3.13"
+          python-version: "3.15"
       - name: Verify README registry metadata
         run: python scripts/repo-bootstrap/verify_readme_sync.py --repo-root=.
       - name: Project SOT
         run: python -I scripts/repo-bootstrap/sot_check.py --repo . --mode gate
 
   lint-type-test:
-    name: lint + type + test (linux)
+    name: lint + type + test (linux, Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13", "3.14", "3.15"]
     permissions:
       contents: read
       # The Codecov upload authenticates with this job's OIDC token.
@@ -65,8 +69,11 @@ jobs:
 
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
 
-      - name: Create venv (Python 3.13)
-        run: uv venv --python 3.13
+      - name: Create venv (Python ${{ matrix.python-version }})
+        run: uv venv --python ${{ matrix.python-version }}
+
+      - name: Verify Python LTS row
+        run: uv run --no-sync python -c "import sys; assert f'{sys.version_info.major}.{sys.version_info.minor}' == '${{ matrix.python-version }}', sys.version"
 
       - name: Install project + test + mypy + dev (ruff) deps
         run: uv pip install -e ".[test,mypy,dev]"
@@ -78,12 +85,15 @@ jobs:
       # The checker validates it before each executable gate and derives the scope
       # passed to that gate, so CI cannot silently drift from the ownership list.
       - name: Ruff (repo config, select=ALL) on owned Python files
+        if: matrix.python-version == '3.15'
         run: uv run --no-sync python scripts/check_upstream_ownership.py --run-gate python-lint
 
       - name: Ruff format check on owned Python files
+        if: matrix.python-version == '3.15'
         run: uv run --no-sync python scripts/check_upstream_ownership.py --run-gate python-format
 
       - name: Mypy on owned source files
+        if: matrix.python-version == '3.15'
         run: uv run --no-sync python scripts/check_upstream_ownership.py --run-gate python-type
 
       - name: Pytest (manifest-scoped tests on Linux)
@@ -94,7 +104,7 @@ jobs:
       # refuses it. Pull requests skip it: a fork or Dependabot run cannot always mint
       # an OIDC token, and the required check must not depend on Codecov being reachable.
       - uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
-        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' && matrix.python-version == '3.15'
         with:
           files: ./coverage.xml
           use_oidc: true
@@ -121,8 +131,8 @@ jobs:
 
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
 
-      - name: Create venv (Python 3.13)
-        run: uv venv --python 3.13
+      - name: Create venv (Python 3.15)
+        run: uv venv --python 3.15
 
       # [test] only -- the same set tox declares for its test environment.
       - name: Install project + test deps
@@ -161,8 +171,8 @@ jobs:
 
       - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
 
-      - name: Create venv (Python 3.13)
-        run: uv venv --python 3.13
+      - name: Create venv (Python 3.15)
+        run: uv venv --python 3.15
 
       - name: Install project + test deps
         run: uv pip install -e ".[test]"
