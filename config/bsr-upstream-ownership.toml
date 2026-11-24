@@ -1619,3 +1619,27 @@ kind = "python-test"
 owner = "bsr-tests"
 reason = "Regression coverage for a forced prerelease after a final release, which must sort above the release it follows."
 gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "src/semantic_release/bsr/repair.py"
+status = "A"
+kind = "python-source"
+owner = "bsr-w10-recovery"
+reason = "Stateless partial-release repair diagnostics (BSR-5) from git tags and registry probes."
+gates = ["python-lint", "python-format", "python-type"]
+
+[[ownership]]
+path = "tests/e2e/test_partial_release_recovery_e2e.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-w10-recovery"
+reason = "Deterministic failure-injection E2E coverage (BSR-6) for partial-release recovery."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/test_parser_fuzz_properties.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-w10-recovery"
+reason = "Deterministic seeded property tests (BSR-27) for Version, VersionTranslator, and AngularCommitParser."
+gates = ["python-lint", "python-format", "python-test"]

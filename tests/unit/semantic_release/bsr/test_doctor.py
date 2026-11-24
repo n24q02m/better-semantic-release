@@ -394,3 +394,119 @@ def test_check_version_consistency_reports_unreadable_sources(tmp_path) -> None:
     assert "package.json" in result.why
     assert ": unreadable" in result.why
     assert "agreed elsewhere: text:" in result.why
+
+
+def test_check_monorepo_undeclared_manifests_skips_when_unconfigured(tmp_path) -> None:
+    from semantic_release.bsr.config import BsrConfig
+    from semantic_release.bsr.doctor import check_monorepo_undeclared_manifests
+
+    result = check_monorepo_undeclared_manifests(tmp_path, BsrConfig())
+    assert result.code == "MONOREPO_MANIFESTS"
+    assert result.status == "skip"
+
+
+def test_check_monorepo_undeclared_manifests_passes_and_warns(tmp_path) -> None:
+    from semantic_release.bsr.config import BsrComponent, BsrConfig
+    from semantic_release.bsr.doctor import check_monorepo_undeclared_manifests
+
+    (tmp_path / "pyproject.toml").write_text(
+        "[project]\nname='root'\n", encoding="utf-8"
+    )
+    (tmp_path / "packages" / "api").mkdir(parents=True)
+    (tmp_path / "packages" / "api" / "pyproject.toml").write_text("", encoding="utf-8")
+    (tmp_path / "node_modules" / "ignored").mkdir(parents=True)
+    (tmp_path / "node_modules" / "ignored" / "package.json").write_text(
+        "", encoding="utf-8"
+    )
+
+    cfg_ok = BsrConfig(
+        components=(BsrComponent(name="api", paths=("packages/api/**",)),)
+    )
+    ok = check_monorepo_undeclared_manifests(tmp_path, cfg_ok)
+    assert ok.status == "pass"
+
+    (tmp_path / "packages" / "web").mkdir(parents=True)
+    (tmp_path / "packages" / "web" / "package.json").write_text("{}", encoding="utf-8")
+    warn = check_monorepo_undeclared_manifests(tmp_path, cfg_ok)
+    assert warn.status == "fail"
+    assert warn.severity == "warning"
+    assert "packages/web/package.json" in warn.why
+
+
+def test_evaluate_repair_status_states(tmp_path) -> None:
+    from git import Actor, Repo
+
+    from semantic_release.bsr.config import BsrConfig
+    from semantic_release.bsr.registry import ProbeResult
+    from semantic_release.bsr.repair import evaluate_repair_status
+
+    author = Actor("demo", "demo@example.com")
+    (tmp_path / "README.md").write_text("hi\n", encoding="utf-8")
+    repo = Repo.init(tmp_path, initial_branch="main")
+    repo.index.add(["README.md"])
+    repo.index.commit("feat: init", author=author, committer=author)
+
+    cfg = BsrConfig(registry="pypi")
+    clean = evaluate_repair_status(
+        repo_dir=tmp_path,
+        bsr_config=cfg,
+        project_name="demo",
+        target_version="0.1.0",
+        tag_name="v0.1.0",
+        probe=lambda _r, _n, _v: ProbeResult.FREE,
+    )
+    assert [row.status for row in clean] == ["pass", "pass", "pass"]
+
+    exists_no_tag = evaluate_repair_status(
+        repo_dir=tmp_path,
+        bsr_config=cfg,
+        project_name="demo",
+        target_version="0.1.0",
+        tag_name="v0.1.0",
+        probe=lambda _r, _n, _v: ProbeResult.EXISTS,
+    )
+    assert exists_no_tag[2].severity == "blocker"
+    assert exists_no_tag[2].status == "fail"
+
+    unknown_probe = evaluate_repair_status(
+        repo_dir=tmp_path,
+        bsr_config=cfg,
+        project_name="demo",
+        target_version="0.1.0",
+        tag_name="v0.1.0",
+        probe=lambda _r, _n, _v: ProbeResult.UNKNOWN,
+    )
+    assert unknown_probe[1].status == "fail"
+    assert unknown_probe[2].severity == "blocker"
+
+    repo.create_tag("v0.1.0")
+    tag_no_reg = evaluate_repair_status(
+        repo_dir=tmp_path,
+        bsr_config=cfg,
+        project_name="demo",
+        target_version="0.1.0",
+        tag_name="v0.1.0",
+        probe=lambda _r, _n, _v: ProbeResult.FREE,
+    )
+    assert tag_no_reg[2].severity == "warning"
+    assert tag_no_reg[2].status == "fail"
+
+    reconciled = evaluate_repair_status(
+        repo_dir=tmp_path,
+        bsr_config=cfg,
+        project_name="demo",
+        target_version="0.1.0",
+        tag_name="v0.1.0",
+        probe=lambda _r, _n, _v: ProbeResult.EXISTS,
+    )
+    assert reconciled[2].status == "pass"
+
+    skipped = evaluate_repair_status(
+        repo_dir=tmp_path,
+        bsr_config=BsrConfig(registry="none"),
+        project_name="demo",
+        target_version="0.1.0",
+        tag_name="v0.1.0",
+        probe=None,
+    )
+    assert skipped[1].status == "skip"

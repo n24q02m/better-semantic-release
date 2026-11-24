@@ -26,6 +26,7 @@ from semantic_release.bsr.doctor import (
     check_branch_config,
     check_hvcs_token,
     check_missing_remote,
+    check_monorepo_undeclared_manifests,
     check_prerelease_consistency,
     check_registry_state,
     check_tag_format,
@@ -164,6 +165,7 @@ def doctor(
             probe=_LIVE_PROBE if check_registry else None,
         )
     )
+    checks.append(check_monorepo_undeclared_manifests(runtime.repo_dir, _bsr_cfg))
 
     report = DoctorReport(checks=tuple(checks))
     _print_report(report, output_format)

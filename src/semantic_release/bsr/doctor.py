@@ -17,8 +17,10 @@ and machine-readable.
 
 from __future__ import annotations
 
+import os
 import re
 from dataclasses import dataclass
+from pathlib import Path
 from typing import TYPE_CHECKING, Callable, Sequence
 
 from semantic_release.bsr.guards import resolve_registry
@@ -491,4 +493,107 @@ def check_version_consistency(sources: Sequence[object]) -> CheckResult:
         status=STATUS_PASS,
         what=f"all {len(readable)} version source(s) agree",
         why=agreed,
+    )
+
+
+_MANIFEST_FILENAMES = frozenset(
+    {"pyproject.toml", "package.json", "Cargo.toml", "go.mod"}
+)
+_MANIFEST_SKIP_DIRS = frozenset(
+    {
+        ".git",
+        ".venv",
+        "venv",
+        "node_modules",
+        "dist",
+        "build",
+        "__pycache__",
+        ".mypy_cache",
+        ".pytest_cache",
+        ".ruff_cache",
+        ".tox",
+        ".eggs",
+        "target",
+    }
+)
+
+
+def _normalize_declared_prefix(raw_path: str) -> str:
+    cleaned = raw_path.replace("\\", "/").strip().lstrip("./").rstrip("/")
+    while cleaned.endswith(("/*", "/**")):
+        cleaned = cleaned.rsplit("/", 1)[0]
+    return "" if cleaned in {".", "*"} else cleaned
+
+
+def _declared_component_prefixes(bsr_config: BsrConfig) -> tuple[str, ...]:
+    prefixes: set[str] = set()
+    for component in bsr_config.components:
+        for path in component.paths:
+            norm = _normalize_declared_prefix(path)
+            if norm:
+                prefixes.add(norm)
+    path_map = bsr_config.component_path_map
+    if path_map is not None:
+        for mapping in path_map.components:
+            for root in mapping.roots:
+                norm = _normalize_declared_prefix(root)
+                if norm:
+                    prefixes.add(norm)
+        for rule in path_map.rules:
+            norm = _normalize_declared_prefix(rule.path)
+            if norm:
+                prefixes.add(norm)
+    return tuple(sorted(prefixes))
+
+
+def _is_manifest_covered(
+    rel_dir: str, rel_file: str, prefixes: tuple[str, ...]
+) -> bool:
+    for prefix in prefixes:
+        if rel_dir == prefix or rel_dir.startswith(f"{prefix}/") or rel_file == prefix:
+            return True
+    return False
+
+
+def check_monorepo_undeclared_manifests(
+    repo_root: Path, bsr_config: BsrConfig
+) -> CheckResult:
+    """Warn when subdirectory package manifests sit outside declared components."""
+    if bsr_config.component_path_map is None and not bsr_config.components:
+        return CheckResult(
+            code="MONOREPO_MANIFESTS",
+            severity=SEVERITY_WARNING,
+            status=STATUS_SKIP,
+            what="no monorepo components configured",
+        )
+
+    prefixes = _declared_component_prefixes(bsr_config)
+    uncovered: list[str] = []
+    for dirpath, dirnames, filenames in os.walk(repo_root):
+        dirnames[:] = sorted(d for d in dirnames if d not in _MANIFEST_SKIP_DIRS)
+        rel_dir = Path(dirpath).relative_to(repo_root).as_posix()
+        if rel_dir == ".":
+            continue
+        for filename in sorted(filenames):
+            if filename not in _MANIFEST_FILENAMES:
+                continue
+            rel_file = f"{rel_dir}/{filename}"
+            if not _is_manifest_covered(rel_dir, rel_file, prefixes):
+                uncovered.append(rel_file)
+
+    if uncovered:
+        return CheckResult(
+            code="MONOREPO_MANIFESTS",
+            severity=SEVERITY_WARNING,
+            status=STATUS_FAIL,
+            what=f"{len(uncovered)} package manifest(s) outside declared components",
+            why=", ".join(uncovered),
+            fix="add each package path to [tool.semantic_release.bsr.components] or component_path_map",
+        )
+
+    return CheckResult(
+        code="MONOREPO_MANIFESTS",
+        severity=SEVERITY_WARNING,
+        status=STATUS_PASS,
+        what="all discovered subdirectory manifests match declared components",
     )
