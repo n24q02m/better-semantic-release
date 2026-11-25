@@ -71,10 +71,11 @@ def test_toml_declaration_is_version_replacer():
                     version = '1.0.0'
                     """
                 ),
+                # tomlkit >= 0.15 preserves the original single-quote style
                 dedent(
                     f"""\
                     [project]
-                    version = "{next_version}"
+                    version = '{next_version}'
                     """
                 ),
             ),
