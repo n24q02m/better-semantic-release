@@ -4,6 +4,32 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.14.2-beta.1:
+
+v1.14.2-beta.1 (2026-11-27)
+===========================
+
+✨ Features
+-----------
+
+* Block releases from a branch out of sync with its upstream (`PR#323`_, `8ab0ef7`_)
+
+🪲 Bug Fixes
+------------
+
+* Create github release as draft before uploading assets for immutable releases (`PR#322`_,
+  `1706c52`_)
+
+* Repair the malformed steps in the gated release recipe (`PR#324`_, `13e87c2`_)
+
+.. _13e87c2: https://github.com/n24q02m/better-semantic-release/commit/13e87c2f67c354a465134b4977627a753389edd1
+.. _1706c52: https://github.com/n24q02m/better-semantic-release/commit/1706c52604262521cf8c20692b88f2fd59f4c203
+.. _8ab0ef7: https://github.com/n24q02m/better-semantic-release/commit/8ab0ef7e6c46a98e31266ac1dd4acf5698a8c2f0
+.. _PR#322: https://github.com/n24q02m/better-semantic-release/pull/322
+.. _PR#323: https://github.com/n24q02m/better-semantic-release/pull/323
+.. _PR#324: https://github.com/n24q02m/better-semantic-release/pull/324
+
+
 .. _changelog-v1.14.1:
 
 v1.14.1 (2026-11-27)
