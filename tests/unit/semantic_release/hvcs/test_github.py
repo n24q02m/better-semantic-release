@@ -13,7 +13,7 @@ import requests_mock
 from requests import HTTPError, Response, Session
 from requests.auth import _basic_auth_str
 
-from semantic_release.errors import AssetUploadError
+from semantic_release.errors import AssetUploadError, IncompleteReleaseError
 from semantic_release.hvcs.github import Github
 from semantic_release.hvcs.token_auth import TokenAuth
 
@@ -1314,3 +1314,89 @@ def test_upload_dists_all_succeed(default_gh_client: Github):
         # Evaluate (expected -> actual)
         assert expected_num_uploads == num_uploads
         assert expected_num_uploads == mock_upload_release_asset.call_count
+
+
+def test_create_release_with_assets_uses_draft_until_upload_succeeds(
+    default_gh_client: Github,
+):
+    tag = "v1.0.0"
+    release_id = 42
+    releases_url = "{api_url}/repos/{owner}/{repo_name}/releases".format(
+        api_url=default_gh_client.api_url,
+        owner=default_gh_client.owner,
+        repo_name=default_gh_client.repo_name,
+    )
+    release_url = f"{releases_url}/{release_id}"
+
+    with requests_mock.Mocker(
+        session=default_gh_client.session
+    ) as m, mock.patch.object(
+        default_gh_client,
+        default_gh_client.upload_release_asset.__name__,
+        return_value=True,
+    ) as mock_upload:
+        m.register_uri("POST", releases_url, json={"id": release_id}, status_code=201)
+        m.register_uri(
+            "PATCH",
+            release_url,
+            json={"id": release_id, "draft": False},
+            status_code=200,
+        )
+
+        result = default_gh_client.create_release(
+            tag,
+            RELEASE_NOTES,
+            prerelease=False,
+            assets=["dist/app-1.0.0.whl"],
+        )
+
+    assert result == release_id
+    mock_upload.assert_called_once_with(release_id, "dist/app-1.0.0.whl")
+    assert len(m.request_history) == 2
+    assert m.request_history[0].method == "POST"
+    assert m.request_history[0].url == releases_url
+    assert m.request_history[0].json()["draft"] is True
+    assert m.request_history[1].method == "PATCH"
+    assert m.request_history[1].url == release_url
+    assert m.request_history[1].json() == {"draft": False}
+
+
+def test_create_release_with_assets_keeps_draft_when_upload_fails(
+    default_gh_client: Github,
+):
+    tag = "v1.0.0"
+    release_id = 42
+    releases_url = "{api_url}/repos/{owner}/{repo_name}/releases".format(
+        api_url=default_gh_client.api_url,
+        owner=default_gh_client.owner,
+        repo_name=default_gh_client.repo_name,
+    )
+    release_url = f"{releases_url}/{release_id}"
+    http_error = HTTPError("500 Server Error")
+
+    with requests_mock.Mocker(
+        session=default_gh_client.session
+    ) as m, mock.patch.object(
+        default_gh_client,
+        default_gh_client.upload_release_asset.__name__,
+        side_effect=http_error,
+    ):
+        m.register_uri("POST", releases_url, json={"id": release_id}, status_code=201)
+        m.register_uri(
+            "PATCH",
+            release_url,
+            json={"id": release_id, "draft": False},
+            status_code=200,
+        )
+
+        with pytest.raises(IncompleteReleaseError):
+            default_gh_client.create_release(
+                tag,
+                RELEASE_NOTES,
+                prerelease=False,
+                assets=["dist/app-1.0.0.whl"],
+            )
+
+    assert len(m.request_history) == 1
+    assert m.request_history[0].method == "POST"
+    assert m.request_history[0].json()["draft"] is True

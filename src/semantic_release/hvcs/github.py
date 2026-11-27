@@ -253,13 +253,16 @@ class Github(RemoteHvcsBase):
         releases_endpoint = self.create_api_url(
             endpoint=f"/repos/{self.owner}/{self.repo_name}/releases",
         )
+        # BSR-PATCH: create a draft release first when assets will be uploaded so
+        # GitHub Immutable Releases do not lock the tag before asset upload completes.
+        has_assets = bool(assets)
         response = self.session.post(
             releases_endpoint,
             json={
                 "tag_name": tag,
                 "name": tag,
                 "body": release_notes,
-                "draft": False,
+                "draft": has_assets,
                 "prerelease": prerelease,
             },
         )
@@ -288,6 +291,12 @@ class Github(RemoteHvcsBase):
                 )
 
         if len(errors) < 1:
+            if has_assets:
+                publish_response = self.session.patch(
+                    f"{releases_endpoint}/{release_id}",
+                    json={"draft": False},
+                )
+                publish_response.raise_for_status()
             return release_id
 
         for error in errors:

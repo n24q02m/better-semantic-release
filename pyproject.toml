@@ -206,6 +206,7 @@ files = [
   "src/semantic_release/commit_parser/scipy.py",
   "src/semantic_release/gitproject.py",
   "src/semantic_release/helpers.py",
+  "src/semantic_release/hvcs/github.py",
   "src/semantic_release/version/algorithm.py",
   "src/semantic_release/version/version.py",
   "src/semantic_release/commit_parser/conventional/parser_monorepo.py",
