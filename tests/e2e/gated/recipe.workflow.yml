@@ -45,7 +45,7 @@ jobs:
           uv run --no-sync semantic-release plan --write release-plan.json
           echo "version=$(uv run --no-sync python -c 'import json;print(json.load(open("release-plan.json"))["new_version"])')" >> "$GITHUB_OUTPUT"
           echo "head_sha=$GITHUB_SHA" >> "$GITHUB_OUTPUT"
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - name: Verify the plan (fail-closed release-safety gate)
         run: uv run --no-sync semantic-release verify --plan release-plan.json
       - uses: actions/upload-artifact@bbbca2b2eb8f4b6ee903435a1630a100a4fd4227 # v7.0.0
         with:
@@ -72,7 +72,7 @@ jobs:
       - run: uv pip install -e ".[test]"
       - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3d89aef350131 # v7.0.0
         with:
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+          name: release-plan
       - name: Verify the gate resolved on the planned head (fail closed on drift)
         run: |
           test "$GITHUB_SHA" = "${{ needs.prepare.outputs.head_sha }}" || {

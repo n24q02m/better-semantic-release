@@ -13,8 +13,10 @@ refuse.
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 import pytest
+import yaml
 
 from semantic_release.bsr.gating import (
     DEFAULT_GATE_ENVIRONMENT,
@@ -33,10 +35,23 @@ from semantic_release.bsr.gating import (
 
 VERSION = "1.2.3"
 HEAD = "a" * 40
+RECIPE = Path(__file__).parent / "gated" / "recipe.workflow.yml"
 
 
 def _release() -> PendingRelease:
     return PendingRelease(version=VERSION, head_sha=HEAD)
+
+
+def _recipe_jobs() -> dict[str, Any]:
+    return yaml.safe_load(RECIPE.read_text(encoding="utf-8"))["jobs"]
+
+
+def _artifact_names(steps: list[dict[str, Any]], action: str) -> list[str | None]:
+    return [
+        (step.get("with") or {}).get("name")
+        for step in steps
+        if str(step.get("uses", "")).startswith(f"actions/{action}@")
+    ]
 
 
 class _ScriptedAdapter:
@@ -65,6 +80,29 @@ class TestRecipeContract:
             encoding="utf-8"
         )
         assert f"environment: {DEFAULT_GATE_ENVIRONMENT}" in recipe
+
+    def test_recipe_steps_are_valid_workflow_steps(self) -> None:
+        for job_name, job in _recipe_jobs().items():
+            for index, step in enumerate(job["steps"]):
+                where = f"{job_name}.steps[{index}]"
+                assert ("uses" in step) != (
+                    "run" in step
+                ), f"{where} must set exactly one of 'uses' or 'run'"
+                if "with" in step:
+                    assert step["with"], f"{where} has an empty 'with' block"
+
+    def test_recipe_verifies_the_plan_before_the_gate(self) -> None:
+        runs = [step.get("run", "") for step in _recipe_jobs()["prepare"]["steps"]]
+        assert any(
+            "semantic-release verify --plan release-plan.json" in run for run in runs
+        )
+
+    def test_recipe_publishes_the_artifact_it_planned(self) -> None:
+        jobs = _recipe_jobs()
+        uploaded = _artifact_names(jobs["prepare"]["steps"], "upload-artifact")
+        downloaded = _artifact_names(jobs["release"]["steps"], "download-artifact")
+        assert uploaded == ["release-plan"]
+        assert downloaded == uploaded
 
     def test_pending_release_defaults_to_the_gate_environment(self) -> None:
         assert _release().environment == DEFAULT_GATE_ENVIRONMENT
