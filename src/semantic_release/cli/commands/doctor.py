@@ -5,9 +5,10 @@ Task 3: `doctor` runs the WHOLE check catalog — policy/safety blockers and
 diagnostics/warnings — and renders a structured report. It is a superset of
 `verify`: readiness, not just permission.
 
-Offline by default (registry checks SKIP); pass `--check-registry` to probe
-live. Exit code is 0 unless `--strict` is passed, in which case a blocked
-report exits 1.
+The registry is probed only with `--check-registry` (registry checks SKIP
+otherwise). The upstream branch is fetched to compare HEAD with it unless
+`--offline` (or `--noop`) is passed. Exit code is 0 unless `--strict` is
+passed, in which case a blocked report exits 1.
 """
 
 from __future__ import annotations
@@ -24,6 +25,7 @@ from semantic_release.bsr.doctor import (
     _LIVE_PROBE,
     DoctorReport,
     check_branch_config,
+    check_branch_sync,
     check_hvcs_token,
     check_missing_remote,
     check_monorepo_undeclared_manifests,
@@ -75,6 +77,17 @@ def _print_report(report: DoctorReport, output_format: str) -> None:
     help="Probe the configured registry for the computed version (live).",
 )
 @click.option(
+    "--offline",
+    "offline",
+    is_flag=True,
+    default=False,
+    help=(
+        "Make no network call: do not fetch the upstream branch (the branch is "
+        "compared with its local tracking ref, which may be stale). Cannot be "
+        "combined with --check-registry."
+    ),
+)
+@click.option(
     "--strict",
     "strict",
     is_flag=True,
@@ -86,15 +99,20 @@ def doctor(
     cli_ctx: CliContextObj,
     output_format: str = "table",
     check_registry: bool = False,
+    offline: bool = False,
     strict: bool = False,
 ) -> None:
     """
     Diagnose release readiness across the full check catalog.
 
-    Covers blockers (remote, branch config, orphan tag, registry) and
-    warnings (tag format drift, HVCS token, prerelease consistency, version
-    declaration drift). Nothing is committed, tagged, or pushed.
+    Covers blockers (remote, branch config, branch in sync with its upstream,
+    orphan tag, registry) and warnings (tag format drift, HVCS token,
+    prerelease consistency, version declaration drift). Nothing is committed,
+    tagged, or pushed; the only write is the fetch of the upstream branch into
+    its remote-tracking ref.
     """
+    if offline and check_registry:
+        raise click.UsageError("--offline cannot be combined with --check-registry")
     ctx: Context = click.get_current_context()
     raw = cli_ctx.raw_config
     checks: list = []
@@ -131,6 +149,19 @@ def doctor(
 
     branch_matches = tuple(cfg.match for cfg in raw.branches.values())
     checks.append(check_branch_config(branch_matches, active))
+
+    sync_offline = offline or cli_ctx.global_opts.noop
+    checks.append(
+        check_branch_sync(
+            runtime.repo_dir,
+            offline=sync_offline,
+            fetch_url=None
+            if sync_offline
+            else runtime.hvcs_client.remote_url(
+                use_token=not runtime.ignore_token_for_push
+            ),
+        )
+    )
 
     import re  # noqa: PLC0415
 

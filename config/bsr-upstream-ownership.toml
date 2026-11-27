@@ -257,7 +257,7 @@ path = "docs/engineering-lessons.md"
 status = "A"
 kind = "docs"
 owner = "repo-maintainers"
-reason = "Recovered engineering-lessons ledger, migrated out of the retired assistant notes with each entry's landing commit."
+reason = "Recovered engineering-lessons ledger, migrated out of the retired assistant notes with each entry's landing commit, plus upstream adoption decisions."
 gates = ["docs"]
 
 [[ownership]]
@@ -1162,6 +1162,22 @@ status = "A"
 kind = "python-test"
 owner = "bsr-g3-verify-doctor"
 reason = "Task 3 e2e coverage: real broken fixtures fail closed; clean repo exits zero with env-provided token."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/test_branch_sync.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-g3-verify-doctor"
+reason = "Branch-sync check coverage against temp repos and a local bare remote: in sync, behind, ahead, diverged, offline, fetch failure and every skip state."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/unit/semantic_release/bsr/test_branch_sync_cli.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-g3-verify-doctor"
+reason = "Branch-sync CLI coverage: verify and doctor exit codes, fixes and offline/noop wiring over a local bare remote with no network transport."
 gates = ["python-lint", "python-format", "python-test"]
 
 [[ownership]]
