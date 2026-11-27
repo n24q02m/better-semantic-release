@@ -322,6 +322,25 @@ uses that token, it produces the next version according to the following format:
 
     f"{latest_version.major}.{latest_version.minor}.{latest_version.patch}-{prerelease_token}.1"
 
+In both cases, ``--prerelease`` never produces a version below the one your commits ask for.
+The floor is the version a normal (non-prerelease) release would get from every commit since
+the latest normal release. When that version is higher, the forced prerelease becomes its first
+prerelease instead. For example, if the latest normal version is ``"1.14.1"`` and a ``feat:``
+commit has been made since, the following command produces ``"1.15.0-rc.1"``, not
+``"1.14.2-rc.1"``:
+
+.. code-block:: bash
+
+   semantic-release version --prerelease --prerelease-token "rc" --print
+
+The same floor applies when an earlier forced prerelease already used a lower version, so the
+next forced prerelease returns to the version the commits ask for.
+
+.. note::
+
+   Upstream Python Semantic Release ignores the commits here, so its forced prerelease can
+   sort below the normal release that the same commits produce.
+
 
 .. _SemVer precedence rules: https://semver.org/#spec-item-11
 

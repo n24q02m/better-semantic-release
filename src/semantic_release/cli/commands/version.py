@@ -82,7 +82,7 @@ from semantic_release.version.translator import VersionTranslator
 
 if TYPE_CHECKING:  # pragma: no cover
     from pathlib import Path
-    from typing import Any, Mapping, Sequence
+    from typing import Any, Callable, Mapping, Sequence
 
     from git.refs.tag import Tag
 
@@ -652,25 +652,23 @@ def version(  # noqa: C901
             )
         )
 
-    if not forced_level_bump:
+    def _version_from_commits(
+        bump_stats_sink: Callable[[LevelBump, int, Version, Mapping[str, int]], None]
+        | None,
+        for_prerelease: bool,
+    ) -> Version:
         with Repo(str(runtime.repo_dir)) as git_repo:
             try:
-                new_version = next_version(
+                return next_version(
                     repo=git_repo,
                     translator=translator,
                     commit_parser=parser,
-                    prerelease=prerelease,
+                    prerelease=for_prerelease,
                     major_on_zero=major_on_zero,
                     allow_zero_version=runtime.allow_zero_version,
                     # BSR-PATCH: optional monorepo commit path-filter (better-semantic-release)
                     commit_path_filter=_bsr_path_filter,
-                    # BSR-PATCH: release-decision explainer (better-semantic-release).
-                    # `_json_mode` widens the gate: the JSON document reports the
-                    # same commit_count/level_bump/type_counts even when the prose
-                    # explainer is switched off.
-                    bump_stats_sink=(
-                        _stash_bump_stats if (_bsr_cfg.explain or _json_mode) else None
-                    ),
+                    bump_stats_sink=bump_stats_sink,
                 )
             except ValueError as ve:
                 # BSR-PATCH: actionable error messages (better-semantic-release)
@@ -678,6 +676,16 @@ def version(  # noqa: C901
                     click.echo(msg, err=True)
                     ctx.exit(1)
                 raise
+
+    if not forced_level_bump:
+        new_version = _version_from_commits(
+            # BSR-PATCH: release-decision explainer (better-semantic-release).
+            # `_json_mode` widens the gate: the JSON document reports the
+            # same commit_count/level_bump/type_counts even when the prose
+            # explainer is switched off.
+            _stash_bump_stats if (_bsr_cfg.explain or _json_mode) else None,
+            prerelease,
+        )
     else:
         logger.warning(
             "Forcing a '%s' release due to '--%s' command-line flag",
@@ -703,6 +711,21 @@ def version(  # noqa: C901
             if prerelease
             else new_version.finalize_version()
         )
+
+        # BSR-PATCH: a forced prerelease is a floor, not an override
+        # (better-semantic-release). --prerelease exists to publish a beta when
+        # no commit since the last release qualifies. Upstream returns the next
+        # prerelease revision whatever the commits say, so a feat: merged after
+        # 1.14.1 shipped as 1.14.2-beta.1 while the stable release of the same
+        # commits is 1.15.0. The floor is that stable target, taken from every
+        # commit since the last full release rather than since the latest
+        # prerelease, so a beta line that was already undercut recovers too.
+        if forced_level_bump is LevelBump.PRERELEASE_REVISION:
+            stable_target = _version_from_commits(None, False)
+            if stable_target > new_version.finalize_version():
+                new_version = stable_target.to_prerelease(
+                    token=translator.prerelease_token, revision=1
+                )
 
     # BSR-PATCH: monorepo release-plan summary (better-semantic-release).
     # Independent per-component report computed via the SAME next_version()
