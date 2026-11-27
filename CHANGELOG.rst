@@ -4,6 +4,24 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.14.1-beta.1:
+
+v1.14.1-beta.1 (2026-11-27)
+===========================
+
+🪲 Bug Fixes
+------------
+
+* Align .mise.toml python runtime for Wave 0 parity (`PR#321`_, `10d4172`_)
+
+* Update TOML declaration test for tomlkit 0.15 quote preservation (`PR#320`_, `911bb40`_)
+
+.. _10d4172: https://github.com/n24q02m/better-semantic-release/commit/10d41723e2d09d69b8ae99ed9c86bbe90327bc4e
+.. _911bb40: https://github.com/n24q02m/better-semantic-release/commit/911bb40d60736bb773c4d8623f95148dfd78fc06
+.. _PR#320: https://github.com/n24q02m/better-semantic-release/pull/320
+.. _PR#321: https://github.com/n24q02m/better-semantic-release/pull/321
+
+
 .. _changelog-v1.14.0:
 
 v1.14.0 (2026-11-25)
