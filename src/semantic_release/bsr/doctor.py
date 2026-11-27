@@ -209,6 +209,289 @@ def check_branch_config(
     )
 
 
+_STALE_TRACKING_NOTE = (
+    "not fetched (--offline or --noop); the local tracking ref may be stale"
+)
+_SHALLOW_NOTE = (
+    "shallow clone: commit counts may be incomplete; run `git fetch --unshallow`"
+)
+# The userinfo part of a URL ("user:token@") is where HVCS tokens travel.
+_URL_USERINFO = re.compile(r"(?<=://)[^/\s@]+@")
+
+
+def _mask_credentials(text: str) -> str:
+    return _URL_USERINFO.sub("****@", text)
+
+
+@dataclass(frozen=True)
+class _Upstream:
+    """The configured upstream of a branch, as git reports it."""
+
+    tracking_ref: str  # refs/remotes/origin/main, or refs/heads/x for remote "."
+    remote: str  # remote name, "." for a local branch
+    remote_ref: str  # refs/heads/main on the remote side
+
+    @property
+    def label(self) -> str:
+        return self.tracking_ref.removeprefix("refs/remotes/").removeprefix(
+            "refs/heads/"
+        )
+
+    @property
+    def remote_branch(self) -> str:
+        return self.remote_ref.removeprefix("refs/heads/")
+
+    @property
+    def is_local(self) -> bool:
+        return self.remote == "."
+
+
+def _sync_row(
+    code: str, status: str, what: str, why: str = "", fix: str = ""
+) -> CheckResult:
+    return CheckResult(
+        code=code,
+        severity=SEVERITY_BLOCKER,
+        status=status,
+        what=what,
+        why=why,
+        fix=fix,
+    )
+
+
+def _upstream_of(repo: GitRepo, branch_ref: str) -> _Upstream | None:
+    raw = repo.git.for_each_ref(
+        "--format=%(upstream)%00%(upstream:remotename)%00%(upstream:remoteref)",
+        branch_ref,
+    )
+    tracking_ref, remote, remote_ref = [*str(raw).split("\x00"), "", ""][:3]
+    if not tracking_ref.strip():
+        return None
+    return _Upstream(tracking_ref.strip(), remote.strip(), remote_ref.strip())
+
+
+def _fetch(repo: GitRepo, source: str, refspec: str) -> tuple[int, str]:
+    """Fetch one ref without tags, submodules or prompts: (exit status, stderr)."""
+    status, _stdout, stderr = repo.git.fetch(
+        "--no-tags",
+        "--no-recurse-submodules",
+        "--quiet",
+        source,
+        refspec,
+        with_extended_output=True,
+        with_exceptions=False,
+        env={"GIT_TERMINAL_PROMPT": "0"},
+    )
+    return int(status), str(stderr)
+
+
+def _refresh_tracking_ref(
+    repo: GitRepo, upstream: _Upstream, fetch_url: str | None
+) -> str | None:
+    """Update only the upstream's tracking ref; return the error, or None."""
+    refspec = f"+{upstream.remote_ref}:{upstream.tracking_ref}"
+    status, stderr = _fetch(repo, upstream.remote, refspec)
+    configured = next((r.url for r in repo.remotes if r.name == upstream.remote), None)
+    if status != 0 and fetch_url and fetch_url != configured:
+        # The configured remote may lack credentials (e.g. a CI checkout that
+        # does not persist them); retry once with the HVCS push URL.
+        status, stderr = _fetch(repo, fetch_url, refspec)
+    if status == 0:
+        return None
+    lines = [line.strip() for line in stderr.splitlines() if line.strip()]
+    return _mask_credentials("; ".join(lines)) or f"git fetch exited with {status}"
+
+
+def _resolve_commit(repo: GitRepo, ref: str) -> str | None:
+    from git.exc import GitCommandError  # noqa: PLC0415
+
+    try:
+        return str(repo.git.rev_parse("--verify", "--quiet", f"{ref}^{{commit}}"))
+    except GitCommandError:
+        return None
+
+
+def _ahead_behind(repo: GitRepo, head: str, upstream: str) -> tuple[int, int] | None:
+    """Commits only on `head` and only on `upstream`; None when git cannot tell."""
+    from git.exc import GitCommandError  # noqa: PLC0415
+
+    try:
+        out = repo.git.rev_list("--left-right", "--count", f"{head}...{upstream}")
+        ahead, behind = (int(count) for count in str(out).split())
+    except (GitCommandError, ValueError):
+        return None
+    return ahead, behind
+
+
+def _no_upstream_row(repo: GitRepo, branch: str) -> CheckResult:
+    remotes = [remote.name for remote in repo.remotes]
+    if not remotes:
+        return _sync_row(
+            "BRANCH_SYNC",
+            STATUS_SKIP,
+            "no git remote; there is no upstream to compare the branch with "
+            "(see MISSING_REMOTE)",
+        )
+    return _sync_row(
+        "BRANCH_SYNC",
+        STATUS_SKIP,
+        f"branch '{branch}' has no upstream branch configured",
+        why="without an upstream the branch cannot be compared with the remote",
+        fix=f"git branch --set-upstream-to={remotes[0]}/{branch}",
+    )
+
+
+def _out_of_sync_row(
+    branch: str, upstream: _Upstream, ahead: int, behind: int, notes: list[str]
+) -> CheckResult:
+    if ahead and behind:
+        code = "BRANCH_DIVERGED"
+        what = (
+            f"branch '{branch}' has diverged: {ahead} ahead and {behind} behind "
+            f"'{upstream.label}'"
+        )
+        why = (
+            "local and upstream history both moved; the release would tag a "
+            "history the remote does not have, and its push would be rejected"
+        )
+        fix = "git pull --rebase"
+    elif behind:
+        code = "BRANCH_BEHIND"
+        what = f"branch '{branch}' is {behind} commit(s) behind '{upstream.label}'"
+        why = (
+            "the release would be computed from outdated history and miss the "
+            "newer upstream commits; its push would be rejected"
+        )
+        fix = "git pull --ff-only"
+    else:
+        code = "BRANCH_AHEAD"
+        what = f"branch '{branch}' is {ahead} commit(s) ahead of '{upstream.label}'"
+        why = (
+            "the release would include commits that are not on the remote yet, so "
+            "they have not been reviewed or tested there; push them and let CI pass "
+            "before releasing"
+        )
+        fix = f"git push {upstream.remote} HEAD:{upstream.remote_branch}"
+    return _sync_row(code, STATUS_FAIL, what, "; ".join([why, *notes]), fix)
+
+
+def _compare_with_upstream(
+    repo: GitRepo, branch: str, head_sha: str, upstream: _Upstream, *, fetched: bool
+) -> CheckResult:
+    upstream_sha = _resolve_commit(repo, upstream.tracking_ref)
+    if upstream_sha is None:
+        return _sync_row(
+            "BRANCH_SYNC",
+            STATUS_SKIP,
+            f"upstream '{upstream.label}' has no local tracking ref to compare with",
+            why="the upstream branch was never fetched into this clone",
+            fix=f"git fetch {upstream.remote}",
+        )
+    stale = not fetched and not upstream.is_local
+    if upstream_sha == head_sha and stale:
+        # Matching a tracking ref that was not refreshed proves nothing about
+        # the remote, so this is a skip (like the offline registry check),
+        # not a pass. A skip also shows its reason in the table output.
+        return _sync_row(
+            "BRANCH_SYNC",
+            STATUS_SKIP,
+            f"branch '{branch}' matches the local tracking ref of '{upstream.label}'",
+            why=_STALE_TRACKING_NOTE,
+            fix="re-run without --offline or --noop to fetch and confirm",
+        )
+    if upstream_sha == head_sha:
+        return _sync_row(
+            "BRANCH_SYNC",
+            STATUS_PASS,
+            f"branch '{branch}' is in sync with '{upstream.label}'",
+        )
+    notes = [_STALE_TRACKING_NOTE] if stale else []
+    if repo.git.rev_parse("--is-shallow-repository") == "true":
+        notes.append(_SHALLOW_NOTE)
+    counts = _ahead_behind(repo, head_sha, upstream_sha)
+    if counts is None:
+        return _sync_row(
+            "BRANCH_SYNC_UNCONFIRMED",
+            STATUS_FAIL,
+            f"could not count the commits between '{branch}' and '{upstream.label}'",
+            why="; ".join(["git rev-list failed on two different commits", *notes]),
+            fix=f"git fetch {upstream.remote}, then re-run",
+        )
+    return _out_of_sync_row(branch, upstream, *counts, notes)
+
+
+def _branch_sync(repo: GitRepo, *, offline: bool, fetch_url: str | None) -> CheckResult:
+    if repo.head.is_detached:
+        return _sync_row(
+            "BRANCH_SYNC",
+            STATUS_SKIP,
+            "HEAD is detached; there is no branch to compare with an upstream",
+            why="CI checkouts of a single commit are detached",
+            fix="check out the release branch to compare it with the remote",
+        )
+    branch = repo.head.ref
+    try:
+        head_sha = str(branch.commit.hexsha)
+    except ValueError:
+        return _sync_row(
+            "BRANCH_SYNC", STATUS_SKIP, f"branch '{branch.name}' has no commits yet"
+        )
+    upstream = _upstream_of(repo, branch.path)
+    if upstream is None:
+        return _no_upstream_row(repo, branch.name)
+    fetched = False
+    if not offline and not upstream.is_local:
+        error = _refresh_tracking_ref(repo, upstream, fetch_url)
+        if error is not None:
+            return _sync_row(
+                "BRANCH_SYNC_UNCONFIRMED",
+                STATUS_FAIL,
+                f"could not fetch '{upstream.label}' to compare branch "
+                f"'{branch.name}' with it",
+                why=error,
+                fix=f"check network access and credentials for remote "
+                f"'{upstream.remote}', or re-run with --offline to compare with "
+                "the local tracking ref",
+            )
+        fetched = True
+    return _compare_with_upstream(
+        repo, branch.name, head_sha, upstream, fetched=fetched
+    )
+
+
+def check_branch_sync(
+    repo_dir: Path | str,
+    *,
+    offline: bool = False,
+    fetch_url: str | None = None,
+) -> CheckResult:
+    """
+    HEAD must match its upstream branch before a release is cut.
+
+    Online, the upstream branch is fetched first: only its remote-tracking ref
+    is updated (no tags, no working tree, no local branch). `fetch_url` is a
+    fallback source used when fetching the configured remote fails, such as an
+    HVCS URL that carries the token. Offline, nothing is fetched and the local
+    tracking ref is compared as is, so the result may be stale.
+
+    Behind, diverged and ahead all fail with blocker severity: each one means
+    the release would be cut from a history that differs from the remote.
+    A missing remote, missing upstream, detached HEAD or unborn branch is a
+    skip, not a crash; an unreachable remote fails closed.
+    """
+    from git import Repo  # noqa: PLC0415
+    from git.exc import InvalidGitRepositoryError, NoSuchPathError  # noqa: PLC0415
+
+    try:
+        repo = Repo(str(repo_dir))
+    except (InvalidGitRepositoryError, NoSuchPathError):
+        return _sync_row(
+            "BRANCH_SYNC", STATUS_SKIP, f"not a git repository: {repo_dir}"
+        )
+    with repo:
+        return _branch_sync(repo, offline=offline, fetch_url=fetch_url)
+
+
 def check_hvcs_token(hvcs_client: object, *, needs_release: bool) -> CheckResult:
     token = getattr(hvcs_client, "token", None)
     if token:

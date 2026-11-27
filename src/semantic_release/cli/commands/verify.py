@@ -8,7 +8,8 @@ any policy blocker trips.
 
 Unlike `plan` (offline by default), `verify` probes the registry LIVE by
 default: it is the pre-flight gate, so fail-closed registry semantics are the
-point. Use `--offline` for deterministic CI runs.
+point. It also fetches the upstream branch to confirm HEAD matches it. Use
+`--offline` for deterministic CI runs.
 """
 
 from __future__ import annotations
@@ -38,6 +39,7 @@ from semantic_release.bsr.doctor import (
     CheckResult,
     DoctorReport,
     check_branch_config,
+    check_branch_sync,
     check_hvcs_token,
     check_missing_remote,
     check_registry_state,
@@ -249,7 +251,11 @@ def _print_report(report: DoctorReport, output_format: str) -> None:
     "offline",
     is_flag=True,
     default=False,
-    help="Skip the live registry probe (registry checks report SKIP instead).",
+    help=(
+        "Skip the live registry probe (registry checks report SKIP instead) and "
+        "do not fetch the upstream branch (the branch is compared with its local "
+        "tracking ref, which may be stale)."
+    ),
 )
 @click.option(
     "--plan",
@@ -290,8 +296,10 @@ def verify(
     Enforce the release-safety policy against the current repository state.
 
     Runs the blocker-severity checks (orphan tag, registry collision/unknown,
-    missing remote, branch config, HVCS token) and exits 1 when any of them
-    fails. Nothing is committed, tagged, or pushed.
+    missing remote, branch config, branch in sync with its upstream, HVCS
+    token) and exits 1 when any of them fails. Nothing is committed, tagged,
+    or pushed; the only write is the fetch of the upstream branch into its
+    remote-tracking ref.
     """
     ctx: Context = click.get_current_context()
     raw = cli_ctx.raw_config
@@ -349,6 +357,21 @@ def verify(
         check_branch_config(
             tuple(cfg.match for cfg in raw.branches.values()),
             _active_branch(runtime.repo_dir),
+        )
+    )
+
+    # A branch behind, ahead of, or diverged from its upstream must not be
+    # released. --noop makes no change at all, so it skips the fetch too.
+    sync_offline = offline or cli_ctx.global_opts.noop
+    checks.append(
+        check_branch_sync(
+            runtime.repo_dir,
+            offline=sync_offline,
+            fetch_url=None
+            if sync_offline
+            else runtime.hvcs_client.remote_url(
+                use_token=not runtime.ignore_token_for_push
+            ),
         )
     )
 

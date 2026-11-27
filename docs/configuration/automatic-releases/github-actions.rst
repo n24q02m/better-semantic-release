@@ -296,7 +296,9 @@ Selects which read-oriented command the action runs:
   later steps on ``plan_blocked`` instead.
 * ``verify``: runs the fail-closed release-safety gate. The step exits
   non-zero when a policy blocker trips and exposes ``plan_blocked`` for
-  follow-up steps.
+  follow-up steps. The gate fetches the checked-out branch's upstream to
+  confirm the branch matches the remote, so the job needs read access to the
+  repository; the credentials ``actions/checkout`` leaves behind are enough.
 
 **Required:** ``false``
 
@@ -1150,6 +1152,16 @@ through ``plan_blocked``, so a plain
       github_token: ${{ secrets.GITHUB_TOKEN }}
 
 is enough to gate a protected workflow.
+
+.. note::
+
+   ``verify`` also blocks when the checked-out branch is behind, ahead of, or
+   diverged from its upstream (``BRANCH_BEHIND``, ``BRANCH_AHEAD``,
+   ``BRANCH_DIVERGED``), and fails closed when the upstream cannot be fetched
+   (``BRANCH_SYNC_UNCONFIRMED``). A branch checkout made by ``actions/checkout``
+   tracks its remote branch, so no extra setup is needed. A checkout of a single
+   commit (a detached ``HEAD``, as on ``pull_request`` events) has no branch to
+   compare and reports a skip instead.
 
 .. _gh_actions-monorepo:
 

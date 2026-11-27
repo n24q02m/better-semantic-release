@@ -160,6 +160,10 @@ How it differs from upstream
        reading the result has to parse English prose)
      - None -- prose on stderr, one bare version string on stdout
      - Opt-in ``--format json`` on ``version`` and ``publish``
+   * - Releasing from a branch that is behind, ahead of, or diverged from its
+       upstream (the release is cut from a history the remote does not have)
+     - Checked only at push time, after the release commit and tag exist locally
+     - ``verify`` and ``doctor`` fetch the upstream branch and block first
    * - Config / CLI / GitHub Action interface
      - --
      - Identical (drop-in)
@@ -442,6 +446,39 @@ Three guarantees, with no exceptions to memorize:
 The full field reference for both documents is in ``docs/api/commands.rst``, under the
 ``--format`` option of each command. ``schema_version`` is ``1``; it exists so a
 consumer can pin behavior if fields are ever added or renamed.
+
+Branch sync check (``verify`` / ``doctor``)
+-------------------------------------------
+
+Upstream compares the local branch with the remote only when ``version`` pushes, which
+is after the release commit and tag have been created locally. ``verify`` and ``doctor``
+run the same comparison up front: they fetch the branch's upstream (only its
+remote-tracking ref is updated; no tags, no working tree, no local branch) and compare it
+with ``HEAD``.
+
+- ``BRANCH_SYNC`` passes when ``HEAD`` and the upstream are the same commit.
+- ``BRANCH_BEHIND`` fails when the upstream has commits ``HEAD`` lacks. Fix:
+  ``git pull --ff-only``.
+- ``BRANCH_DIVERGED`` fails when both sides have commits the other lacks. Fix:
+  ``git pull --rebase``.
+- ``BRANCH_AHEAD`` fails when ``HEAD`` has commits the remote does not. Those commits
+  have not been reviewed or tested on the remote yet, and a tag-only release would be
+  refused at push time anyway. Fix: push them (``git push <remote> HEAD:<branch>``) and
+  let CI pass first.
+- ``BRANCH_SYNC_UNCONFIRMED`` fails closed when the upstream cannot be fetched. When the
+  configured remote has no credentials, the fetch is retried once with the HVCS push URL;
+  any credentials in the error text are masked.
+
+All five are blockers: ``verify`` exits 1, and ``doctor`` reports ``RESULT: BLOCKED``
+(exit 1 with ``--strict``). No upstream branch, no remote, a detached ``HEAD`` (common in
+CI checkouts of a single commit), or a directory that is not a git repository is reported
+as a skip, never a crash. In a shallow clone the counts can be incomplete and the row says
+so; an out-of-sync shallow clone still fails.
+
+``--offline`` (on both commands) and ``--noop`` never fetch. The branch is compared with
+the local remote-tracking ref as it is, and the row says that ref may be stale: a match is
+reported as a skip rather than a pass, while a local mismatch still fails.
+``doctor --offline`` cannot be combined with ``--check-registry``.
 
 ----
 
