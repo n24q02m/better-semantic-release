@@ -709,6 +709,14 @@ reason = "Regression or parity coverage for the fork behavior and its stock seam
 gates = ["python-lint", "python-format", "python-test"]
 
 [[ownership]]
+path = "tests/unit/semantic_release/bsr/test_forced_prerelease_cli.py"
+status = "A"
+kind = "python-test"
+owner = "bsr-tests"
+reason = "A forced prerelease never sorts below the stable release its commits produce."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
 path = "tests/unit/semantic_release/bsr/test_jsonout_publish_cli.py"
 status = "A"
 kind = "python-test"
@@ -1617,7 +1625,15 @@ path = "tests/e2e/cmd_version/test_version_bump.py"
 status = "M"
 kind = "python-test"
 owner = "bsr-tests"
-reason = "A forced prerelease after a final release now moves to the next patch, so the expected versions of the --prerelease cases follow it."
+reason = "A forced prerelease sorts above the release it follows and is a floor under the version the commits ask for, so the expected versions of the --prerelease cases follow both."
+gates = ["python-lint", "python-format", "python-test"]
+
+[[ownership]]
+path = "tests/e2e/cmd_version/test_version_partial_tag.py"
+status = "M"
+kind = "python-test"
+owner = "bsr-tests"
+reason = "A forced prerelease is a floor under the version the commits ask for, so the expected version of the pre-release case follows it."
 gates = ["python-lint", "python-format", "python-test"]
 
 [[ownership]]
@@ -1625,7 +1641,7 @@ path = "tests/e2e/cmd_version/test_version_print.py"
 status = "M"
 kind = "python-test"
 owner = "bsr-tests"
-reason = "A forced prerelease after a final release now moves to the next patch, so the expected versions of the --prerelease cases follow it."
+reason = "A forced prerelease sorts above the release it follows and is a floor under the version the commits ask for, so the expected versions of the --prerelease cases follow both."
 gates = ["python-lint", "python-format", "python-test"]
 
 [[ownership]]

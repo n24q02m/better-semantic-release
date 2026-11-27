@@ -84,14 +84,16 @@ if TYPE_CHECKING:
                 # New build-metadata forces a new release
                 (["--build-metadata", "build.12345"], "0.1.0+build.12345"),
                 # Forced version bump
-                (["--prerelease"], "0.0.0-rc.1"),
+                # BSR-PATCH: a forced prerelease is a floor under the version the
+                # commits ask for (better-semantic-release): 0.1.0-rc.1, not 0.0.0-rc.1.
+                (["--prerelease"], "0.1.0-rc.1"),
                 (["--patch"], "0.0.1"),
                 (["--minor"], "0.1.0"),
                 (["--major"], "1.0.0"),
                 # Forced version bump with --build-metadata
                 (["--patch", "--build-metadata", "build.12345"], "0.0.1+build.12345"),
                 # Forced version bump with --as-prerelease
-                (["--prerelease", "--as-prerelease"], "0.0.0-rc.1"),
+                (["--prerelease", "--as-prerelease"], "0.1.0-rc.1"),
                 (["--patch", "--as-prerelease"], "0.0.1-rc.1"),
                 (["--minor", "--as-prerelease"], "0.1.0-rc.1"),
                 (["--major", "--as-prerelease"], "1.0.0-rc.1"),

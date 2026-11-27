@@ -51,10 +51,12 @@ cases: tuple[
     ...,
 ] = (
     # pre-release should not affect partial tags
+    # BSR-PATCH: a forced prerelease is a floor under the version the commits
+    # ask for (better-semantic-release): 1.0.0-rc.1, not 0.0.0-rc.1.
     (
         "pre-release",
         ["--prerelease"],
-        "0.0.0-rc.1",
+        "1.0.0-rc.1",
         ["v0", "v0.0"],
         [],
         [],
