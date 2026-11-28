@@ -107,6 +107,13 @@
       "minimumReleaseAge": "7 days"
     },
     {
+      "description": "requires-python is the supported-interpreter floor set by the Python support matrix (3.11 and up), not a runtime pin. The python rule above matches it too, and with rangeStrategy bump Renovate raised the floor to the newest 3.13 patch, dropping 3.11 and 3.12 from the published metadata. Placed after that rule so it wins.",
+      "matchDepTypes": [
+        "requires-python"
+      ],
+      "enabled": false
+    },
+    {
       "description": "Disable runtime version updates from mise",
       "matchManagers": [
         "mise"
