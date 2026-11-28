@@ -4,6 +4,24 @@
 CHANGELOG
 =========
 
+.. _changelog-v1.15.0-beta.1:
+
+v1.15.0-beta.1 (2026-11-28)
+===========================
+
+🪲 Bug Fixes
+------------
+
+* Make a forced prerelease a floor under the version the commits ask for (`PR#327`_, `f68ab8f`_)
+
+* **deps**: Update non-major dependencies (`PR#325`_, `0a30fda`_)
+
+.. _0a30fda: https://github.com/n24q02m/better-semantic-release/commit/0a30fdaecd80beac221cedf6a4e4a2f418d312e8
+.. _f68ab8f: https://github.com/n24q02m/better-semantic-release/commit/f68ab8fd9e73c65f325ddbd607690a3cc4599581
+.. _PR#325: https://github.com/n24q02m/better-semantic-release/pull/325
+.. _PR#327: https://github.com/n24q02m/better-semantic-release/pull/327
+
+
 .. _changelog-v1.14.2-beta.1:
 
 v1.14.2-beta.1 (2026-11-27)
